@@ -1,8 +1,8 @@
-import { LogoOptions } from "@/contexts/GameContext";
+import { ManualLogoOptions, AILogoOptions } from "@/contexts/GameContext";
 import { CircleDot } from "lucide-react";
 
 type TeamLogoProps = {
-  logo: LogoOptions;
+  logo: ManualLogoOptions | AILogoOptions;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 };
@@ -15,6 +15,20 @@ const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
     xl: "w-24 h-24 text-4xl"
   };
 
+  // Handle AI-generated logo
+  if ('image' in logo) {
+    return (
+      <div className={`${sizeClasses[size]} ${className} rounded-full overflow-hidden`}>
+        <img 
+          src={logo.image} 
+          alt="Team Logo" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  // Handle manual logo
   const hasInitials = logo.initials?.trim().length > 0;
 
   return (

@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GithubAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GithubAuthProvider } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Github } from 'lucide-react';
-import app from '@/firebaseConfig';
+import { Github, Loader2 } from 'lucide-react';
+import { auth } from '@/firebaseConfig';
+import { useGame } from '@/contexts/GameContext';
+import { useUser } from '@/contexts/UserContext';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,9 +17,23 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const { userTeam, isLoading } = useGame();
+  const { user } = useUser();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const auth = getAuth(app);
   const githubProvider = new GithubAuthProvider();
+
+  const handleSuccessfulLogin = () => {
+    setIsLoggingIn(true);
+  };
+
+  // Watch for team data to load after login
+  useEffect(() => {
+    if (isLoggingIn && !isLoading) {
+      navigate(userTeam ? '/dashboard' : '/create-team');
+      setIsLoggingIn(false);
+    }
+  }, [isLoggingIn, isLoading, userTeam, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +45,7 @@ const Login = () => {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      navigate('/create-team');
+      handleSuccessfulLogin();
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -42,7 +58,7 @@ const Login = () => {
   const handleGithubLogin = async () => {
     try {
       await signInWithPopup(auth, githubProvider);
-      navigate('/create-team');
+      handleSuccessfulLogin();
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -64,8 +80,8 @@ const Login = () => {
           <Tabs defaultValue="login" value={isLogin ? 'login' : 'register'} onValueChange={(v) => setIsLogin(v === 'login')}>
             <TabsList className="bg-footbai-header">
               <TabsTrigger value="login" className="data-[state=active]:bg-footbai-accent data-[state=active]:text-black">
-                Login
-              </TabsTrigger>
+                Login {user?.email}
+              </TabsTrigger> 
               <TabsTrigger value="register" className="data-[state=active]:bg-footbai-accent data-[state=active]:text-black">
                 Register
               </TabsTrigger>
@@ -94,8 +110,19 @@ const Login = () => {
                   />
                 </div>
                 {error && <p className="text-red-500 text-sm">{error}</p>}
-                <Button type="submit" className="w-full bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium">
-                  Login
+                <Button 
+                  type="submit" 
+                  className="w-full bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
+                  disabled={isLoggingIn}
+                >
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    'Login'
+                  )}
                 </Button>
               </form>
               <div className="relative">
@@ -110,6 +137,7 @@ const Login = () => {
                 onClick={handleGithubLogin}
                 variant="outline"
                 className="w-full border-footbai-header hover:bg-footbai-hover"
+                disabled={isLoggingIn}
               >
                 <Github className="mr-2 h-4 w-4" />
                 GitHub
@@ -139,8 +167,19 @@ const Login = () => {
                   />
                 </div>
                 {error && <p className="text-red-500 text-sm">{error}</p>}
-                <Button type="submit" className="w-full bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium">
-                  Register
+                <Button 
+                  type="submit" 
+                  className="w-full bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
+                  disabled={isLoggingIn}
+                >
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Registering...
+                    </>
+                  ) : (
+                    'Register'
+                  )}
                 </Button>
               </form>
             </TabsContent>

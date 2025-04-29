@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import app from '../firebaseConfig';
+import {app} from '../firebaseConfig';
 
 type User = {
   id: string;

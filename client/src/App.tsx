@@ -4,8 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GameProvider } from "./contexts/GameContext";
-import { UserProvider } from "./contexts/UserContext";
+import { UserProvider, useUser } from "./contexts/UserContext";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import CreateTeam from "./pages/CreateTeam";
 import Dashboard from "./pages/Dashboard";
@@ -15,8 +16,70 @@ import MatchSimulation from "./pages/MatchSimulation";
 import MatchSummary from "./pages/MatchSummary";
 import Login from './pages/Login';
 import NotFound from "./pages/NotFound";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+const AppContent = () => {
+  const { isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-footbai-background">
+        <Loader2 className="h-8 w-8 animate-spin text-footbai-accent" />
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+
+        {/* Protected Routes with Sidebar */}
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/team" element={
+            <ProtectedRoute>
+              <TeamOverview />
+            </ProtectedRoute>
+          } />
+          <Route path="/play" element={
+            <ProtectedRoute>
+              <PlayMatch />
+            </ProtectedRoute>
+          } />
+          <Route path="/simulation" element={
+            <ProtectedRoute>
+              <MatchSimulation />
+            </ProtectedRoute>
+          } />
+          <Route path="/summary" element={
+            <ProtectedRoute>
+              <MatchSummary />
+            </ProtectedRoute>
+          } />
+        </Route>
+
+        {/* Protected Routes without Sidebar */}
+        <Route path="/create-team" element={
+          <ProtectedRoute>
+            <CreateTeam />
+          </ProtectedRoute>
+        } />
+
+        {/* Catch all route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -25,21 +88,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route element={<Layout />}>
-                <Route path="/create-team" element={<CreateTeam />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/team" element={<TeamOverview />} />
-                <Route path="/play" element={<PlayMatch />} />
-                <Route path="/simulation" element={<MatchSimulation />} />
-                <Route path="/summary" element={<MatchSummary />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <AppContent />
         </TooltipProvider>
       </GameProvider>
     </UserProvider>

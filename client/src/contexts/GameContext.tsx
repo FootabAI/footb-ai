@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
-
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db, auth } from '@/firebaseConfig';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 // Types
 export type TeamAttributes = {
   passing: number;
@@ -10,23 +12,30 @@ export type TeamAttributes = {
   physicality: number;
 };
 
-export type LogoOptions = {
+export type ManualLogoOptions = {
   initials: string;
   backgroundColor: string;
-  type: 'manual' | 'ai';
-  theme?: string;
+  
 };
+
+export type AILogoOptions = {
+  image: string;
+  theme: string;
+};
+
 
 export type TeamTactic = 'Balanced' | 'Offensive' | 'Defensive' | 'Counter-Attacking' | 'Aggressive' | 'Possession-Based';
 
 export type Team = {
   id: string;
   name: string;
-  logo: LogoOptions;
+  logo: ManualLogoOptions | AILogoOptions;
   attributes: TeamAttributes;
   tactic: TeamTactic;
   points: number;
   isBot?: boolean;
+  players: Player[];
+  userId: string;
 };
 
 export type Player = {
@@ -74,6 +83,9 @@ type GameContextType = {
   currentMatch: Match | null;
   botTeam: Team | null;
   players: Player[];
+  isLoading: boolean;
+  error: string | null;
+  success: string | null;
   createTeam: (team: Omit<Team, 'id' | 'points'>) => void;
   updateTeam: (team: Partial<Team>) => void;
   setupMatch: (opponent: Team) => void;
@@ -91,7 +103,6 @@ const defaultBotTeam: Team = {
   logo: {
     initials: 'AI',
     backgroundColor: '#ff4d4d',
-    type: 'manual'
   },
   attributes: {
     passing: 70,
@@ -103,16 +114,60 @@ const defaultBotTeam: Team = {
   },
   tactic: 'Balanced',
   points: 0,
-  isBot: true
+  isBot: true,
+  players: [],
+  userId: ''
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [botTeam] = useState<Team>(defaultBotTeam);
   const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Load user's team when auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          setIsLoading(true);
+          // Query teams collection for user's team
+          const teamsCollection = collection(db, 'teams');
+          const q = query(teamsCollection, where('userId', '==', user.uid));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            const teamDoc = querySnapshot.docs[0];
+            const teamData = teamDoc.data() as Team;
+            setUserTeam(teamData);
+            setPlayers(teamData.players || []);
+          } else {
+            setUserTeam(null);
+            setPlayers([]);
+          }
+        } catch (err) {
+          console.error('Error loading team:', err);
+          setError('Failed to load team data');
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setUserTeam(null);
+        setPlayers([]);
+        setIsLoading(false);
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
     const positions = ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'ATT', 'ATT', 'ATT'];
@@ -128,17 +183,45 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
-  const createTeam = (team: Omit<Team, 'id' | 'points'>) => {
-    const newTeam: Team = {
-      ...team,
-      id: 'user-team',
-      points: 100 // Starting points
-    };
-    setUserTeam(newTeam);
-    
-    // Generate players for the team
-    const newPlayers = generateRandomPlayers(newTeam.id, newTeam.name);
-    setPlayers(newPlayers);
+  const createTeam = async (team: Omit<Team, 'id' | 'points'>) => {
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Generate a unique ID for the team
+      const teamId = crypto.randomUUID();
+      
+      const newTeam: Team & { userId: string } = {
+        ...team,
+        id: teamId,
+        points: 0,
+        players: [],
+        userId: user.uid
+      };
+      
+      const newPlayers = generateRandomPlayers(teamId, team.name);
+      newTeam.players = newPlayers;
+
+      // Store team in Firestore
+      const teamsCollection = collection(db, 'teams');
+      const docRef = await addDoc(teamsCollection, newTeam);
+      
+      // Update local state
+      setUserTeam(newTeam);
+      setPlayers(newPlayers);
+      setSuccess('Team created successfully!');
+    } catch (err) {
+      console.error('Error creating team:', err);
+      setError('Failed to create team. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateTeam = (team: Partial<Team>) => {
@@ -262,6 +345,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentMatch,
         botTeam,
         players,
+        isLoading,
+        error,
+        success,
         createTeam,
         updateTeam,
         setupMatch,

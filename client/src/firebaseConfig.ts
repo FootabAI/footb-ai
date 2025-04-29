@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-
-
+import { getFirestore } from "firebase/firestore";
+import { getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,8 +11,24 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-export default app;
+// Initialize persistence
+const initAuth = async () => {
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    console.log("Auth persistence initialized");
+  } catch (error) {
+    console.error("Error setting persistence:", error);
+    // Fallback to in-memory persistence if local storage is not available
+    await setPersistence(auth, inMemoryPersistence);
+  }
+};
+
+// Initialize auth persistence
+initAuth();
+
+export { db, app, auth };
