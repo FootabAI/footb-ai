@@ -1,103 +1,67 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Player, useGame } from "@/contexts/GameContext";
-import { Team, TeamAttributes, TeamTactic } from "@/contexts/GameContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
-import { Formation } from "@/contexts/GameContext";
+import { Button } from "@/components/ui/button";
+import { useLogoGeneration } from "@/hooks/useLogoGeneration";
+import { useTeamCreation } from "@/contexts/TeamCreationContext";
 
 // Steps
 import { LogoStep } from "@/components/team-creation/LogoStep";
 import { AttributesStep } from "@/components/team-creation/AttributesStep";
 import { SummaryStep } from "@/components/team-creation/SummaryStep";
 import { PlayersStep } from "@/components/team-creation/PlayersStep";
-import { Button } from "@/components/ui/button";
-import { useLogoGeneration } from "@/hooks/useLogoGeneration";
 
 const STEPS = ["logo", "attributes", "players", "summary"] as const;
 type Step = typeof STEPS[number];
 
 const CreateTeam = () => {
   const navigate = useNavigate();
-  const { createTeam } = useGame();
   const [step, setStep] = useState<Step>("logo");
-  const [teamName, setTeamName] = useState("");
-  const [logoType, setLogoType] = useState<"manual" | "ai">("manual");
-  const [initials, setInitials] = useState("");
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [backgroundColor, setBackgroundColor] = useState("#62df6e");
-  const [formation, setFormation] = useState<Formation>("4-3-3");
-  const [customizedName, setCustomizedName] = useState("");
-  const [themeTags, setThemeTags] = useState<string[]>([]);
-  const [colorTags, setColorTags] = useState<string[]>([]);
-  const { isGeneratingLogo, generatedClubName, generateLogo, resetLogo, generatedLogo } = useLogoGeneration();
+  const {
+    teamName,
+    setTeamName,
+    logoType,
+    setLogoType,
+    initials,
+    setInitials,
+    backgroundColor,
+    setBackgroundColor,
+    formation,
+    setFormation,
+    customizedName,
+    setCustomizedName,
+    themeTags,
+    setThemeTags,
+    colorTags,
+    setColorTags,
+    attributes,
+    tactic,
+    setTactic,
+    pointsLeft,
+    createTeam,
+    handleAttributeChange,
+    isLoading,
+  } = useTeamCreation();
+  const {
+    isGeneratingLogo,
+    generatedClubName,
+    generateLogo,
+    resetLogo,
+    generatedLogo,
+  } = useLogoGeneration();
 
-  const [attributes, setAttributes] = useState<TeamAttributes>({
-    passing: 40,
-    shooting: 40,
-    pace: 40,
-    dribbling: 40,
-    defending: 40,
-    physicality: 40,
-  });
-
-  const [tactic, setTactic] = useState<TeamTactic>("Balanced");
-  const TOTAL_POINTS = 60;
-  const [pointsLeft, setPointsLeft] = useState(TOTAL_POINTS);
-
-  useEffect(() => {
-    const totalPointsUsed = Object.values(attributes).reduce(
-      (sum, value) => sum + value - 40,
-      0
-    );
-    setPointsLeft(TOTAL_POINTS - totalPointsUsed);
-  }, [attributes]);
-
-  const handleAttributeChange = (
-    attr: keyof typeof attributes,
-    newValue: number
-  ) => {
-    const oldValue = attributes[attr];
-    const pointDiff = newValue - oldValue;
-
-    if (pointsLeft - pointDiff < 0) return;
-
-    setAttributes({ ...attributes, [attr]: newValue });
-    setPointsLeft((prev) => prev - pointDiff);
-  };
-
-  const handleCreateTeam = () => {
-    const finalName = logoType === "manual" ? teamName : customizedName;
-
+  const handleCreateTeam = async () => {
     if (logoType === "manual") {
-      createTeam({
-        name: finalName,
-        logo: {
-          initials:
-            logoType === "manual"
-              ? initials
-              : customizedName.substring(0, 2).toUpperCase(),
-          backgroundColor: logoType === "manual" ? backgroundColor : "#62df6e",
-        },
-        attributes,
-        tactic,
-        formation,
-        players,
-        userId: "",
+      await createTeam({
+        initials,
+        backgroundColor,
       });
     } else {
-      createTeam({
-        name: finalName,
-        logo: {
-          image: generatedLogo,
-          theme: "",
-          backgroundColor: "#62df6e",
-        },
-        attributes,
-        tactic,
-        formation,
-        players,
-        userId: "",
+      await createTeam({
+        image: generatedLogo,
+        theme: "",
+        backgroundColor: "#62df6e",
       });
     }
     navigate("/dashboard");
@@ -138,30 +102,6 @@ const CreateTeam = () => {
     setCustomizedName("");
   };
 
-  useEffect(() => {
-    if (teamName && logoType === "manual") {
-      const words = teamName.split(" ");
-      if (words.length === 1) {
-        setInitials(words[0].substring(0, 3).toUpperCase());
-      } else {
-        setInitials(
-          words
-            .map((word) => word[0])
-            .join("")
-            .substring(0, 3)
-            .toUpperCase()
-        );
-      }
-    }
-  }, [teamName, logoType]);
-
-  // Set customized name to generated club name when available
-  useEffect(() => {
-    if (generatedClubName && !customizedName) {
-      setCustomizedName(generatedClubName);
-    }
-  }, [generatedClubName]);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-footbai-background p-4">
       <Card className="w-full max-w-3xl bg-footbai-container border-footbai-header">
@@ -198,15 +138,15 @@ const CreateTeam = () => {
               onAttributeChange={handleAttributeChange}
               tactic={tactic}
               onTacticChange={setTactic}
-              totalPoints={TOTAL_POINTS}
+              totalPoints={60}
               pointsLeft={pointsLeft}
             />
           )}
           {step === "players" && (
-            <PlayersStep 
+            <PlayersStep
               onNext={handleNext}
               onFormationChange={setFormation}
-              onPlayersChange={setPlayers}
+              onPlayersChange={() => {}}
             />
           )}
           {step === "summary" && (
@@ -215,7 +155,7 @@ const CreateTeam = () => {
               initials={initials}
               backgroundColor={backgroundColor}
               attributes={attributes}
-              players={players}
+              players={[]}
               tactic={tactic}
               logoType={logoType}
               generatedLogo={generatedLogo}
@@ -283,9 +223,21 @@ const CreateTeam = () => {
                 </Button>
                 <Button
                   onClick={step === "summary" ? handleCreateTeam : handleNext}
+                  disabled={step === "summary" && isLoading}
                   className="bg-footbai-accent hover:bg-footbai-accent/80 text-black"
                 >
-                  {step === "summary" ? "Start your journey" : "Next"}
+                  {step === "summary" ? (
+                    isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Team...
+                      </>
+                    ) : (
+                      "Start your journey"
+                    )
+                  ) : (
+                    "Next"
+                  )}
                 </Button>
               </>
             )}

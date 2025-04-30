@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import TeamLogo from '@/components/TeamLogo';
 import AttributesDisplay from '@/components/AttributesDisplay';
-import { TeamAttributes, TeamTactic, Player } from '@/contexts/GameContext';
+import { TeamAttributes, TeamTactic, Player } from '@/types';
 
 interface SummaryStepProps {
   teamName: string;
@@ -19,7 +19,6 @@ export const SummaryStep = ({
   initials,
   backgroundColor,
   attributes,
-  players,
   tactic,
   logoType,
   generatedLogo,

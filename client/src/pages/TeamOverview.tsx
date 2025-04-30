@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useGame, TeamTactic } from '@/contexts/GameContext';
+import { useGame } from '@/contexts/GameContext';
+import { TeamTactic } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TeamLogo from '@/components/TeamLogo';
-import AttributesDisplay from '@/components/AttributesDisplay';
 import StatBar from '@/components/StatBar';
 import { Check, Edit, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +49,10 @@ const TeamOverview = () => {
   };
 
   const handleSaveTactic = () => {
-    updateTeam({ tactic });
+    updateTeam({
+      ...userTeam,
+      tactic
+    });
     setEditMode(false);
     
     toast({
@@ -183,7 +186,7 @@ const TeamOverview = () => {
                           <SelectValue placeholder="Select tactic" />
                         </SelectTrigger>
                         <SelectContent className="bg-footbai-container border-footbai-hover">
-                          <SelectItem value="Balanced">Balanced</SelectItem>
+                          <SelectItem value="Balanced" >Balanced</SelectItem>
                           <SelectItem value="Offensive">Offensive</SelectItem>
                           <SelectItem value="Defensive">Defensive</SelectItem>
                           <SelectItem value="Counter-Attacking">Counter-Attacking</SelectItem>

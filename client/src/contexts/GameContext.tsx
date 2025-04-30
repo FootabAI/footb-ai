@@ -1,111 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, auth } from '@/firebaseConfig';
-import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-// Types
-export type TeamAttributes = {
-  passing: number;
-  shooting: number;
-  pace: number;
-  dribbling: number;
-  defending: number;
-  physicality: number;
-};
-
-export type ManualLogoOptions = {
-  initials: string;
-  backgroundColor: string;
-  
-};
-
-export type AILogoOptions = {
-  image: string;
-  theme: string;
-  backgroundColor: string;
-};
-
-export type Formation = '4-3-3' | '4-2-3-1' | '3-5-2' | '4-4-2' | '5-3-2';
-export type TeamTactic = 'Balanced' | 'Offensive' | 'Defensive' | 'Counter-Attacking' | 'Aggressive' | 'Possession-Based';
-
-export type Team = {
-  id: string;
-  name: string;
-  logo: ManualLogoOptions | AILogoOptions;
-  attributes: TeamAttributes;
-  tactic: TeamTactic;
-  points: number;
-  isBot?: boolean;
-  players: Player[];
-  userId: string;
-  formation: string;
-};
-
-export type Player = {
-  id: string;
-  name: string;
-  position: string;
-  rating: number;
-  teamId: string;
-};
-
-export type MatchEvent = {
-  id: string;
-  type: 'goal' | 'card' | 'injury' | 'substitution' | 'own-goal';
-  minute: number;
-  teamId: string;
-  description: string;
-};
-
-export type MatchStats = {
-  possession: number;
-  shots: number;
-  shotsOnTarget: number;
-  passes: number;
-  passAccuracy: number;
-  fouls: number;
-  yellowCards: number;
-  redCards: number;
-};
-
-export type Match = {
-  id: string;
-  homeTeam: Team;
-  awayTeam: Team;
-  homeScore: number;
-  awayScore: number;
-  events: MatchEvent[];
-  homeStats: MatchStats;
-  awayStats: MatchStats;
-  isCompleted: boolean;
-  winner?: string;
-};
-
-export type GameContextType = {
-  userTeam: Team | null;
-  currentMatch: Match | null;
-  botTeam: Team | null;
-  players: Player[];
-  isLoading: boolean;
-  error: string | null;
-  success: string | null;
-  createTeam: (team: Omit<Team, 'id' | 'points'>) => void;
-  updateTeam: (team: Partial<Team>) => void;
-  setupMatch: (opponent: Team) => void;
-  simulateMatch: () => void;
-  updateMatchStats: (homeStats: Partial<MatchStats>, awayStats: Partial<MatchStats>) => void;
-  addMatchEvent: (event: Omit<MatchEvent, 'id'>) => void;
-  completeMatch: (winnerId: string) => void;
-  resetMatch: () => void;
-  calculateTeamStrength: (team: Team) => number;
-  generateRandomPlayers: (teamId: string, teamName: string) => Player[];
-};
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { db, auth } from "@/firebaseConfig";
+import { addDoc, collection, getDocs, query, where, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  Team,
+  Match,
+  Player,
+  MatchStats,
+  GameContextType,
+  MatchEvent,
+} from "@/types";
 
 const defaultBotTeam: Team = {
-  id: 'bot-1',
-  name: 'AI United',
+  id: "bot-1",
+  name: "AI United",
   logo: {
-    initials: 'AI',
-    backgroundColor: '#ff4d4d',
+    initials: "AI",
+    backgroundColor: "#ff4d4d",
   },
   attributes: {
     passing: 70,
@@ -113,14 +24,14 @@ const defaultBotTeam: Team = {
     pace: 75,
     dribbling: 68,
     defending: 72,
-    physicality: 80
+    physicality: 80,
   },
-  tactic: 'Balanced',
+  tactic: "Balanced",
   points: 0,
   isBot: true,
   players: [],
-  userId: '',
-  formation: '4-3-3'
+  userId: "",
+  formation: "4-3-3",
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -134,32 +45,36 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const loadTeam = async (userId: string) => {
+    try {
+      setIsLoading(true);
+      // Query teams collection for user's team
+      const teamsCollection = collection(db, "teams");
+      const q = query(teamsCollection, where("userId", "==", userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const teamDoc = querySnapshot.docs[0];
+        const teamData = teamDoc.data() as Team;
+        setUserTeam(teamData);
+        setPlayers(teamData.players || []);
+      } else {
+        setUserTeam(null);
+        setPlayers([]);
+      }
+    } catch (err) {
+      console.error("Error loading team:", err);
+      setError("Failed to load team data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load user's team when auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        try {
-          setIsLoading(true);
-          // Query teams collection for user's team
-          const teamsCollection = collection(db, 'teams');
-          const q = query(teamsCollection, where('userId', '==', user.uid));
-          const querySnapshot = await getDocs(q);
-          
-          if (!querySnapshot.empty) {
-            const teamDoc = querySnapshot.docs[0];
-            const teamData = teamDoc.data() as Team;
-            setUserTeam(teamData);
-            setPlayers(teamData.players || []);
-          } else {
-            setUserTeam(null);
-            setPlayers([]);
-          }
-        } catch (err) {
-          console.error('Error loading team:', err);
-          setError('Failed to load team data');
-        } finally {
-          setIsLoading(false);
-        }
+        await loadTeam(user.uid);
       } else {
         setUserTeam(null);
         setPlayers([]);
@@ -173,65 +88,35 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
-    const positions = ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'ATT', 'ATT', 'ATT'];
-    const firstNames = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Casey', 'Morgan', 'Riley', 'Jamie', 'Avery', 'Cameron', 'Quinn'];
-    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Wilson'];
-    
-    return positions.map((pos, i) => ({
-      id: `player-${teamId}-${i}`,
-      name: `${firstNames[i]} ${lastNames[i]}`,
-      position: pos,
-      rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
-      teamId
-    }));
-  };
-
-  const createTeam = async (team: Omit<Team, 'id' | 'points'>) => {
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
-
+  const updateTeam = async (team: Team) => {
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('User not authenticated');
+      if (!team.id) {
+        throw new Error("Team ID is required for updates");
       }
 
-      // Generate a unique ID for the team
-      const teamId = crypto.randomUUID();
-      
-      const newTeam: Team & { userId: string } = {
-        ...team,
-        id: teamId,
-        points: 0,
-        players: [],
-        userId: user.uid,
-        formation: team.formation
-      };
-      
-      const newPlayers = generateRandomPlayers(teamId, team.name);
-      newTeam.players = newPlayers;
-
-      // Store team in Firestore
-      const teamsCollection = collection(db, 'teams');
-      const docRef = await addDoc(teamsCollection, newTeam);
-      
       // Update local state
-      setUserTeam(newTeam);
-      setPlayers(newPlayers);
-      setSuccess('Team created successfully!');
-    } catch (err) {
-      console.error('Error creating team:', err);
-      setError('Failed to create team. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setUserTeam(team);
+      setPlayers(team.players || []);
 
-  const updateTeam = (team: Partial<Team>) => {
-    if (userTeam) {
-      setUserTeam({ ...userTeam, ...team });
+      // Update Firebase
+      const teamsRef = collection(db, "teams");
+      const teamQuery = query(teamsRef, where("id", "==", team.id));
+      const querySnapshot = await getDocs(teamQuery);
+
+      if (querySnapshot.empty) {
+        throw new Error("Team not found in database");
+      }
+
+      const teamDoc = querySnapshot.docs[0];
+      await updateDoc(teamDoc.ref, {
+        ...team,
+        updatedAt: new Date().toISOString()
+      });
+
+      setSuccess("Team updated successfully");
+    } catch (error) {
+      console.error("Error updating team:", error);
+      setError(error instanceof Error ? error.message : "Failed to update team");
     }
   };
 
@@ -246,7 +131,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       passAccuracy: 0,
       fouls: 0,
       yellowCards: 0,
-      redCards: 0
+      redCards: 0,
     };
 
     const newMatch: Match = {
@@ -258,15 +143,18 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       events: [],
       homeStats: { ...initialStats },
       awayStats: { ...initialStats },
-      isCompleted: false
+      isCompleted: false,
     };
 
     setCurrentMatch(newMatch);
   };
 
-  const updateMatchStats = (homeStats: Partial<MatchStats>, awayStats: Partial<MatchStats>) => {
+  const updateMatchStats = (
+    homeStats: Partial<MatchStats>,
+    awayStats: Partial<MatchStats>
+  ) => {
     if (!currentMatch) return;
-    
+
     setCurrentMatch({
       ...currentMatch,
       homeStats: { ...currentMatch.homeStats, ...homeStats },
@@ -274,58 +162,58 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const addMatchEvent = (event: Omit<MatchEvent, 'id'>) => {
+  const addMatchEvent = (event: Omit<MatchEvent, "id">) => {
     if (!currentMatch) return;
-    
+
     const newEvent: MatchEvent = {
       ...event,
-      id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
-    
+
     let homeScore = currentMatch.homeScore;
     let awayScore = currentMatch.awayScore;
-    
-    if (event.type === 'goal' && event.teamId !== 'system') {
+
+    if (event.type === "goal" && event.teamId !== "system") {
       if (event.teamId === currentMatch.homeTeam.id) {
         homeScore++;
       } else if (event.teamId === currentMatch.awayTeam.id) {
         awayScore++;
       }
     }
-    
-    if (event.type === 'own-goal') {
+
+    if (event.type === "own-goal") {
       if (event.teamId === currentMatch.homeTeam.id) {
         awayScore++;
       } else {
         homeScore++;
       }
     }
-    
+
     const updatedEvents = [...currentMatch.events, newEvent];
-    
+
     setCurrentMatch({
       ...currentMatch,
       events: updatedEvents,
       homeScore,
-      awayScore
+      awayScore,
     });
   };
 
   const completeMatch = (winnerId: string) => {
     if (!currentMatch || !userTeam) return;
-    
+
     const isUserWinner = winnerId === userTeam.id;
     const pointsEarned = isUserWinner ? 50 : 10;
-    
+
     setCurrentMatch({
       ...currentMatch,
       isCompleted: true,
-      winner: winnerId
+      winner: winnerId,
     });
-    
+
     setUserTeam({
       ...userTeam,
-      points: userTeam.points + pointsEarned
+      points: userTeam.points + pointsEarned,
     });
   };
 
@@ -335,12 +223,21 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const simulateMatch = () => {
     if (!currentMatch) return;
-    console.log('Match simulation started');
+    console.log("Match simulation started");
   };
 
   const calculateTeamStrength = (team: Team) => {
-    const { passing, shooting, pace, dribbling, defending, physicality } = team.attributes;
-    return Math.round((passing + shooting + pace + dribbling + defending + physicality) / 6);
+    const {
+      passing,
+      shooting,
+      pace,
+      dribbling,
+      defending,
+      physicality,
+    } = team.attributes;
+    return Math.round(
+      (passing + shooting + pace + dribbling + defending + physicality) / 6
+    );
   };
 
   return (
@@ -353,7 +250,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading,
         error,
         success,
-        createTeam,
         updateTeam,
         setupMatch,
         simulateMatch,
@@ -362,7 +258,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         completeMatch,
         resetMatch,
         calculateTeamStrength,
-        generateRandomPlayers
       }}
     >
       {children}
@@ -373,7 +268,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 export const useGame = (): GameContextType => {
   const context = useContext(GameContext);
   if (context === undefined) {
-    throw new Error('useGame must be used within a GameProvider');
+    throw new Error("useGame must be used within a GameProvider");
   }
   return context;
 };

@@ -17,6 +17,7 @@ import MatchSummary from "./pages/MatchSummary";
 import Login from './pages/Login';
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
+import { TeamCreationProvider } from "./contexts/TeamCreationContext";
 
 const queryClient = new QueryClient();
 
@@ -70,7 +71,9 @@ const AppContent = () => {
         {/* Protected Routes without Sidebar */}
         <Route path="/create-team" element={
           <ProtectedRoute>
-            <CreateTeam />
+            <TeamCreationProvider>
+              <CreateTeam />
+            </TeamCreationProvider>
           </ProtectedRoute>
         } />
 
@@ -81,18 +84,20 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <UserProvider>
-      <GameProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppContent />
-        </TooltipProvider>
-      </GameProvider>
-    </UserProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <GameProvider>
+          <TooltipProvider>
+            <AppContent />
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </GameProvider>
+      </UserProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Formation } from '@/contexts/GameContext';
+import { Formation } from '@/types';
 
 interface FormationSelectorProps {
   onFormationChange: (formation: Formation) => void;

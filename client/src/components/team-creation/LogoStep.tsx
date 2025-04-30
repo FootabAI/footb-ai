@@ -1,11 +1,8 @@
-import { useState } from 'react';
-import { useLogoGeneration } from '@/hooks/useLogoGeneration';
+import { useEffect } from 'react';
 import TeamLogo from '@/components/TeamLogo';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Sparkles, ChevronLeft } from 'lucide-react';
 import TagInput from '@/components/TagInput';
 
 interface LogoStepProps {
@@ -53,6 +50,23 @@ export const LogoStep = ({
   generatedLogo,
   generatedClubName,
 }: LogoStepProps) => {
+  // Auto-populate initials when team name changes
+  useEffect(() => {
+    if (teamName && logoType === "manual") {
+      const words = teamName.split(" ");
+      if (words.length === 1) {
+        onInitialsChange(words[0].substring(0, 3).toUpperCase());
+      } else {
+        onInitialsChange(
+          words
+            .map((word) => word[0])
+            .join("")
+            .substring(0, 3)
+            .toUpperCase()
+        );
+      }
+    }
+  }, [teamName, logoType, onInitialsChange]);
 
   return (
     <div className="space-y-6 animate-fade-in">

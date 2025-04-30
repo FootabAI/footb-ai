@@ -87,6 +87,7 @@ export const TeamUpgradeSection = () => {
     };
 
     updateTeam({
+      ...userTeam,
       attributes: newAttributes,
       points: userTeam.points - upgradeAmount
     });

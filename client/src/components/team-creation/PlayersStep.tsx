@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useGame } from '@/contexts/GameContext';
-import { Player } from '@/contexts/GameContext';
+import { useTeamCreation } from '@/contexts/TeamCreationContext';
+import { Player } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { FormationSelector } from './FormationSelector';
-import { Formation } from '@/contexts/GameContext';
+import { Formation } from '@/types';
 
 interface PlayersStepProps {
   onNext: () => void;
@@ -14,7 +14,7 @@ interface PlayersStepProps {
 }
 
 export const PlayersStep = ({ onNext, onFormationChange, onPlayersChange }: PlayersStepProps) => {
-  const { generateRandomPlayers } = useGame();
+  const { generateRandomPlayers } = useTeamCreation();
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFormation, setSelectedFormation] = useState<Formation>('4-3-3');
