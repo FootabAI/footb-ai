@@ -148,7 +148,7 @@ const TeamOverview = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column - Team Info */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Team card */}
           <Card className="bg-footbai-container border-footbai-header">
             <CardHeader className="bg-footbai-header pb-6">
@@ -220,7 +220,7 @@ const TeamOverview = () => {
         </div>
 
         {/* Right column - Squad */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-1">
           <Card className="h-full bg-footbai-container border-footbai-header">
             <CardHeader className="bg-footbai-header">
               <div className="flex justify-between items-center">
@@ -234,7 +234,7 @@ const TeamOverview = () => {
             <CardContent className="p-0">
               <Tabs defaultValue="all">
                 <div className="px-4 pt-4">
-                  <TabsList className="bg-footbai-header">
+                  <TabsList className="bg-footbai-header flex-wrap">
                     <TabsTrigger value="all" className="data-[state=active]:bg-footbai-accent data-[state=active]:text-black">
                       All
                     </TabsTrigger>

@@ -64,7 +64,7 @@ const Dashboard = () => {
         <Button
           variant="outline"
           size="lg"
-          className="h-auto py-6 flex items-center justify-center gap-3 bg-footbai-container hover:bg-footbai-hover border-footbai-header"
+          className="h-auto py-6 flex items-center justify-center gap-3 bg-footbai-container hover:text-footbai-accent hover:bg-footbai-hover border-footbai-header"
           onClick={() => navigate('/play')}
         >
           <Play size={20} className="text-footbai-accent" />
@@ -77,7 +77,7 @@ const Dashboard = () => {
         <Button
           variant="outline"
           size="lg"
-          className="h-auto py-6 flex items-center justify-center gap-3 bg-footbai-container hover:bg-footbai-hover border-footbai-header"
+          className="h-auto py-6 flex items-center justify-center gap-3 bg-footbai-container hover:text-footbai-accent hover:bg-footbai-hover border-footbai-header"
           onClick={() => navigate('/team')}
         >
           <Users size={20} className="text-footbai-accent" />

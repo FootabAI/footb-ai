@@ -102,19 +102,7 @@ class MatchSimulationResponse(BaseModel):
 
 
 
-# Event types and their probabilities
-EVENT_TYPES = {
-    "goal": 0.03,  # Reduced probability
-    "shot_on_target": 0.08,
-    "shot_off_target": 0.10,
-    "corner": 0.05,
-    "foul": 0.08,
-    "yellow_card": 0.03,
-    "red_card": 0.01,
-    "substitution": 0.03,
-    "injury": 0.01,
-    "save": 0.06
-}
+
 
 async def get_next_match_event(home_team: Team, away_team: Team, current_minute: int = 0):
     # Hardcoded match events
@@ -210,68 +198,7 @@ async def create_club_logo(request: LogoGenerationRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/save-team")
-async def save_team(team: Team):
-    pass
 
-@app.post("/teams/ai", response_model=Team)
-async def create_ai_team(request: AIAssistedTeamRequest):
-    try:
-        # Use the provided team name or extract from prompt
-        team_name = request.teamName or request.prompt.split("named")[1].split("with")[0].strip()
-        
-        # Use the provided logo or generate one
-        logo = request.teamLogo or generate_logo_url(team_name, request.colorTags[0] if request.colorTags else "#33c772")
-        
-        # Create a simple team object
-        team = Team(
-            id=str(uuid.uuid4()),
-            name=team_name,
-            logo=logo,
-            strength=75,  # Default strength
-            ai=False,
-            primaryColor=request.colorTags[0] if request.colorTags else "#33c772",
-            tactics=request.tactics or {
-                "passAccuracy": 10,
-                "shootAccuracy": 10,
-                "speed": 10,
-                "defense": 10,
-                "stamina": 10,
-                "totalPoints": 100,
-                "remainingPoints": 50
-            },
-            pointsBalance=0,
-            tacticalStyle="balanced"
-        )
-        
-        return team
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/teams/ai", response_model=List[Team])
-async def get_ai_teams():
-    teams = [
-        Team(
-            id="ai-team-1", 
-            name="AI United",
-            logo=generate_logo_url("AI United", "#33c772"),
-            strength=75,
-            ai=True,
-            primaryColor="#33c772",
-            tactics={
-                "passAccuracy": 15,
-                "shootAccuracy": 15,
-                "speed": 15,
-                "defense": 15,
-                "stamina": 15,
-                "totalPoints": 100,
-                "remainingPoints": 25
-            },
-            pointsBalance=0,
-            tacticalStyle="balanced"
-        )
-    ]
-    return teams
 
 def generate_logo_url(team_name: str, color: str) -> str:
     # Remove any FC, United, etc. from the team name to get a cleaner initial

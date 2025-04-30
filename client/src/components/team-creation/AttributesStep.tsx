@@ -3,20 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TeamAttributesForm from '@/components/TeamAttributesForm';
-import { TeamTactic } from '@/contexts/GameContext';
+import { TeamAttributes, TeamTactic } from '@/contexts/GameContext';
 
 interface AttributesStepProps {
-  onNext: () => void;
-  onBack: () => void;
-  attributes: {
-    passing: number;
-    shooting: number;
-    pace: number;
-    dribbling: number;
-    defending: number;
-    physicality: number;
-  };
-  onAttributeChange: (attr: string, value: number) => void;
+  attributes: TeamAttributes;
+  onAttributeChange: (attr: keyof TeamAttributes, newValue: number) => void;
   tactic: TeamTactic;
   onTacticChange: (tactic: TeamTactic) => void;
   totalPoints: number;
@@ -33,8 +24,6 @@ const tacticIcons = {
 };
 
 export const AttributesStep = ({
-  onNext,
-  onBack,
   attributes,
   onAttributeChange,
   tactic,
@@ -65,24 +54,11 @@ export const AttributesStep = ({
           <SelectContent className="bg-footbai-container border-footbai-hover">
             {Object.keys(tacticIcons).map((tacticName) => (
               <SelectItem key={tacticName} value={tacticName} className="flex items-center gap-2">
-                {tacticIcons[tacticName as keyof typeof tacticIcons]}
                 <span>{tacticName}</span>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      <div className="flex justify-between mt-8">
-        <Button onClick={onBack} variant="outline" className="border-footbai-header hover:bg-footbai-hover">
-          Back
-        </Button>
-        <Button 
-          onClick={onNext}
-          className="bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
-        >
-          Next
-        </Button>
       </div>
     </div>
   );

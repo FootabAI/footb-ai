@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
-import {app} from '../firebaseConfig';
+import { app } from '../firebaseConfig';
+import { doc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
 type User = {
   id: string;
@@ -16,6 +18,7 @@ type UserContextType = {
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   setUser: (user: User | null) => void;
   handleLogout: () => Promise<void>;
+  deleteTeam: () => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -56,6 +59,31 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteTeam = async () => {
+    try {
+      if (!user) throw new Error('User not authenticated');
+
+      // Find the user's team
+      const teamsCollection = collection(db, 'teams');
+      const q = query(teamsCollection, where('userId', '==', user.id));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error('No team found for user');
+      }
+
+      // Delete the team document
+      const teamDoc = querySnapshot.docs[0];
+      await deleteDoc(teamDoc.ref);
+
+      // Logout the user after team deletion
+      await handleLogout();
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      throw error;
+    }
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -65,6 +93,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoggedIn,
         setUser,
         handleLogout,
+        deleteTeam,
       }}
     >
       {children}

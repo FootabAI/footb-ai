@@ -20,7 +20,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
   const { userTeam, calculateTeamStrength } = useGame();
-  const { handleLogout } = useUser();
+  const { handleLogout, deleteTeam } = useUser();
 
   // Add state to track text visibility with delay for different elements
   const [showHeaderText, setShowHeaderText] = useState(!isCollapsed);
@@ -70,7 +70,8 @@ const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
   };
 
   const handleDeleteTeam = async () => {
-    await handleLogout();
+    await deleteTeam();
+
   };
 
   return (

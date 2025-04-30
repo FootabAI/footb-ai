@@ -16,6 +16,7 @@ export const useLogoGeneration = () => {
         themeTags.map(tag => tag.toLowerCase()),
         colorTags.map(tag => tag.toLowerCase())
       );
+      console.log(response);
       
       if (response.success) {
         setGeneratedLogo(response.logo_url);

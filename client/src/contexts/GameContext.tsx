@@ -21,9 +21,10 @@ export type ManualLogoOptions = {
 export type AILogoOptions = {
   image: string;
   theme: string;
+  backgroundColor: string;
 };
 
-
+export type Formation = '4-3-3' | '4-2-3-1' | '3-5-2' | '4-4-2' | '5-3-2';
 export type TeamTactic = 'Balanced' | 'Offensive' | 'Defensive' | 'Counter-Attacking' | 'Aggressive' | 'Possession-Based';
 
 export type Team = {
@@ -36,6 +37,7 @@ export type Team = {
   isBot?: boolean;
   players: Player[];
   userId: string;
+  formation: string;
 };
 
 export type Player = {
@@ -78,7 +80,7 @@ export type Match = {
   winner?: string;
 };
 
-type GameContextType = {
+export type GameContextType = {
   userTeam: Team | null;
   currentMatch: Match | null;
   botTeam: Team | null;
@@ -95,6 +97,7 @@ type GameContextType = {
   completeMatch: (winnerId: string) => void;
   resetMatch: () => void;
   calculateTeamStrength: (team: Team) => number;
+  generateRandomPlayers: (teamId: string, teamName: string) => Player[];
 };
 
 const defaultBotTeam: Team = {
@@ -116,7 +119,8 @@ const defaultBotTeam: Team = {
   points: 0,
   isBot: true,
   players: [],
-  userId: ''
+  userId: '',
+  formation: '4-3-3'
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -202,7 +206,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         id: teamId,
         points: 0,
         players: [],
-        userId: user.uid
+        userId: user.uid,
+        formation: team.formation
       };
       
       const newPlayers = generateRandomPlayers(teamId, team.name);
@@ -356,7 +361,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         addMatchEvent,
         completeMatch,
         resetMatch,
-        calculateTeamStrength
+        calculateTeamStrength,
+        generateRandomPlayers
       }}
     >
       {children}

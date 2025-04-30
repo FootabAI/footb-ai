@@ -9,7 +9,6 @@ import { Loader2, Sparkles, ChevronLeft } from 'lucide-react';
 import TagInput from '@/components/TagInput';
 
 interface LogoStepProps {
-  onNext: () => void;
   onLogoTypeChange: (type: 'manual' | 'ai') => void;
   logoType: 'manual' | 'ai';
   teamName: string;
@@ -20,12 +19,23 @@ interface LogoStepProps {
   onBackgroundColorChange: (color: string) => void;
   customizedName: string;
   onCustomizedNameChange: (name: string) => void;
+  themeTags: string[];
+  onThemeTagsChange: (tags: string[]) => void;
+  colorTags: string[];
+  onColorTagsChange: (tags: string[]) => void;
+  generatedLogo?: string;
+  generatedClubName?: string;
+}
+
+interface AILogoOptions {
+  name: string;
+  tags: string[];
+  backgroundColor: string;
 }
 
 const DEFAULT_AI_COLOR = '#62df6e';
 
 export const LogoStep = ({
-  onNext,
   onLogoTypeChange,
   logoType,
   teamName,
@@ -36,24 +46,13 @@ export const LogoStep = ({
   onBackgroundColorChange,
   customizedName,
   onCustomizedNameChange,
+  themeTags,
+  onThemeTagsChange,
+  colorTags,
+  onColorTagsChange,
+  generatedLogo,
+  generatedClubName,
 }: LogoStepProps) => {
-  const [themeTags, setThemeTags] = useState<string[]>([]);
-  const [colorTags, setColorTags] = useState<string[]>([]);
-  const { isGeneratingLogo, generatedLogo, generatedClubName, generateLogo, resetLogo } = useLogoGeneration();
-
-  const handleGenerateLogo = () => {
-    generateLogo(themeTags, colorTags);
-  };
-
-  const handleStartOver = () => {
-    resetLogo();
-    setThemeTags([]);
-    setColorTags([]);
-  };
-
-  const canProceed = logoType === 'manual' 
-    ? teamName.trim() && initials.trim()
-    : customizedName.trim();
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -145,10 +144,10 @@ export const LogoStep = ({
                   <p className="text-sm text-muted-foreground mt-1">Add up to 2 themes for your logo</p>
                   <TagInput
                     tags={themeTags}
-                    onTagsChange={(tags) => setThemeTags(tags.slice(0, 2))}
+                    onTagsChange={onThemeTagsChange}
                     placeholder="lion, shield"
                     maxTags={2}
-                    className=" border-footbai-hover focus:ring-footbai-accent"
+                    className="border-footbai-hover focus:ring-footbai-accent"
                   />
                 </div>
                 
@@ -157,31 +156,13 @@ export const LogoStep = ({
                   <p className="text-sm text-muted-foreground mt-1">Add up to 3 colors for your logo</p>
                   <TagInput
                     tags={colorTags}
-                    onTagsChange={(tags) => setColorTags(tags.slice(0, 3))}
+                    onTagsChange={onColorTagsChange}
                     placeholder="blue, red, gold"
                     maxTags={3}
                     className="border-footbai-hover focus:ring-footbai-accent"
                   />
                 </div>
               </div>
-              
-              <Button 
-                onClick={handleGenerateLogo}
-                disabled={isGeneratingLogo || themeTags.length === 0}
-                className="bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium w-full mt-4"
-              >
-                {isGeneratingLogo ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Logo
-                  </>
-                )}
-              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -206,38 +187,10 @@ export const LogoStep = ({
                   AI suggested: {generatedClubName}
                 </p>
               </div>
-              
-              <div className="flex gap-4 mt-4">
-                <Button 
-                  onClick={handleStartOver}
-                  variant="outline"
-                  className="flex-1 border-footbai-header hover:bg-footbai-hover"
-                >
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Start Over
-                </Button>
-                <Button 
-                  onClick={onNext}
-                  disabled={!customizedName.trim()}
-                  className="flex-1 bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
-                >
-                  Next
-                </Button>
-              </div>
             </div>
           )}
         </TabsContent>
       </Tabs>
-
-      {logoType === 'manual' && (
-        <Button 
-          onClick={onNext}
-          disabled={!canProceed}
-          className="bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium w-full mt-4"
-        >
-          Next
-        </Button>
-      )}
     </div>
   );
 }; 

@@ -1,33 +1,25 @@
 import { Button } from '@/components/ui/button';
 import TeamLogo from '@/components/TeamLogo';
 import AttributesDisplay from '@/components/AttributesDisplay';
+import { TeamAttributes, TeamTactic, Player } from '@/contexts/GameContext';
 
 interface SummaryStepProps {
-  onBack: () => void;
-  onCreateTeam: () => void;
   teamName: string;
   initials: string;
   backgroundColor: string;
-  attributes: {
-    passing: number;
-    shooting: number;
-    pace: number;
-    dribbling: number;
-    defending: number;
-    physicality: number;
-  };
-  tactic: string;
+  attributes: TeamAttributes;
+  players: Player[];
+  tactic: TeamTactic;
   logoType: 'manual' | 'ai';
-  generatedLogo?: string;
+  generatedLogo: string;
 }
 
 export const SummaryStep = ({
-  onBack,
-  onCreateTeam,
   teamName,
   initials,
   backgroundColor,
   attributes,
+  players,
   tactic,
   logoType,
   generatedLogo,
@@ -99,18 +91,6 @@ export const SummaryStep = ({
             </p>
           </div>
         </div>
-      </div>
-
-      <div className="flex justify-between mt-8">
-        <Button onClick={onBack} variant="outline" className="border-footbai-header hover:bg-footbai-hover">
-          Back
-        </Button>
-        <Button 
-          onClick={onCreateTeam}
-          className="bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
-        >
-          Create Team
-        </Button>
       </div>
     </div>
   );
