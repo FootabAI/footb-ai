@@ -76,24 +76,25 @@ export type Match = {
   winner?: string;
 };
 
-export type GameContextType = {
+export interface GameContextType {
   userTeam: Team | null;
   currentMatch: Match | null;
-  botTeam: Team | null;
+  botTeam: Team;
   players: Player[];
   isLoading: boolean;
   error: string | null;
   success: string | null;
-  
-  updateTeam: (team: Partial<Team>) => void;
+  selectedFormation: Formation;
+  handleFormationSelect: (formation: Formation) => void;
+  updateTeam: (team: Team) => void;
   setupMatch: (opponent: Team) => void;
-  simulateMatch: () => void;
   updateMatchStats: (homeStats: Partial<MatchStats>, awayStats: Partial<MatchStats>) => void;
-  addMatchEvent: (event: Omit<MatchEvent, 'id'>) => void;
+  addMatchEvent: (event: Omit<MatchEvent, "id">) => void;
   completeMatch: (winnerId: string) => void;
   resetMatch: () => void;
+  simulateMatch: () => void;
   calculateTeamStrength: (team: Team) => number;
-};
+}
 
 export type TeamCreationContextType = {
   // Team state

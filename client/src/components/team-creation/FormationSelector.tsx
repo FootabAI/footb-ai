@@ -1,76 +1,179 @@
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Formation } from '@/types';
+import { formations } from '@/config/formations';
+import { useGame } from '@/contexts/GameContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
-interface FormationSelectorProps {
-  onFormationChange: (formation: Formation) => void;
+interface FormationDisplayProps {
+  formation: Formation;
+  size?: 'small' | 'large';
 }
 
-export const FormationSelector = ({ onFormationChange }: FormationSelectorProps) => {
-  const [selectedFormation, setSelectedFormation] = useState<Formation>('4-3-3');
+export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplayProps) => {
+  const positions = formation.split('-').map(Number);
+  const totalPlayers = positions.reduce((a, b) => a + b, 0) + 1; // +1 for goalkeeper
 
-  const formations: Formation[] = ['4-3-3', '4-2-3-1', '3-5-2', '4-4-2', '5-3-2'];
-
-  const handleFormationSelect = (formation: Formation) => {
-    setSelectedFormation(formation);
-    onFormationChange(formation);
+  const sizeClasses = {
+    small: {
+      container: 'h-[200px]',
+      player: 'w-6 h-6 text-xs',
+      spacing: {
+        gk: 'bottom-2',
+        def: 'bottom-14',
+        mid: 'bottom-28',
+        fwd: 'bottom-42'
+      }
+    },
+    large: {
+      container: 'h-[300px]',
+      player: 'w-8 h-8 text-sm',
+      spacing: {
+        gk: 'bottom-4',
+        def: 'bottom-20',
+        mid: 'bottom-40',
+        fwd: 'bottom-60'
+      }
+    }
   };
 
-  const renderFormation = (formation: Formation) => {
-    const positions = formation.split('-').map(Number);
-    const totalPlayers = positions.reduce((a, b) => a + b, 0) + 1; // +1 for goalkeeper
+  const currentSize = sizeClasses[size];
 
-    return (
-      <div className="relative w-full h-[300px] border-2 border-footbai-hover rounded-lg p-4 bg-footbai-header">
-
-        {/* Goalkeeper */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold">
-          GK
-        </div>
-        
-        {/* Defenders */}
-        <div className="absolute bottom-20 left-0 right-0 flex justify-around">
-          {Array.from({ length: positions[0] }).map((_, i) => (
-            <div key={`def-${i}`} className="w-8 h-8 bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold">
-              D{i + 1}
-            </div>
-          ))}
-        </div>
-
-        {/* Midfielders */}
-        {positions.length > 1 && (
-          <div className="absolute bottom-40 left-0 right-0 flex justify-around">
-            {Array.from({ length: positions[1] }).map((_, i) => (
-              <div key={`mid-${i}`} className="w-8 h-8 bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold">
-                M{i + 1}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Forwards */}
-        {positions.length > 2 && (
-          <div className="absolute bottom-60 left-0 right-0 flex justify-around">
-            {Array.from({ length: positions[2] }).map((_, i) => (
-              <div key={`fwd-${i}`} className="w-8 h-8 bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold">
-                F{i + 1}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+  const playerVariants = {
+    initial: { opacity: 0, scale: 0.8 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.8 }
   };
 
   return (
+    <div className={`relative w-full border-2 border-footbai-hover rounded-lg p-4 bg-footbai-header ${currentSize.container}`}>
+      {/* Goalkeeper */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`gk-${formation}`}
+          className={`absolute ${currentSize.spacing.gk} left-1/2 transform -translate-x-1/2 ${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+          variants={playerVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{ duration: 0.3 }}
+        >
+          GK
+        </motion.div>
+      </AnimatePresence>
+      
+      {/* Defenders */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`def-${formation}`}
+          className={`absolute ${currentSize.spacing.def} left-0 right-0 flex justify-around`}
+          variants={playerVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{ duration: 0.3 }}
+        >
+          {Array.from({ length: positions[0] }).map((_, i) => (
+            <motion.div
+              key={`def-${i}-${formation}`}
+              className={`${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+              variants={playerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3, delay: i * 0.05 }}
+            >
+              D{i + 1}
+            </motion.div>
+          ))}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Midfielders */}
+      {positions.length > 1 && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`mid-${formation}`}
+            className={`absolute ${currentSize.spacing.mid} left-0 right-0 flex justify-around`}
+            variants={playerVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+          >
+            {Array.from({ length: positions[1] }).map((_, i) => (
+              <motion.div
+                key={`mid-${i}-${formation}`}
+                className={`${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+                variants={playerVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                M{i + 1}
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      )}
+
+      {/* Forwards */}
+      {positions.length > 2 && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`fwd-${formation}`}
+            className={`absolute ${currentSize.spacing.fwd} left-0 right-0 flex justify-around`}
+            variants={playerVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+          >
+            {Array.from({ length: positions[2] }).map((_, i) => (
+              <motion.div
+                key={`fwd-${i}-${formation}`}
+                className={`${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+                variants={playerVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                F{i + 1}
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
+  );
+};
+
+interface FormationSelectorProps {
+  showHeader?: boolean;
+  size?: 'small' | 'large';
+}
+
+export const FormationSelector = ({ 
+  showHeader = true,
+  size = 'large'
+}: FormationSelectorProps) => {
+  const { selectedFormation, handleFormationSelect } = useGame();
+
+  return (
     <Card>
-      <CardHeader>
-        <CardTitle>Select Formation</CardTitle>
-      </CardHeader>
+      {showHeader && (
+        <CardHeader>
+          <CardTitle>Select Formation</CardTitle>
+        </CardHeader>
+      )}
       <CardContent className="space-y-6">
-        <Tabs defaultValue={selectedFormation} onValueChange={(value) => handleFormationSelect(value as Formation)}>
+        <Tabs 
+          defaultValue={selectedFormation} 
+          onValueChange={(value) => handleFormationSelect(value as Formation)}
+          className="mb-4"
+        >
           <TabsList className="grid w-full grid-cols-5">
             {formations.map((formation) => (
               <TabsTrigger key={formation} value={formation}>
@@ -81,7 +184,17 @@ export const FormationSelector = ({ onFormationChange }: FormationSelectorProps)
         </Tabs>
         
         <div className="mt-6">
-          {renderFormation(selectedFormation)}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedFormation}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <FormationDisplay formation={selectedFormation} size={size} />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </CardContent>
     </Card>

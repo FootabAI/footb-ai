@@ -9,6 +9,7 @@ import {
   MatchStats,
   GameContextType,
   MatchEvent,
+  Formation,
 } from "@/types";
 
 const defaultBotTeam: Team = {
@@ -44,6 +45,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [selectedFormation, setSelectedFormation] = useState<Formation>('4-3-3');
+  const formations: Formation[] = ['4-3-3', '4-2-3-1', '3-5-2', '4-4-2', '5-3-2'];
 
   const loadTeam = async (userId: string) => {
     try {
@@ -240,6 +243,16 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
+  const handleFormationSelect = (formation: Formation) => {
+    setSelectedFormation(formation);
+    if (userTeam) {
+      updateTeam({
+        ...userTeam,
+        formation
+      });
+    }
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -250,6 +263,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading,
         error,
         success,
+        selectedFormation,
+        handleFormationSelect,
         updateTeam,
         setupMatch,
         simulateMatch,

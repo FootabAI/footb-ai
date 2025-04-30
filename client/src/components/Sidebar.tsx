@@ -173,7 +173,7 @@ const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
         <div className="space-y-2">
           <Button
             variant="outline"
-            className={`w-full justify-start ${
+            className={`w-full justify-start bg-blue-900/20 border-blue-500/30 hover:bg-blue-900/50 hover:text-white ${
               isCollapsed ? "justify-center" : ""
             }`}
             onClick={handleLogoutClick}
@@ -187,7 +187,7 @@ const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
           </Button>
           <Button
             variant="outline"
-            className={`w-full justify-start ${
+            className={`w-full justify-start  bg-red-900/20 border-red-500/30 hover:bg-red-900/50 hover:text-white ${
               isCollapsed ? "justify-center" : ""
             }`}
             onClick={handleDeleteTeam}

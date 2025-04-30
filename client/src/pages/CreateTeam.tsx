@@ -145,7 +145,6 @@ const CreateTeam = () => {
           {step === "players" && (
             <PlayersStep
               onNext={handleNext}
-              onFormationChange={setFormation}
               onPlayersChange={() => {}}
             />
           )}

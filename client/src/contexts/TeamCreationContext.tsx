@@ -29,7 +29,7 @@ export const TeamCreationProvider = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { updateTeam } = useGame();
+  const { updateTeam, selectedFormation } = useGame();
 
   // Team creation state
   const [teamName, setTeamName] = useState("");
@@ -129,7 +129,7 @@ export const TeamCreationProvider = ({
           : { image: logoData.image!, theme: logoData.theme!, backgroundColor: logoData.backgroundColor },
         attributes,
         tactic,
-        formation,
+        formation: selectedFormation,
         points: pointsLeft,
         players: [],
         userId: user.uid,
