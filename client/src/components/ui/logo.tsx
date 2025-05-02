@@ -26,7 +26,7 @@ const Logo = React.forwardRef<SVGSVGElement, LogoProps>(
           fill="black"
           fontSize="12"
           fontWeight="bold"
-          fontFamily="system-ui, -apple-system, sans-serif"
+          fontFamily="Roboto, sans-serif"
         >
           FB
         </text>
