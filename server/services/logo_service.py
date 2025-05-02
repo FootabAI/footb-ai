@@ -12,7 +12,7 @@ import base64
 from io import BytesIO
 import requests
 
-class LogoRAG:
+class LogoService:
     def __init__(self, reference_images_dir: str):
         self.reference_images_dir = reference_images_dir
         self.embeddings = OpenAIEmbeddings()
@@ -37,7 +37,6 @@ class LogoRAG:
         if not documents:
             raise ValueError("No images found in the reference directory")
             
-        # Create FAISS index with correct format
         text_embeddings = list(zip(documents, [self.image_model.encode(doc) for doc in documents]))
         return FAISS.from_embeddings(
             text_embeddings=text_embeddings,
@@ -119,24 +118,19 @@ class LogoRAG:
                 n=1,
             )
             
-            # Download the image
             image_url = response.data[0].url
             image_response = requests.get(image_url)
             image = Image.open(BytesIO(image_response.content))
             
-            # Convert to RGBA if not already
             image = image.convert('RGBA')
             
-            # Create a circular mask
             mask = Image.new('L', image.size, 0)
             draw = ImageDraw.Draw(mask)
             draw.ellipse((0, 0, image.size[0], image.size[1]), fill=255)
             
-            # Apply the mask
             output = Image.new('RGBA', image.size, (0, 0, 0, 0))
             output.paste(image, mask=mask)
             
-            # Convert to base64
             buffered = BytesIO()
             output.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -154,23 +148,16 @@ class LogoRAG:
         style_preference: Optional[str] = None
     ) -> Tuple[str, str, str]:
         """Generate a club name, logo description, and logo image."""
-        # Generate club name
         club_name = self.generate_club_name(location, theme)
-        
-        # Generate logo description
         logo_description = self.generate_logo_description(club_name, colors, style_preference)
-        
-        # Generate logo image
         logo_url = self.generate_logo_image(logo_description)
         
         return club_name, logo_description, logo_url
 
     def get_similar_logos(self, query: str, k: int = 3) -> List[Dict[str, Any]]:
         """Find similar logos based on the query."""
-        # Encode the query using the image model
         query_embedding = self.image_model.encode(query)
         
-        # Get similar documents using the vector store
         similar_docs = self.vector_store.similarity_search_by_vector(
             query_embedding,
             k=k
@@ -179,7 +166,7 @@ class LogoRAG:
         return [
             {
                 "path": str(doc.metadata["path"]),
-                "similarity": float(1.0)  # FAISS doesn't provide similarity scores by default
+                "similarity": float(1.0)
             }
             for doc in similar_docs
         ] 
