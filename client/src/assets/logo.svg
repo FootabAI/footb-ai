@@ -1,0 +1,21 @@
+ <svg
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        
+      >
+        <circle cx="16" cy="16" r="16" fill="#62df6e" />
+        <text
+          x="7"
+          y="21"
+          textAnchor="middle"
+          fill="black"
+          fontSize="20"
+          fontWeight="bold"
+          fontFamily="system-ui, -apple-system, sans-serif"
+        >
+          FB
+        </text>
+      </svg>

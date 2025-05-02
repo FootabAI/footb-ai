@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useGame } from "@/contexts/GameContext";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
 import {
   Home,
   Users,
@@ -93,12 +94,10 @@ const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
             isCollapsed ? "justify-center" : ""
           }`}
         >
-          <div className="w-8 h-8 bg-footbai-accent rounded-full flex items-center justify-center">
-            <span className="text-sm font-bold text-black">FB</span>
-          </div>
+          <Logo size={32} className="w-8 h-8" color="#62df6e" />
           {!isCollapsed && showHeaderText && (
             <h1 className="text-xl font-bold ml-2 text-white transition-opacity duration-200">
-              FOOTB-AI
+              footb-<span className="text-footbai-accent">ai</span>
             </h1>
           )}
         </div>

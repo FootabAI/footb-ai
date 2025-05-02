@@ -13,67 +13,31 @@ import {
 } from "@/components/ui/select";
 import TeamLogo from "@/components/TeamLogo";
 import StatBar from "@/components/StatBar";
-import { Check, Edit, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TeamUpgradeSection } from "@/components/TeamUpgradeSection";
-import {
-  FormationDisplay,
-  FormationSelector,
-} from "@/components/team-creation/FormationSelector";
+import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { formations } from "@/config/formations";
 
 const TeamOverview = () => {
   const { userTeam, updateTeam, players, calculateTeamStrength } = useGame();
   const { toast } = useToast();
-  const [editMode, setEditMode] = useState(false);
   const [tactic, setTactic] = useState<TeamTactic>(
     userTeam?.tactic || "Balanced"
   );
-  const [attributes, setAttributes] = useState(
-    userTeam?.attributes || {
-      passing: 40,
-      shooting: 40,
-      pace: 40,
-      dribbling: 40,
-      defending: 40,
-      physicality: 40,
-    }
-  );
-  const [pointsLeft, setPointsLeft] = useState(userTeam?.points || 0);
 
   if (!userTeam) return null;
 
-  // const handleAttributeChange = (attr: string, value: number) => {
-  //   const oldValue = attributes[attr as keyof typeof attributes];
-  //   const pointDiff = value - oldValue;
-
-  //   if (pointsLeft - pointDiff < 0) return;
-
-  //   const newAttributes = { ...attributes, [attr]: value };
-  //   setAttributes(newAttributes);
-  //   setPointsLeft((prev) => prev - pointDiff);
-  // };
-
-  // const handleSaveAttributes = () => {
-  //   updateTeam({
-  //     attributes,
-  //     points: pointsLeft,
-  //   });
-
-  //   toast({
-  //     title: "Attributes Updated",
-  //     description: "Your team attributes have been updated successfully.",
-  //   });
-
-  //   setEditMode(false);
-  // };
-
-  const handleSaveTactic = () => {
+  const handleSaveTactic = (tactic: TeamTactic) => {
     updateTeam({
       ...userTeam,
       tactic,
     });
-    setEditMode(false);
+    setTactic(tactic as TeamTactic);
+    updateTeam({
+      ...userTeam,
+      tactic: tactic as TeamTactic,
+    });
 
     toast({
       title: "Tactic Updated",
@@ -81,80 +45,16 @@ const TeamOverview = () => {
     });
   };
 
-  // const TeamAttributesForm = ({ attributes, onChange, totalPoints, pointsLeft, canUpgrade }) => {
-  //   return (
-  //     <div className="space-y-4">
-  //       <div className="flex justify-between items-center">
-  //         <div className="text-sm text-gray-400">Passing</div>
-  //         <input
-  //           type="number"
-  //           value={attributes.passing}
-  //           onChange={(e) => onChange('passing', parseInt(e.target.value))}
-  //           min={0}
-  //           max={totalPoints}
-  //           className="w-20 text-center border border-gray-300 rounded p-1"
-  //         />
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <div className="text-sm text-gray-400">Shooting</div>
-  //         <input
-  //           type="number"
-  //           value={attributes.shooting}
-  //           onChange={(e) => onChange('shooting', parseInt(e.target.value))}
-  //           min={0}
-  //           max={totalPoints}
-  //           className="w-20 text-center border border-gray-300 rounded p-1"
-  //         />
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <div className="text-sm text-gray-400">Pace</div>
-  //         <input
-  //           type="number"
-  //           value={attributes.pace}
-  //           onChange={(e) => onChange('pace', parseInt(e.target.value))}
-  //           min={0}
-  //           max={totalPoints}
-  //           className="w-20 text-center border border-gray-300 rounded p-1"
-  //         />
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <div className="text-sm text-gray-400">Dribbling</div>
-  //         <input
-  //           type="number"
-  //           value={attributes.dribbling}
-  //           onChange={(e) => onChange('dribbling', parseInt(e.target.value))}
-  //           min={0}
-  //           max={totalPoints}
-  //           className="w-20 text-center border border-gray-300 rounded p-1"
-  //         />
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <div className="text-sm text-gray-400">Defending</div>
-  //         <input
-  //           type="number"
-  //           value={attributes.defending}
-  //           onChange={(e) => onChange('defending', parseInt(e.target.value))}
-  //           min={0}
-  //           max={totalPoints}
-  //           className="w-20 text-center border border-gray-300 rounded p-1"
-  //         />
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <div className="text-sm text-gray-400">Physicality</div>
-  //         <input
-  //           type="number"
-  //           value={attributes.physicality}
-  //           onChange={(e) => onChange('physicality', parseInt(e.target.value))}
-  //           min={0}
-  //           max={totalPoints}
-  //           className="w-20 text-center border border-gray-300 rounded p-1"
-  //         />
-  //       </div>
-  //     </div>
-  //   );
-  // };
-
-  // Group players by position for display
+  const handleFormationChange = (formation: string) => {
+    updateTeam({
+      ...userTeam,
+      formation,
+    });
+    toast({
+      title: "Formation Updated",
+      description: `Your team now uses the ${formation} formation.`,
+    });
+  };
 
   const playersByPosition = {
     GK: players.filter((p) => p.position === "GK"),
@@ -163,12 +63,6 @@ const TeamOverview = () => {
     ATT: players.filter((p) => p.position === "ATT"),
   };
 
-  const handleFormationChange = (formation: string) => {
-    updateTeam({
-      ...userTeam,
-      formation,
-    });
-  };
   return (
     <div className="animate-fade-in">
       <header className="mb-6">
@@ -191,21 +85,29 @@ const TeamOverview = () => {
                   <TeamLogo logo={userTeam.logo} size="md" />
                   <div>
                     <h2 className="text-lg font-semibold">{userTeam.name}</h2>
-                    <p className="text-sm text-gray-400">{userTeam.tactic} Tactic</p>
+                    <p className="text-sm text-gray-400">
+                      {userTeam.tactic} Tactic
+                    </p>
                   </div>
                 </div>
 
                 {/* Team Stats Section */}
                 <div className="grid grid-cols-2 gap-6 mb-8">
                   <div className="bg-footbai-header/50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-400 mb-1">Team Rating</div>
+                    <div className="text-sm text-gray-400 mb-1">
+                      Team Rating
+                    </div>
                     <div className="text-3xl font-bold text-footbai-accent">
                       {calculateTeamStrength(userTeam)}
                     </div>
                   </div>
                   <div className="bg-footbai-header/50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-400 mb-1">Available Points</div>
-                    <div className="text-3xl font-bold">{userTeam.points} PTS</div>
+                    <div className="text-sm text-gray-400 mb-1">
+                      Available Points
+                    </div>
+                    <div className="text-3xl font-bold">
+                      {userTeam.points} PTS
+                    </div>
                   </div>
                 </div>
 
@@ -214,17 +116,15 @@ const TeamOverview = () => {
                   <div className="flex items-center justify-between bg-footbai-header/50 p-4 rounded-lg">
                     <div>
                       <div className="text-sm font-medium">Team Tactic</div>
-                      <div className="text-sm text-gray-400">Choose your team's playing style</div>
+                      <div className="text-sm text-gray-400">
+                        Choose your team's playing style
+                      </div>
                     </div>
                     <Select
                       value={tactic}
-                      onValueChange={(value) => {
-                        setTactic(value as TeamTactic);
-                        updateTeam({
-                          ...userTeam,
-                          tactic: value as TeamTactic,
-                        });
-                      }}
+                      onValueChange={(value) =>
+                        handleSaveTactic(value as TeamTactic)
+                      }
                     >
                       <SelectTrigger className="w-[180px] bg-footbai-container border-footbai-hover">
                         <SelectValue placeholder="Select tactic" />
@@ -233,9 +133,13 @@ const TeamOverview = () => {
                         <SelectItem value="Balanced">Balanced</SelectItem>
                         <SelectItem value="Offensive">Offensive</SelectItem>
                         <SelectItem value="Defensive">Defensive</SelectItem>
-                        <SelectItem value="Counter-Attacking">Counter-Attacking</SelectItem>
+                        <SelectItem value="Counter-Attacking">
+                          Counter-Attacking
+                        </SelectItem>
                         <SelectItem value="Aggressive">Aggressive</SelectItem>
-                        <SelectItem value="Possession-Based">Possession-Based</SelectItem>
+                        <SelectItem value="Possession-Based">
+                          Possession-Based
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -249,7 +153,9 @@ const TeamOverview = () => {
               <CardContent className="p-4">
                 <Tabs
                   defaultValue={userTeam.formation}
-                  onValueChange={(value) => handleFormationChange(value as Formation)}
+                  onValueChange={(value) =>
+                    handleFormationChange(value as Formation)
+                  }
                   className="mb-4"
                 >
                   <TabsList className="grid w-full grid-cols-5">
