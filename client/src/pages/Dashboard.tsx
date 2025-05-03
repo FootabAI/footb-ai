@@ -11,7 +11,7 @@ import StatBar from '@/components/StatBar';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { team } = useTeamStore();
-  const calculateTeamStrength = useCalculateTeamStrength(team);
+  const calculateTeamStrength = useCalculateTeamStrength(team.attributes);
   if (!team) return null;
 
   // Hardcoded stats for demonstration
@@ -47,7 +47,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="col-span-1 md:col-span-2">
               <h3 className="text-gray-300 font-medium mb-4">Team Attributes</h3>
-              <AttributesDisplay attributes={team.attributes} teamColor={team.logo.data.mainColor} />
+              <AttributesDisplay attributes={team.attributes} teamColor={team.logo.data.mainColor} layout="grid" />
             </div>
             <div className="flex flex-col items-center justify-center bg-footbai-header rounded-lg p-4">
               <div className="text-6xl font-bold text-footbai-accent mb-2">

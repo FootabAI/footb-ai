@@ -14,6 +14,8 @@ interface FormationDisplayProps {
 export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplayProps) => {
   const positions = formation.split('-').map(Number);
   const totalPlayers = positions.reduce((a, b) => a + b, 0) + 1; // +1 for goalkeeper
+  const { mainColor } = useOnboardingStore();
+
 
   const sizeClasses = {
     small: {
@@ -52,8 +54,9 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
       <AnimatePresence mode="wait">
         <motion.div
           key={`gk-${formation}`}
-          className={`absolute ${currentSize.spacing.gk} left-1/2 transform -translate-x-1/2 ${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+          className={`absolute ${currentSize.spacing.gk} left-1/2 transform -translate-x-1/2 ${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
           variants={playerVariants}
+          style={{ backgroundColor: mainColor }}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -63,12 +66,15 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
         </motion.div>
       </AnimatePresence>
       
+    
+
       {/* Defenders */}
       <AnimatePresence mode="wait">
         <motion.div
           key={`def-${formation}`}
           className={`absolute ${currentSize.spacing.def} left-0 right-0 flex justify-around`}
           variants={playerVariants}
+          
           initial="initial"
           animate="animate"
           exit="exit"
@@ -77,9 +83,10 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
           {Array.from({ length: positions[0] }).map((_, i) => (
             <motion.div
               key={`def-${i}-${formation}`}
-              className={`${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+              className={`${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
               variants={playerVariants}
               initial="initial"
+              style={{ backgroundColor: mainColor }}
               animate="animate"
               exit="exit"
               transition={{ duration: 0.3, delay: i * 0.05 }}
@@ -105,9 +112,10 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
             {Array.from({ length: positions[1] }).map((_, i) => (
               <motion.div
                 key={`mid-${i}-${formation}`}
-                className={`${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+                className={`${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
                 variants={playerVariants}
                 initial="initial"
+                style={{ backgroundColor: mainColor }}
                 animate="animate"
                 exit="exit"
                 transition={{ duration: 0.3, delay: i * 0.05 }}
@@ -134,9 +142,10 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
             {Array.from({ length: positions[2] }).map((_, i) => (
               <motion.div
                 key={`fwd-${i}-${formation}`}
-                className={`${currentSize.player} bg-footbai-accent rounded-full flex items-center justify-center text-white font-bold`}
+                className={`${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
                 variants={playerVariants}
                 initial="initial"
+                style={{ backgroundColor: mainColor }}
                 animate="animate"
                 exit="exit"
                 transition={{ duration: 0.3, delay: i * 0.05 }}

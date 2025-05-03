@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 export const TeamUpgradeSection = () => {
   const { team, updateTeam } = useTeamStore();
   const { toast } = useToast();
+  const { updateTeamAttributes } = useTeamStore();
   const [upgradeAmount, setUpgradeAmount] = useState<number>(1);
 
   if (!team) {
@@ -114,11 +115,7 @@ export const TeamUpgradeSection = () => {
       ),
     };
 
-    updateTeam({
-      ...team,
-      attributes: newAttributes,
-      points: team.points - upgradeAmount,
-    });
+    updateTeamAttributes(newAttributes, team.points - upgradeAmount);
 
     toast({
       title: "Attribute Upgraded",

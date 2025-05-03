@@ -20,67 +20,58 @@ class LogoService:
         self.client = OpenAI()
 
     def get_main_color(self, image: Image.Image) -> str:
-        """Extract the most dominant color from the image, excluding dark colors and background colors."""
-        # Convert to RGB if not already
+        """Extract the most visually prominent (vivid) color from the image, ignoring background and dark/desaturated colors."""
         if image.mode != 'RGB':
             image = image.convert('RGB')
-        
-        # Get all pixels
-        pixels = list(image.getdata())
-        
-        # Define colors to exclude (background colors and very dark colors)
-        exclude_colors = [
-            (0, 0, 0),        # Pure black
-            (29, 29, 29),     # Container color (#1d1d1d)
-            (38, 38, 38),     # Hover color (#262626)
-            (69, 69, 69),     # Hover color (#454545)
-        ]
-        
-        # Filter out dark colors and background colors
+        img = image.resize((128, 128))  # Downsample for speed
+        arr = np.array(img).reshape(-1, 3)
+
+        # 1. Detect background color (sample corners)
+        corners = np.concatenate([
+            arr[0:10], arr[-10:], arr[::128][:10], arr[::128][-10:]
+        ])
+        bg_color = tuple(np.median(corners, axis=0).astype(int))
+
+        # 2. Remove background and dark/desaturated pixels
         def is_valid_color(rgb):
             r, g, b = rgb
-            
-            # Calculate brightness using weighted RGB values
             brightness = (r * 299 + g * 587 + b * 114) / 1000
-            
-            # Calculate saturation
             max_val = max(r, g, b)
             min_val = min(r, g, b)
-            if max_val == 0:
-                saturation = 0
-            else:
-                saturation = (max_val - min_val) / max_val
-            
-            # Check if color is too dark (higher brightness threshold)
-            if brightness < 50:  # Increased from 30 to 50
+            saturation = (max_val - min_val) / max_val if max_val else 0
+            # Ignore background (within tolerance), dark, and grayish
+            if np.linalg.norm(np.array(rgb) - np.array(bg_color)) < 30:
                 return False
-            
-            # Check if color is too desaturated (gray)
-            if saturation < 0.2:  # Added saturation check
+            if brightness < 60:
                 return False
-            
-            # Check if color matches any of the excluded colors
-            for exclude in exclude_colors:
-                if abs(r - exclude[0]) < 5 and abs(g - exclude[1]) < 5 and abs(b - exclude[2]) < 5:
-                    return False
-            
+            if saturation < 0.25:
+                return False
             return True
-        
-        # Filter pixels and count valid colors
-        valid_pixels = [pixel for pixel in pixels if is_valid_color(pixel)]
-        
-        if not valid_pixels:
-            # If no valid colors found, return a default color
+
+        valid_pixels = np.array([p for p in arr if is_valid_color(p)])
+        if len(valid_pixels) == 0:
             return '#62df6e'
-        
-        # Count color frequencies
-        color_counts = Counter(valid_pixels)
-        
-        # Get the most common color
-        most_common = color_counts.most_common(1)[0][0]
-        
-        # Convert to hex
-        return '#{:02x}{:02x}{:02x}'.format(*most_common)
+
+        # 3. Cluster colors and pick the most vivid
+        try:
+            from sklearn.cluster import KMeans
+            n_clusters = min(3, len(valid_pixels))
+            kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(valid_pixels)
+            cluster_centers = kmeans.cluster_centers_.astype(int)
+            # Score by vividness (saturation + brightness)
+            def color_score(rgb):
+                r, g, b = rgb
+                brightness = (r * 299 + g * 587 + b * 114) / 1000
+                max_val = max(rgb)
+                min_val = min(rgb)
+                saturation = (max_val - min_val) / max_val if max_val else 0
+                return saturation * 2 + brightness / 255
+            main_color = max(cluster_centers, key=color_score)
+        except Exception:
+            # Fallback: most common valid color
+            main_color = Counter(map(tuple, valid_pixels)).most_common(1)[0][0]
+
+        return '#{:02x}{:02x}{:02x}'.format(*main_color)
 
     def generate_club_name(self, location: Optional[str] = None, theme: Optional[str] = None) -> str:
         """Generate a football club name based on location and theme."""

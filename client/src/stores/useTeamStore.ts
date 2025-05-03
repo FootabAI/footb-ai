@@ -13,7 +13,7 @@ type TeamState = {
   // Actions
   setTeam: (team: Team | null) => void;
   updateTeam: (team: Team) => Promise<void>;
-  updateTeamAttributes: (attributes: TeamAttributes) => void;
+  updateTeamAttributes: (attributes: TeamAttributes, points: number) => void;
   updateTeamTactic: (tactic: TeamTactic) => void;
   updateTeamFormation: (formation: Formation) => void;
   resetTeam: () => void;
@@ -52,13 +52,13 @@ export const useTeamStore = create<TeamState>((set) => ({
     }
   },
 
-  updateTeamAttributes: (attributes) => {
+  updateTeamAttributes: (attributes, points) => {
     set((state) => ({
-      team: state.team ? { ...state.team, attributes } : null
+      team: state.team ? { ...state.team, attributes, points } : null
     }));
     const state = useTeamStore.getState();
     if (state.team) {
-      state.updateTeam({ ...state.team, attributes }).catch(console.error);
+      state.updateTeam({ ...state.team, attributes, points }).catch(console.error);
     }
   },
   

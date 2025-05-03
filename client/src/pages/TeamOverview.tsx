@@ -20,7 +20,7 @@ import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
 
 const TeamOverview = () => {
   const { team, updateTeamTactic, updateTeamFormation } = useTeamStore();
-  const calculateTeamStrength = useCalculateTeamStrength(team);
+  const calculateTeamStrength = useCalculateTeamStrength(team.attributes);
   const { toast } = useToast();
 
   if (!team) return null;

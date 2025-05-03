@@ -1,15 +1,16 @@
-import { Team } from "@/types";
+import { TeamAttributes } from "@/types";
 
-export const useCalculateTeamStrength = (team: Team) => {
+export const useCalculateTeamStrength = (attributes: TeamAttributes) => {
   const {
     passing,
     shooting,
     pace,
     dribbling,
     defending,
-      physicality,
-    } = team.attributes;
-    return Math.round(
-      (passing + shooting + pace + dribbling + defending + physicality) / 6
-    );
-  };
+    physicality,
+  } = attributes;
+  
+  return Math.round(
+    (passing + shooting + pace + dribbling + defending + physicality) / 6
+  );
+};
