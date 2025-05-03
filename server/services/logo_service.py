@@ -5,7 +5,6 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any, Tuple, Optional
 from openai import OpenAI
 import base64
@@ -17,32 +16,7 @@ class LogoService:
         self.reference_images_dir = reference_images_dir
         self.embeddings = OpenAIEmbeddings()
         self.llm = ChatOpenAI(temperature=0.7)
-        self.image_model = SentenceTransformer('clip-ViT-B-32')
-        self.vector_store = self._setup_vector_store()
         self.client = OpenAI()
-
-    def _setup_vector_store(self) -> FAISS:
-        """Set up the vector store with reference images."""
-        documents = []
-        metadatas = []
-        
-        for filename in os.listdir(self.reference_images_dir):
-            if filename.endswith(('.png', '.jpg', '.jpeg')):
-                image_path = os.path.join(self.reference_images_dir, filename)
-                image = Image.open(image_path)
-                image_embedding = self.image_model.encode(image)
-                documents.append(filename)
-                metadatas.append({"path": image_path})
-        
-        if not documents:
-            raise ValueError("No images found in the reference directory")
-            
-        text_embeddings = list(zip(documents, [self.image_model.encode(doc) for doc in documents]))
-        return FAISS.from_embeddings(
-            text_embeddings=text_embeddings,
-            embedding=self.image_model.encode,
-            metadatas=metadatas
-        )
 
     def generate_club_name(self, location: Optional[str] = None, theme: Optional[str] = None) -> str:
         """Generate a football club name based on location and theme."""
@@ -156,17 +130,5 @@ class LogoService:
 
     def get_similar_logos(self, query: str, k: int = 3) -> List[Dict[str, Any]]:
         """Find similar logos based on the query."""
-        query_embedding = self.image_model.encode(query)
-        
-        similar_docs = self.vector_store.similarity_search_by_vector(
-            query_embedding,
-            k=k
-        )
-        
-        return [
-            {
-                "path": str(doc.metadata["path"]),
-                "similarity": float(1.0)
-            }
-            for doc in similar_docs
-        ] 
+        # Since we're not using vector store anymore, return an empty list
+        return [] 

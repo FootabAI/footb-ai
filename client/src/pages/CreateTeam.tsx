@@ -11,6 +11,7 @@ import { LogoStep } from "@/components/team-creation/LogoStep";
 import { AttributesStep } from "@/components/team-creation/AttributesStep";
 import { SummaryStep } from "@/components/team-creation/SummaryStep";
 import { PlayersStep } from "@/components/team-creation/PlayersStep";
+import { toast } from "@/components/ui/use-toast";
 
 const STEPS = ["logo", "attributes", "players", "summary"] as const;
 type Step = typeof STEPS[number];
@@ -91,8 +92,20 @@ const CreateTeam = () => {
     }
   };
 
-  const handleGenerateLogo = () => {
-    generateLogo(themeTags, colorTags);
+  const handleGenerateLogo = async () => {
+    try {
+      await generateLogo(themeTags, colorTags);
+      toast({
+        title: "Logo Generated",
+        description: "Your logo has been generated successfully",
+      });
+    } catch (error) {
+      console.error("Error generating logo:", error);
+      toast({
+        title: "Error Generating Logo",
+        description: "Please try again",
+      });
+    }
   };
 
   const handleStartOver = () => {

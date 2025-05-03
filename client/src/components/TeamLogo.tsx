@@ -1,5 +1,6 @@
 import { ManualLogoOptions, AILogoOptions } from "@/types";
-import { CircleDot } from "lucide-react";
+import { CircleDot, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 type TeamLogoProps = {
   logo?: ManualLogoOptions | AILogoOptions;
@@ -8,6 +9,7 @@ type TeamLogoProps = {
 };
 
 const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
+  const [isLoading, setIsLoading] = useState(true);
   const sizeClasses = {
     sm: "w-8 h-8 text-sm",
     md: "w-12 h-12 text-lg",
@@ -27,11 +29,17 @@ const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
   // Handle AI-generated logo
   if ('image' in logo) {
     return (
-      <div className={`${sizeClasses[size]} ${className} rounded-full overflow-hidden`}>
+      <div className={`${sizeClasses[size]} ${className} rounded-full overflow-hidden relative`}>
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="w-1/2 h-1/2 animate-spin text-footbai-accent" />
+          </div>
+        )}
         <img 
           src={logo.image} 
+          onLoad={() => setIsLoading(false)}
           alt="Team Logo" 
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover ${isLoading ? 'opacity-0' : 'opacity-100'}`}
         />
       </div>
     );

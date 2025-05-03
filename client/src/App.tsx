@@ -16,19 +16,19 @@ import MatchSimulation from "./pages/MatchSimulation";
 import MatchSummary from "./pages/MatchSummary";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import { Loader2 } from "lucide-react";
+import Loader from "./components/Loader";
+import { useTeamStore } from "./stores/useTeamStore";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { isLoading, isLoggedIn } = useUserStore();
+  const { team, isLoading: isTeamLoading } = useTeamStore();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-footbai-background">
-        <Loader2 className="h-8 w-8 animate-spin text-footbai-accent" />
-      </div>
-    );
+  console.log('App loading states:', { isLoading, isTeamLoading, isLoggedIn });
+
+  if (isLoading || isTeamLoading) {
+    return <Loader />;
   }
 
   return (

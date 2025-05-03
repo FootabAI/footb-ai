@@ -24,6 +24,7 @@ export const useLogoGeneration = () => {
       }
     } catch (error) {
       console.error('Error generating logo:', error);
+      throw error;
     } finally {
       setIsGeneratingLogo(false);
     }

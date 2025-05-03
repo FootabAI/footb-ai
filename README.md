@@ -31,17 +31,20 @@ A modern football management game where you can create and manage your own team,
   - Vite for build tooling
 
 - **Backend**
+  - Python with FastAPI
+  - OpenAI API for AI-powered features
   - Firebase Firestore for data storage
   - Firebase Authentication for user management
-  - Fast API
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v16 or higher)
+- Python 3.8 or higher
 - npm or yarn
 - Firebase account and project setup
+- OpenAI API key
 
 ### Installation
 
@@ -51,23 +54,39 @@ A modern football management game where you can create and manage your own team,
    cd footb-ai
    ```
 
-2. Install dependencies:
+2. Install frontend dependencies:
    ```bash
+   cd client
    npm install
    # or
    yarn install
    ```
 
-3. Set up Firebase:
+3. Install backend dependencies:
+   ```bash
+   cd server
+   pip install -r requirements.txt
+   pip install --no-cache-dir -r requirements.txt
+   ```
+
+4. Set up Firebase:
    - Create a Firebase project
    - Enable Authentication and Firestore
    - Add your Firebase configuration to `client/src/firebaseConfig.ts`
 
-4. Start the development server:
+5. Set up environment variables:
+   - Create a `.env` file in the server directory
+   - Add your OpenAI API key: `OPENAI_API_KEY=your_api_key`
+
+6. Start the development servers:
    ```bash
+   # Terminal 1 - Start the backend server
+   cd server
+   uvicorn app:app --reload
+
+   # Terminal 2 - Start the frontend development server
+   cd client
    npm run dev
-   # or
-   yarn dev
    ```
 
 ## Project Structure
@@ -77,24 +96,21 @@ footb-ai/
 ├── client/                 # Frontend React application
 │   ├── src/
 │   │   ├── components/     # Reusable UI components
-│   │   ├── contexts/       # React contexts
+│   │   ├── stores/         # React stores
 │   │   ├── hooks/          # Custom React hooks
 │   │   ├── types/          # TypeScript type definitions
 │   │   └── utils/          # Utility functions
 │   └── public/             # Static assets
+├── server/                 # Backend FastAPI application
+│   ├── models/            # Data models and schemas
+│   ├── services/          # Business logic and services
+│   ├── images/            # Generated and reference images
+│   ├── app.py            # Main application file
+│   └── requirements.txt   # Python dependencies
 └── README.md
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments

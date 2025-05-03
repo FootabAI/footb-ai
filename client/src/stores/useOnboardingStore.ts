@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-import { db, auth } from '@/firebaseConfig';
+import { db, auth, storage } from '@/firebaseConfig';
 import { addDoc, collection } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Team, Player, TeamAttributes, TeamTactic, Formation } from '@/types';
 import { useTeamStore } from './useTeamStore';
 import { DEFAULT_ATTRIBUTES, TOTAL_POINTS } from '@/config/default_attributes';
 import { OnboardingState } from '@/types/onboarding';
-
-
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   // Initial state
@@ -67,12 +66,27 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       const teamId = crypto.randomUUID();
       const finalName = logoType === 'manual' ? teamName : customizedName;
 
+      let logoUrl = '';
+      if (logoType === 'ai' && logoData.image) {
+        // Upload AI-generated logo to Firebase Storage
+        const storageRef = ref(storage, `team-logos/${teamId}`);
+        const response = await fetch(logoData.image);
+        const blob = await response.blob();
+        await uploadBytes(storageRef, blob, {
+          customMetadata: {
+            userId: user.uid,
+            teamId: teamId
+          }
+        });
+        logoUrl = await getDownloadURL(storageRef);
+      }
+
       const newTeam: Team & { userId: string } = {
         id: teamId,
         name: finalName,
         logo: logoType === 'manual'
           ? { initials: logoData.initials!, backgroundColor: logoData.backgroundColor }
-          : { image: logoData.image!, theme: logoData.theme!, backgroundColor: logoData.backgroundColor },
+          : { image: logoUrl, theme: logoData.theme!, backgroundColor: logoData.backgroundColor },
         attributes,
         tactic,
         formation,
@@ -91,10 +105,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       newTeam.id = docRef.id;
 
       // Update TeamStore with the new team
-      teamStore.setTeam(newTeam);
-      teamStore.updateTeamFormation(formation);
-      await teamStore.fetchTeam();
-
+      await teamStore.updateTeam(newTeam);
       set({ success: 'Team created successfully!' });
     } catch (err) {
       console.error('Error creating team:', err);

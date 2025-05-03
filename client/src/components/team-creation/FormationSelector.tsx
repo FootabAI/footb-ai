@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Formation } from '@/types';
 import { formations } from '@/config/formations';
 import { useTeamStore } from '@/stores/useTeamStore';
+import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FormationDisplayProps {
@@ -153,13 +154,25 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
 interface FormationSelectorProps {
   showHeader?: boolean;
   size?: 'small' | 'large';
+  isOnboarding?: boolean;
 }
 
 export const FormationSelector = ({ 
   showHeader = true,
-  size = 'large'
+  size = 'large',
+  isOnboarding = false
 }: FormationSelectorProps) => {
   const { selectedFormation, updateTeamFormation } = useTeamStore();
+  const { formation, setFormation } = useOnboardingStore();
+
+  const currentFormation = isOnboarding ? formation : selectedFormation;
+  const handleFormationChange = async (value: string) => {
+    if (isOnboarding) {
+      setFormation(value as Formation);
+    } else {
+      await updateTeamFormation(value as Formation);
+    }
+  };
 
   return (
     <Card>
@@ -170,8 +183,8 @@ export const FormationSelector = ({
       )}
       <CardContent className="space-y-6">
         <Tabs 
-          defaultValue={selectedFormation} 
-          onValueChange={(value) => updateTeamFormation(value as Formation)}
+          defaultValue={currentFormation} 
+          onValueChange={handleFormationChange}
           className="mb-4"
         >
           <TabsList className="grid w-full grid-cols-5">
@@ -186,13 +199,13 @@ export const FormationSelector = ({
         <div className="mt-6">
           <AnimatePresence mode="wait">
             <motion.div
-              key={selectedFormation}
+              key={currentFormation}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <FormationDisplay formation={selectedFormation} size={size} />
+              <FormationDisplay formation={currentFormation} size={size} />
             </motion.div>
           </AnimatePresence>
         </div>

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Formation, TeamTactic } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,27 +17,16 @@ import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { formations } from "@/config/formations";
 import { useTeamStore } from "@/stores/useTeamStore";
 import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
+
 const TeamOverview = () => {
-  const { team, updateTeam } = useTeamStore();
+  const { team, updateTeamTactic, updateTeamFormation } = useTeamStore();
   const calculateTeamStrength = useCalculateTeamStrength(team);
   const { toast } = useToast();
-  const [tactic, setTactic] = useState<TeamTactic>(
-    team?.tactic || "Balanced"
-  );
 
   if (!team) return null;
 
   const handleSaveTactic = (tactic: TeamTactic) => {
-    updateTeam({
-      ...team,
-      tactic,
-    });
-    setTactic(tactic as TeamTactic);
-    updateTeam({
-      ...team,
-      tactic: tactic as TeamTactic,
-    });
-
+    updateTeamTactic(tactic);
     toast({
       title: "Tactic Updated",
       description: `Your team now uses the ${tactic} tactic.`,
@@ -46,10 +34,7 @@ const TeamOverview = () => {
   };
 
   const handleFormationChange = (formation: string) => {
-    updateTeam({
-      ...team,
-      formation,
-    });
+    updateTeamFormation(formation as Formation);
     toast({
       title: "Formation Updated",
       description: `Your team now uses the ${formation} formation.`,
@@ -121,7 +106,7 @@ const TeamOverview = () => {
                       </div>
                     </div>
                     <Select
-                      value={tactic}
+                      value={team.tactic}
                       onValueChange={(value) =>
                         handleSaveTactic(value as TeamTactic)
                       }
@@ -152,7 +137,7 @@ const TeamOverview = () => {
               </CardHeader>
               <CardContent className="p-4">
                 <Tabs
-                  defaultValue={team.formation}
+                  value={team.formation}
                   onValueChange={(value) =>
                     handleFormationChange(value as Formation)
                   }

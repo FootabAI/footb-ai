@@ -12,8 +12,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { team, isLoading: isTeamLoading } = useTeamStore();
   const location = useLocation();
 
-  console.log('ProtectedRoute state:', { isLoggedIn, isUserLoading, isTeamLoading, team, pathname: location.pathname });
+  // If we're on the login page, just render the children
+  if (location.pathname === '/login') {
+    return <>{children}</>;
+  }
 
+  // Show loader only if we're loading and not on login page
   if (isUserLoading || isTeamLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-footbai-background">
@@ -22,6 +26,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
+  // Handle protected routes
   if (!isLoggedIn) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

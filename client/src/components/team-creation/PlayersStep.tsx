@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { FormationSelector } from './FormationSelector';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
+
 interface PlayersStepProps {
   onNext: () => void;
   onPlayersChange: (players: Player[]) => void;
@@ -94,7 +95,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
 
       {/* Formation Selection Section - Only visible after team generation */}
       {players.length > 0 && !isLoading && (
-        <FormationSelector />
+        <FormationSelector isOnboarding={true} />
       )}
     </div>
   );
