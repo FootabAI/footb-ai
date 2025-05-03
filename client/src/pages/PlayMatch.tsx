@@ -1,21 +1,31 @@
-import { useNavigate } from 'react-router-dom';
-import { useGame } from '@/contexts/GameContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import TeamLogo from '@/components/TeamLogo';
-import AttributesDisplay from '@/components/AttributesDisplay';
-import { Play, Info } from 'lucide-react';
-
+import { useNavigate } from "react-router-dom";
+import { useTeamStore } from "@/stores/useTeamStore";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import TeamLogo from "@/components/TeamLogo";
+import AttributesDisplay from "@/components/AttributesDisplay";
+import { Play, Info } from "lucide-react";
+import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
+import { useGameStore } from "@/stores/useGameStore";
 const PlayMatch = () => {
   const navigate = useNavigate();
-  const { userTeam, botTeam, setupMatch, calculateTeamStrength } = useGame();
-
-  if (!userTeam || !botTeam) return null;
+  const { team } = useTeamStore();
+  const calculateTeamStrength = useCalculateTeamStrength(team);
+  const { botTeam, setupMatch } = useGameStore();
+  if (!team) return null;
 
   const handlePlayMatch = (opponent: typeof botTeam) => {
+    console.log('Starting match against:', opponent.name);
     setupMatch(opponent);
-    navigate('/simulation');
+    console.log('Navigating to simulation');
+    navigate("/simulation");
   };
 
   return (
@@ -30,10 +40,12 @@ const PlayMatch = () => {
         <Card className="lg:col-span-1 bg-footbai-container border-footbai-header">
           <CardHeader className="bg-footbai-header">
             <CardTitle className="flex items-center gap-3">
-              <TeamLogo logo={userTeam.logo} size="md" />
+              <TeamLogo logo={team.logo} size="md" />
               <div>
-                <h2 className="text-lg font-semibold">{userTeam.name}</h2>
-                <p className="text-sm text-gray-400">{userTeam.tactic} Tactic</p>
+                <h2 className="text-lg font-semibold">{team.name}</h2>
+                <p className="text-sm text-gray-400">
+                  {team.tactic} Tactic
+                </p>
               </div>
             </CardTitle>
           </CardHeader>
@@ -42,22 +54,27 @@ const PlayMatch = () => {
               <div>
                 <div className="text-sm text-gray-400">Team Rating</div>
                 <div className="text-3xl font-bold text-footbai-accent">
-                  {calculateTeamStrength(userTeam)}
+                  {calculateTeamStrength}
                 </div>
               </div>
             </div>
 
             <Separator className="my-4 bg-footbai-header" />
 
-            <h3 className="text-footbai-accent font-medium mb-4">Team Attributes</h3>
-            <AttributesDisplay attributes={userTeam.attributes} teamColor={userTeam.logo.backgroundColor} />
+            <h3 className="text-footbai-accent font-medium mb-4">
+              Team Attributes
+            </h3>
+            <AttributesDisplay
+              attributes={team.attributes}
+              teamColor={team.logo.backgroundColor}
+            />
           </CardContent>
         </Card>
 
         {/* Opponents section */}
         <div className="lg:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Available Opponents</h2>
-          
+
           {/* Bot team */}
           <Card className="mb-4 bg-footbai-container border-footbai-header">
             <CardContent className="p-5">
@@ -66,10 +83,12 @@ const PlayMatch = () => {
                   <TeamLogo logo={botTeam.logo} size="md" />
                   <div>
                     <h3 className="font-semibold text-lg">{botTeam.name}</h3>
-                    <p className="text-sm text-gray-400">{botTeam.tactic} Tactic</p>
+                    <p className="text-sm text-gray-400">
+                      {botTeam.tactic} Tactic
+                    </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="bg-footbai-header px-2 py-0.5 rounded text-xs">
-                        Rating: {calculateTeamStrength(botTeam)}
+                        Rating: {calculateTeamStrength}
                       </span>
                       <span className="bg-footbai-header px-2 py-0.5 rounded text-xs">
                         Bot Opponent
@@ -77,7 +96,7 @@ const PlayMatch = () => {
                     </div>
                   </div>
                 </div>
-                <Button 
+                <Button
                   className="bg-footbai-accent hover:bg-footbai-accent/80 text-black"
                   onClick={() => handlePlayMatch(botTeam)}
                 >
@@ -88,8 +107,13 @@ const PlayMatch = () => {
             </CardContent>
             <Separator className="bg-footbai-header" />
             <CardContent className="p-5">
-              <h4 className="text-sm font-medium text-footbai-accent mb-3">Opponent Attributes</h4>
-              <AttributesDisplay attributes={botTeam.attributes} teamColor={botTeam.logo.backgroundColor} />
+              <h4 className="text-sm font-medium text-footbai-accent mb-3">
+                Opponent Attributes
+              </h4>
+              <AttributesDisplay
+                attributes={botTeam.attributes}
+                teamColor={botTeam.logo.backgroundColor}
+              />
             </CardContent>
             <CardFooter className="bg-footbai-header px-5 py-3">
               <div className="flex items-center text-xs text-gray-400">
@@ -98,14 +122,17 @@ const PlayMatch = () => {
               </div>
             </CardFooter>
           </Card>
-          
+
           {/* Coming soon card */}
           <Card className="bg-footbai-container/50 border-dotted border-2 border-gray-700">
             <CardContent className="p-6">
               <div className="text-center py-8">
-                <div className="text-gray-500 mb-2">More opponents coming soon</div>
+                <div className="text-gray-500 mb-2">
+                  Online Opponents Coming Soon
+                </div>
                 <p className="text-xs text-gray-600">
-                  Future updates will include more opponents with different tactics and strengths
+                  Future updates will include more opponents with different
+                  tactics and strengths
                 </p>
               </div>
             </CardContent>

@@ -1,11 +1,10 @@
 import asyncio
+from typing import List, Dict, Any, AsyncGenerator
 import json
-from typing import List, Dict, Any, Generator
-from ..models.match import MatchEvent, MatchStats
-from ..models.team import Team
 
 class MatchService:
     def __init__(self):
+        # Hard-coded match events
         self.match_events = [
             (12, "home", "goal", "GOAL! Home team scores!"),
             (23, "away", "yellow_card", "Yellow card for away team."),
@@ -19,61 +18,70 @@ class MatchService:
             (85, "away", "yellow_card", "Yellow card for away team."),
             (90, "info", "full-time", "Full-time")
         ]
+        self._is_half_time = False
+        self._should_continue = False
 
-    async def generate_match_events(
-        self,
-        home_team: Team,
-        away_team: Team,
-        current_minute: int = 0
-    ) -> Generator[str, None, None]:
-        events = []
+    async def generate_match_events(self, start_minute: int = 0) -> List[Dict[str, Any]]:
+        """Generate match events with scores starting from a specific minute."""
         home_score = 0
         away_score = 0
-        
-        stats = MatchStats(
-            possession={"home": 50, "away": 50},
-            shots={"home": {"total": 0, "onTarget": 0}, "away": {"total": 0, "onTarget": 0}},
-            passes={"home": {"total": 0, "completed": 0}, "away": {"total": 0, "completed": 0}},
-            corners={"home": 0, "away": 0},
-            fouls={"home": 0, "away": 0},
-            cards={"home": {"yellow": 0, "red": 0}, "away": {"yellow": 0, "red": 0}}
-        )
-        
+        events = []
+
         for minute, team, event_type, description in self.match_events:
-            if minute <= current_minute:
+            if minute < start_minute:
+                # Update score for goals that happened before start_minute
+                if event_type == "goal":
+                    if team == "home":
+                        home_score += 1
+                    else:
+                        away_score += 1
                 continue
-                
+
+            # Update score for goals
             if event_type == "goal":
                 if team == "home":
                     home_score += 1
                 else:
                     away_score += 1
-                stats.shots[team]["onTarget"] += 1
-            elif event_type == "yellow_card":
-                stats.cards[team]["yellow"] += 1
-            elif event_type == "red_card":
-                stats.cards[team]["red"] += 1
-            elif event_type == "corner":
-                stats.corners[team] += 1
-            elif event_type == "foul":
-                stats.fouls[team] += 1
-            
-            event = MatchEvent(
-                minute=minute,
-                type=event_type,
-                team=team,
-                description=description
-            )
-            
-            events.append(event)
-            yield json.dumps({
+
+            # Create event object
+            event = {
                 "minute": minute,
-                "event": event.dict(),
-                "score": {"home": home_score, "away": away_score},
-                "stats": stats.dict()
-            }) + "\n"
-            
-            if event_type == "half-time" and current_minute < 45:
+                "event": {
+                    "type": event_type,
+                    "team": team,
+                    "description": description
+                },
+                "score": {
+                    "home": home_score,
+                    "away": away_score
+                }
+            }
+            events.append(event)
+
+        return events
+
+    async def stream_match_events(self) -> AsyncGenerator[str, None]:
+        """Stream match events with a delay between each event."""
+        events = await self.generate_match_events()
+        
+        for event in events:
+            # Stop at half-time
+            if event["event"]["type"] == "half-time":
+                self._is_half_time = True
+                yield json.dumps(event) + "\n"
                 break
-                
-            await asyncio.sleep(0.5) 
+
+            yield json.dumps(event) + "\n"
+            await asyncio.sleep(1)  # Wait 1 second between events
+
+    async def continue_second_half(self) -> AsyncGenerator[str, None]:
+        """Continue streaming events from after half-time."""
+        if not self._is_half_time:
+            raise ValueError("Cannot continue second half - not at half-time")
+        
+        events = await self.generate_match_events(start_minute=46)
+        
+        for event in events:
+            yield json.dumps(event) + "\n"
+            await asyncio.sleep(1)  # Wait 1 second between events 

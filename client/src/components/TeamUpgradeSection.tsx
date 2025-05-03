@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGame } from '@/contexts/GameContext';
+import { useTeamStore } from '@/stores/useTeamStore';
 import { 
   Zap, 
   Target, 
@@ -16,11 +16,11 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
 export const TeamUpgradeSection = () => {
-  const { userTeam, updateTeam } = useGame();
+  const { team, updateTeam } = useTeamStore();
   const { toast } = useToast();
   const [upgradeAmount, setUpgradeAmount] = useState<number>(1);
 
-  if (!userTeam) {
+  if (!team) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
@@ -72,7 +72,7 @@ export const TeamUpgradeSection = () => {
   ];
 
   const handleUpgrade = (attributeKey: string) => {
-    if (userTeam.points < upgradeAmount) {
+    if (team.points < upgradeAmount) {
       toast({
         title: "Not enough points",
         description: "You don't have enough points for this upgrade.",
@@ -82,14 +82,14 @@ export const TeamUpgradeSection = () => {
     }
 
     const newAttributes = {
-      ...userTeam.attributes,
-      [attributeKey]: Math.min(99, userTeam.attributes[attributeKey as keyof typeof userTeam.attributes] + upgradeAmount)
+      ...team.attributes,
+      [attributeKey]: Math.min(99, team.attributes[attributeKey as keyof typeof team.attributes] + upgradeAmount)
     };
 
     updateTeam({
-      ...userTeam,
+      ...team,
       attributes: newAttributes,
-      points: userTeam.points - upgradeAmount
+      points: team.points - upgradeAmount
     });
 
     toast({
@@ -102,7 +102,7 @@ export const TeamUpgradeSection = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="bg-footbai-header px-3 py-1 rounded-full text-sm text-gray-300 border border-footbai-hover">
-          Available Points: <span className="font-bold text-footbai-accent">{userTeam.points}</span>
+          Available Points: <span className="font-bold text-footbai-accent">{team.points}</span>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export const TeamUpgradeSection = () => {
                 <span className="ml-2 font-semibold">{attribute.label}</span>
               </div>
               <span className="font-mono bg-footbai-header px-2 py-0.5 rounded text-sm">
-                {userTeam.attributes[attribute.key as keyof typeof userTeam.attributes]}
+                {team.attributes[attribute.key as keyof typeof team.attributes]}
               </span>
             </div>
             
@@ -150,7 +150,7 @@ export const TeamUpgradeSection = () => {
                 size="sm"
                 className="gap-1 bg-footbai-accent hover:bg-footbai-accent/80 text-black"
                 onClick={() => handleUpgrade(attribute.key)}
-                disabled={userTeam.points < upgradeAmount}
+                disabled={team.points < upgradeAmount}
               >
                 <Plus className="h-4 w-4" />
                 <span>Upgrade (+{upgradeAmount})</span>

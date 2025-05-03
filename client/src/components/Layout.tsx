@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useUser } from "@/contexts/UserContext";
+import { useUserStore } from "@/stores/useUserStore";
 import Sidebar from "./Sidebar";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const Layout = () => {
-  const { user } = useUser();
+  const { user } = useUserStore();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 

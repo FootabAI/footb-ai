@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Formation } from '@/types';
 import { formations } from '@/config/formations';
-import { useGame } from '@/contexts/GameContext';
+import { useTeamStore } from '@/stores/useTeamStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FormationDisplayProps {
@@ -159,7 +159,7 @@ export const FormationSelector = ({
   showHeader = true,
   size = 'large'
 }: FormationSelectorProps) => {
-  const { selectedFormation, handleFormationSelect } = useGame();
+  const { selectedFormation, updateTeamFormation } = useTeamStore();
 
   return (
     <Card>
@@ -171,7 +171,7 @@ export const FormationSelector = ({
       <CardContent className="space-y-6">
         <Tabs 
           defaultValue={selectedFormation} 
-          onValueChange={(value) => handleFormationSelect(value as Formation)}
+          onValueChange={(value) => updateTeamFormation(value as Formation)}
           className="mb-4"
         >
           <TabsList className="grid w-full grid-cols-5">

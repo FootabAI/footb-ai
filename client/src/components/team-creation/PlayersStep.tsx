@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { useTeamCreation } from '@/contexts/TeamCreationContext';
 import { Player } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { FormationSelector } from './FormationSelector';
-
+import { useOnboardingStore } from '@/stores/useOnboardingStore';
 interface PlayersStepProps {
   onNext: () => void;
   onPlayersChange: (players: Player[]) => void;
 }
 
 export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
-  const { generateRandomPlayers } = useTeamCreation();
+  const { generateRandomPlayers, teamId, teamName } = useOnboardingStore();
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,7 +20,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
     // Simulate loading time of 2 seconds
     setTimeout(() => {
       try {
-        const generatedPlayers = generateRandomPlayers('temp-team-id', 'Your Team');
+        const generatedPlayers = generateRandomPlayers(teamId, teamName);
         setPlayers(generatedPlayers);
         onPlayersChange(generatedPlayers);
       } catch (error) {

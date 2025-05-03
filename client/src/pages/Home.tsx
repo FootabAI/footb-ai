@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGame } from "@/contexts/GameContext";
+import { useTeamStore } from "@/stores/useTeamStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Trophy, Users } from "lucide-react";
-import { useUser } from "@/contexts/UserContext";
+import { useUserStore } from "@/stores/useUserStore";
 const Home = () => {
   const navigate = useNavigate();
-  const { isLoggedIn, setIsLoggedIn } = useUser();
-  const { userTeam } = useGame();
+  const { isLoggedIn, setIsLoggedIn } = useUserStore();
+  const { team } = useTeamStore();
   const [loading, setLoading] = useState(false);
-  const { user } = useUser();
+  const { user } = useUserStore();
   const handleLogin = () => {
     setLoading(true);
     if (user) {
@@ -43,7 +43,7 @@ const Home = () => {
               onClick={handleCreateTeam}
               className="bg-footbai-accent hover:bg-footbai-accent/80 text-black font-bold"
             >
-              {userTeam ? "Continue Playing" : "Create Your Team"}
+              {team ? "Continue Playing" : "Create Your Team"}
             </Button>
           ) : (
             <Button

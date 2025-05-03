@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { useGame } from "@/contexts/GameContext";
 import { Formation, TeamTactic } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -18,24 +16,26 @@ import { useToast } from "@/hooks/use-toast";
 import { TeamUpgradeSection } from "@/components/TeamUpgradeSection";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { formations } from "@/config/formations";
-
+import { useTeamStore } from "@/stores/useTeamStore";
+import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
 const TeamOverview = () => {
-  const { userTeam, updateTeam, players, calculateTeamStrength } = useGame();
+  const { team, updateTeam } = useTeamStore();
+  const calculateTeamStrength = useCalculateTeamStrength(team);
   const { toast } = useToast();
   const [tactic, setTactic] = useState<TeamTactic>(
-    userTeam?.tactic || "Balanced"
+    team?.tactic || "Balanced"
   );
 
-  if (!userTeam) return null;
+  if (!team) return null;
 
   const handleSaveTactic = (tactic: TeamTactic) => {
     updateTeam({
-      ...userTeam,
+      ...team,
       tactic,
     });
     setTactic(tactic as TeamTactic);
     updateTeam({
-      ...userTeam,
+      ...team,
       tactic: tactic as TeamTactic,
     });
 
@@ -47,7 +47,7 @@ const TeamOverview = () => {
 
   const handleFormationChange = (formation: string) => {
     updateTeam({
-      ...userTeam,
+      ...team,
       formation,
     });
     toast({
@@ -57,10 +57,10 @@ const TeamOverview = () => {
   };
 
   const playersByPosition = {
-    GK: players.filter((p) => p.position === "GK"),
-    DEF: players.filter((p) => p.position === "DEF"),
-    MID: players.filter((p) => p.position === "MID"),
-    ATT: players.filter((p) => p.position === "ATT"),
+    GK: team.players.filter((p) => p.position === "GK"),
+    DEF: team.players.filter((p) => p.position === "DEF"),
+    MID: team.players.filter((p) => p.position === "MID"),
+    ATT: team.players.filter((p) => p.position === "ATT"),
   };
 
   return (
@@ -82,11 +82,11 @@ const TeamOverview = () => {
               <CardContent className="p-5">
                 {/* Team Identity Section */}
                 <div className="flex items-center gap-3 mb-8">
-                  <TeamLogo logo={userTeam.logo} size="md" />
+                  <TeamLogo logo={team.logo} size="md" />
                   <div>
-                    <h2 className="text-lg font-semibold">{userTeam.name}</h2>
+                    <h2 className="text-lg font-semibold">{team.name}</h2>
                     <p className="text-sm text-gray-400">
-                      {userTeam.tactic} Tactic
+                      {team.tactic} Tactic
                     </p>
                   </div>
                 </div>
@@ -98,7 +98,7 @@ const TeamOverview = () => {
                       Team Rating
                     </div>
                     <div className="text-3xl font-bold text-footbai-accent">
-                      {calculateTeamStrength(userTeam)}
+                      {calculateTeamStrength}
                     </div>
                   </div>
                   <div className="bg-footbai-header/50 p-4 rounded-lg">
@@ -106,7 +106,7 @@ const TeamOverview = () => {
                       Available Points
                     </div>
                     <div className="text-3xl font-bold">
-                      {userTeam.points} PTS
+                      {team.points} PTS
                     </div>
                   </div>
                 </div>
@@ -152,7 +152,7 @@ const TeamOverview = () => {
               </CardHeader>
               <CardContent className="p-4">
                 <Tabs
-                  defaultValue={userTeam.formation}
+                  defaultValue={team.formation}
                   onValueChange={(value) =>
                     handleFormationChange(value as Formation)
                   }
@@ -167,7 +167,7 @@ const TeamOverview = () => {
                   </TabsList>
                 </Tabs>
                 <FormationDisplay
-                  formation={userTeam.formation as Formation}
+                  formation={team.formation as Formation}
                   size="small"
                 />
               </CardContent>
@@ -270,7 +270,7 @@ const TeamOverview = () => {
                                     <StatBar
                                       value={player.rating}
                                       maxValue={99}
-                                      color={userTeam.logo.backgroundColor}
+                                      color={team.logo.backgroundColor}
                                       showValue={false}
                                     />
                                   </div>
@@ -305,7 +305,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={userTeam.logo.backgroundColor}
+                              color={team.logo.backgroundColor}
                               showValue={false}
                             />
                           </div>
@@ -336,7 +336,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={userTeam.logo.backgroundColor}
+                              color={team.logo.backgroundColor}
                               showValue={false}
                             />
                           </div>
@@ -367,7 +367,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={userTeam.logo.backgroundColor}
+                              color={team.logo.backgroundColor}
                               showValue={false}
                             />
                           </div>
@@ -398,7 +398,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={userTeam.logo.backgroundColor}
+                              color={team.logo.backgroundColor}
                               showValue={false}
                             />
                           </div>

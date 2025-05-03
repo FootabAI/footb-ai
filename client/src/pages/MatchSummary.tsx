@@ -1,16 +1,17 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '@/contexts/GameContext';
+import { useGameStore } from '@/stores/useGameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import TeamLogo from '@/components/TeamLogo';
 import { CheckCircle2, XCircle, Trophy, ArrowRight } from 'lucide-react';
 import StatBar from '@/components/StatBar';
-
+import { useTeamStore } from '@/stores/useTeamStore';
 const MatchSummary = () => {
   const navigate = useNavigate();
-  const { currentMatch, userTeam, resetMatch } = useGame();
+  const { team } = useTeamStore();
+  const { currentMatch, resetMatch } = useGameStore();
 
   // If no match found, redirect to play page
   useEffect(() => {
@@ -19,12 +20,12 @@ const MatchSummary = () => {
     }
   }, [currentMatch, navigate]);
 
-  if (!currentMatch || !userTeam) return null;
+  if (!currentMatch || !team) return null;
 
   const { homeTeam, awayTeam, homeScore, awayScore, homeStats, awayStats } = currentMatch;
   
   // Determine if user team won
-  const userTeamId = userTeam.id;
+  const userTeamId = team.id;
   const isUserHome = homeTeam.id === userTeamId;
   const userScore = isUserHome ? homeScore : awayScore;
   const opponentScore = isUserHome ? awayScore : homeScore;

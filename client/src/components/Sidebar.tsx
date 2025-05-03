@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { useGame } from "@/contexts/GameContext";
-import { useUser } from "@/contexts/UserContext";
+import { useTeamStore } from "@/stores/useTeamStore";
+import { useUserStore } from "@/stores/useUserStore";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import {
@@ -20,8 +20,8 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
-  const { userTeam, calculateTeamStrength } = useGame();
-  const { handleLogout, deleteTeam } = useUser();
+  const { team } = useTeamStore();
+  const { handleLogout, deleteTeam } = useUserStore();
 
   // Add state to track text visibility with delay for different elements
   const [showHeaderText, setShowHeaderText] = useState(!isCollapsed);
@@ -63,8 +63,7 @@ const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
     };
   }, [isCollapsed]);
 
-  if (!userTeam) return null;
-  const teamStrength = calculateTeamStrength(userTeam);
+  if (!team) return null;
 
   const handleLogoutClick = async () => {
     await handleLogout();

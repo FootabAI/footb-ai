@@ -1,0 +1,173 @@
+import { create } from 'zustand';
+import { db, auth } from '@/firebaseConfig';
+import { addDoc, collection } from 'firebase/firestore';
+import { Team, Player, TeamAttributes, TeamTactic, Formation } from '@/types';
+import { useTeamStore } from './useTeamStore';
+import { DEFAULT_ATTRIBUTES, TOTAL_POINTS } from '@/config/default_attributes';
+import { OnboardingState } from '@/types/onboarding';
+
+
+
+export const useOnboardingStore = create<OnboardingState>((set, get) => ({
+  // Initial state
+  teamName: '',
+  logoType: 'manual',
+  initials: '',
+  backgroundColor: '#62df6e',
+  formation: '4-3-3',
+  customizedName: '',
+  themeTags: [],
+  colorTags: [],
+  attributes: DEFAULT_ATTRIBUTES,
+  tactic: 'Balanced',
+  pointsLeft: TOTAL_POINTS,
+  isLoading: false,
+  error: null,
+  success: null,
+  teamId: '',
+
+  // Actions
+  setTeamName: (name) => set({ teamName: name }),
+  setLogoType: (type) => set({ logoType: type }),
+  setInitials: (initials) => set({ initials }),
+  setBackgroundColor: (color) => set({ backgroundColor: color }),
+  setFormation: (formation) => set({ formation }),
+  setCustomizedName: (name) => set({ customizedName: name }),
+  setThemeTags: (tags) => set({ themeTags: tags }),
+  setColorTags: (tags) => set({ colorTags: tags }),
+  setTeamId: (id) => set({ teamId: id }),
+  generateRandomPlayers: (teamId: string, teamName: string) => generateRandomPlayers(teamId, teamName),
+  setTactic: (tactic) => set({ tactic }),
+
+  handleAttributeChange: (attr, newValue) => {
+    const { attributes, pointsLeft } = get();
+    const oldValue = attributes[attr];
+    const pointDiff = newValue - oldValue;
+
+    if (pointsLeft - pointDiff < 0) return;
+
+    set({
+      attributes: { ...attributes, [attr]: newValue },
+      pointsLeft: pointsLeft - pointDiff,
+    });
+  },
+
+  createTeam: async (logoData) => {
+    set({ isLoading: true, error: null, success: null });
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { teamName, logoType, attributes, tactic, customizedName, formation } = get();
+      const teamStore = useTeamStore.getState();
+
+      const teamId = crypto.randomUUID();
+      const finalName = logoType === 'manual' ? teamName : customizedName;
+
+      const newTeam: Team & { userId: string } = {
+        id: teamId,
+        name: finalName,
+        logo: logoType === 'manual'
+          ? { initials: logoData.initials!, backgroundColor: logoData.backgroundColor }
+          : { image: logoData.image!, theme: logoData.theme!, backgroundColor: logoData.backgroundColor },
+        attributes,
+        tactic,
+        formation,
+        points: get().pointsLeft,
+        players: [],
+        userId: user.uid,
+        isBot: false,
+      };
+
+      const newPlayers = generateRandomPlayers(teamId, finalName);
+      newTeam.players = newPlayers;
+
+      // Store team in Firestore
+      const teamsCollection = collection(db, 'teams');
+      const docRef = await addDoc(teamsCollection, newTeam);
+      newTeam.id = docRef.id;
+
+      // Update TeamStore with the new team
+      teamStore.setTeam(newTeam);
+      teamStore.updateTeamFormation(formation);
+      await teamStore.fetchTeam();
+
+      set({ success: 'Team created successfully!' });
+    } catch (err) {
+      console.error('Error creating team:', err);
+      set({ error: 'Failed to create team. Please try again.' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  resetTeamCreation: () => {
+    set({
+      teamName: '',
+      logoType: 'manual',
+      initials: '',
+      backgroundColor: '#62df6e',
+      formation: '4-3-3',
+      customizedName: '',
+      themeTags: [],
+      colorTags: [],
+      attributes: DEFAULT_ATTRIBUTES,
+      tactic: 'Balanced',
+      pointsLeft: TOTAL_POINTS,
+    });
+  },
+}));
+
+// Helper function to generate random players
+const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
+  const positions = [
+    'GK',
+    'DEF',
+    'DEF',
+    'DEF',
+    'DEF',
+    'MID',
+    'MID',
+    'MID',
+    'ATT',
+    'ATT',
+    'ATT',
+  ];
+  const firstNames = [
+    'Alex',
+    'Sam',
+    'Jordan',
+    'Taylor',
+    'Casey',
+    'Morgan',
+    'Riley',
+    'Jamie',
+    'Avery',
+    'Cameron',
+    'Quinn',
+  ];
+  const lastNames = [
+    'Smith',
+    'Johnson',
+    'Williams',
+    'Brown',
+    'Jones',
+    'Garcia',
+    'Miller',
+    'Davis',
+    'Rodriguez',
+    'Martinez',
+    'Wilson',
+  ];
+
+  return positions.map((pos, i) => ({
+    id: `player-${teamId}-${i}`,
+    name: `${firstNames[i]} ${lastNames[i]}`,
+    position: pos,
+    rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
+    teamId,
+  }));
+}; 

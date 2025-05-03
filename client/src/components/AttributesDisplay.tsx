@@ -1,4 +1,4 @@
-import { TeamAttributes } from '@/contexts/GameContext';
+import { TeamAttributes } from '@/types';
 import StatBar from './StatBar';
 
 type AttributesDisplayProps = {

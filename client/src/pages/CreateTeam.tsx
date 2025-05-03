@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLogoGeneration } from "@/hooks/useLogoGeneration";
-import { useTeamCreation } from "@/contexts/TeamCreationContext";
+import { useOnboardingStore } from "@/stores/useOnboardingStore";
 
 // Steps
 import { LogoStep } from "@/components/team-creation/LogoStep";
@@ -42,7 +42,7 @@ const CreateTeam = () => {
     createTeam,
     handleAttributeChange,
     isLoading,
-  } = useTeamCreation();
+  } = useOnboardingStore();
   const {
     isGeneratingLogo,
     generatedClubName,

@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GithubAuthProvider } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Github, Loader2 } from 'lucide-react';
-import { auth } from '@/firebaseConfig';
-import { useGame } from '@/contexts/GameContext';
-import { useUser } from '@/contexts/UserContext';
+import { useUserStore } from '@/stores/useUserStore';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -17,54 +14,37 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { userTeam, isLoading } = useGame();
-  const { user } = useUser();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  const githubProvider = new GithubAuthProvider();
-
-  const handleSuccessfulLogin = () => {
-    setIsLoggingIn(true);
-  };
-
-  // Watch for team data to load after login
-  useEffect(() => {
-    if (isLoggingIn && !isLoading) {
-      navigate(userTeam ? '/dashboard' : '/create-team');
-      setIsLoggingIn(false);
-    }
-  }, [isLoggingIn, isLoading, userTeam, navigate]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, register, handleGithubLogin } = useUserStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await login(email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await register(email, password, email.split('@')[0]);
       }
-      handleSuccessfulLogin();
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred');
-      }
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGithubLogin = async () => {
+  const handleGithub = async () => {
+    setIsLoading(true);
     try {
-      await signInWithPopup(auth, githubProvider);
-      handleSuccessfulLogin();
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred');
-      }
+      await handleGithubLogin();
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -80,7 +60,7 @@ const Login = () => {
           <Tabs defaultValue="login" value={isLogin ? 'login' : 'register'} onValueChange={(v) => setIsLogin(v === 'login')}>
             <TabsList className="bg-footbai-header">
               <TabsTrigger value="login" className="data-[state=active]:bg-footbai-accent data-[state=active]:text-black">
-                Login {user?.email}
+                Login
               </TabsTrigger> 
               <TabsTrigger value="register" className="data-[state=active]:bg-footbai-accent data-[state=active]:text-black">
                 Register
@@ -113,15 +93,15 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
-                  disabled={isLoggingIn}
+                  disabled={isLoading}
                 >
-                  {isLoggingIn ? (
+                  {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Logging in...
+                      {isLogin ? 'Logging in...' : 'Registering...'}
                     </>
                   ) : (
-                    'Login'
+                    isLogin ? 'Login' : 'Register'
                   )}
                 </Button>
               </form>
@@ -134,10 +114,10 @@ const Login = () => {
                 </div>
               </div>
               <Button
-                onClick={handleGithubLogin}
+                onClick={handleGithub}
                 variant="outline"
                 className="w-full border-footbai-header hover:bg-footbai-hover"
-                disabled={isLoggingIn}
+                disabled={isLoading}
               >
                 <Github className="mr-2 h-4 w-4" />
                 GitHub
@@ -170,9 +150,9 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-footbai-accent hover:bg-footbai-accent/80 text-black font-medium"
-                  disabled={isLoggingIn}
+                  disabled={isLoading}
                 >
-                  {isLoggingIn ? (
+                  {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Registering...

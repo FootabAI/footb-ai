@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { GameProvider } from "./contexts/GameContext";
-import { UserProvider, useUser } from "./contexts/UserContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import { useUserStore } from "./stores/useUserStore";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
@@ -14,15 +14,14 @@ import TeamOverview from "./pages/TeamOverview";
 import PlayMatch from "./pages/PlayMatch";
 import MatchSimulation from "./pages/MatchSimulation";
 import MatchSummary from "./pages/MatchSummary";
-import Login from './pages/Login';
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
-import { TeamCreationProvider } from "./contexts/TeamCreationContext";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { isLoading } = useUser();
+  const { isLoading, isLoggedIn } = useUserStore();
 
   if (isLoading) {
     return (
@@ -35,47 +34,82 @@ const AppContent = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Root path redirects based on auth status */}
+        <Route
+          path="/"
+          element={
+            isLoggedIn ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
         {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/home" element={<Home />} />
+        <Route
+          path="/login"
+          element={
+            <ProtectedRoute>
+              <Login />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Protected Routes with Sidebar */}
         <Route element={<Layout />}>
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/team" element={
-            <ProtectedRoute>
-              <TeamOverview />
-            </ProtectedRoute>
-          } />
-          <Route path="/play" element={
-            <ProtectedRoute>
-              <PlayMatch />
-            </ProtectedRoute>
-          } />
-          <Route path="/simulation" element={
-            <ProtectedRoute>
-              <MatchSimulation />
-            </ProtectedRoute>
-          } />
-          <Route path="/summary" element={
-            <ProtectedRoute>
-              <MatchSummary />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/team"
+            element={
+              <ProtectedRoute>
+                <TeamOverview />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/play"
+            element={
+              <ProtectedRoute>
+                <PlayMatch />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/simulation"
+            element={
+              <ProtectedRoute>
+                <MatchSimulation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/summary"
+            element={
+              <ProtectedRoute>
+                <MatchSummary />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* Protected Routes without Sidebar */}
-        <Route path="/create-team" element={
-          <ProtectedRoute>
-            <TeamCreationProvider>
+        <Route
+          path="/create-team"
+          element={
+            <ProtectedRoute>
               <CreateTeam />
-            </TeamCreationProvider>
-          </ProtectedRoute>
-        } />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Catch all route */}
         <Route path="*" element={<NotFound />} />
@@ -87,15 +121,11 @@ const AppContent = () => {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <UserProvider>
-        <GameProvider>
-          <TooltipProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner />
-          </TooltipProvider>
-        </GameProvider>
-      </UserProvider>
+      <TooltipProvider>
+        <AppContent />
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

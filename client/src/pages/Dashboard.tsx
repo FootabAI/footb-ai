@@ -1,16 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '@/contexts/GameContext';
+import { useTeamStore } from '@/stores/useTeamStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import TeamLogo from '@/components/TeamLogo';
 import AttributesDisplay from '@/components/AttributesDisplay';
 import { Play, Users, Trophy, BarChart2 } from 'lucide-react';
-
+import { useCalculateTeamStrength } from '@/hooks/useCalculateTeamStrength';
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { userTeam, calculateTeamStrength } = useGame();
-
-  if (!userTeam) return null;
+  const { team } = useTeamStore();
+  const calculateTeamStrength = useCalculateTeamStrength(team);
+  if (!team) return null;
 
   // Hardcoded stats for demonstration
   const clubStats = {
@@ -34,10 +34,10 @@ const Dashboard = () => {
       <Card className="mb-6 border-footbai-header bg-footbai-container overflow-hidden">
         <CardHeader className="bg-footbai-header pb-6">
           <CardTitle className="flex items-center gap-3">
-            <TeamLogo logo={userTeam.logo} size="md" />
+            <TeamLogo logo={team.logo} size="md" />
             <div>
-              <h2 className="text-lg font-semibold">{userTeam.name}</h2>
-              <p className="text-sm text-gray-400">{userTeam.tactic} Tactic</p>
+              <h2 className="text-lg font-semibold">{team.name}</h2>
+              <p className="text-sm text-gray-400">{team.tactic} Tactic</p>
             </div>
           </CardTitle>
         </CardHeader>
@@ -45,14 +45,14 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="col-span-1 md:col-span-2">
               <h3 className="text-footbai-accent font-medium mb-4">Team Attributes</h3>
-              <AttributesDisplay attributes={userTeam.attributes} teamColor={userTeam.logo.backgroundColor} />
+              <AttributesDisplay attributes={team.attributes} teamColor={team.logo.backgroundColor} />
             </div>
             <div className="flex flex-col items-center justify-center bg-footbai-header rounded-lg p-4">
               <div className="text-4xl font-bold text-footbai-accent mb-2">
-                {calculateTeamStrength(userTeam)}
+                {calculateTeamStrength}
               </div>
               <div className="text-sm text-gray-300 font-medium">TEAM RATING</div>
-              <div className="mt-4 text-xl font-semibold">{userTeam.points} PTS</div>
+              <div className="mt-4 text-xl font-semibold">{team.points} PTS</div>
               <div className="text-sm text-gray-400">Available Points</div>
             </div>
           </div>
