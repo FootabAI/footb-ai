@@ -43,6 +43,8 @@ const CreateTeam = () => {
     createTeam,
     handleAttributeChange,
     isLoading,
+    setMainColor,
+    mainColor,
   } = useOnboardingStore();
   const {
     isGeneratingLogo,
@@ -134,6 +136,8 @@ const CreateTeam = () => {
               onInitialsChange={setInitials}
               backgroundColor={backgroundColor}
               onBackgroundColorChange={setBackgroundColor}
+              mainColor={mainColor}
+              onMainColorChange={setMainColor}
               customizedName={customizedName}
               onCustomizedNameChange={setCustomizedName}
               themeTags={themeTags}

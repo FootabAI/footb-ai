@@ -10,6 +10,7 @@ from openai import OpenAI
 import base64
 from io import BytesIO
 import requests
+from collections import Counter
 
 class LogoService:
     def __init__(self, reference_images_dir: str):
@@ -17,6 +18,69 @@ class LogoService:
         self.embeddings = OpenAIEmbeddings()
         self.llm = ChatOpenAI(temperature=0.7)
         self.client = OpenAI()
+
+    def get_main_color(self, image: Image.Image) -> str:
+        """Extract the most dominant color from the image, excluding dark colors and background colors."""
+        # Convert to RGB if not already
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Get all pixels
+        pixels = list(image.getdata())
+        
+        # Define colors to exclude (background colors and very dark colors)
+        exclude_colors = [
+            (0, 0, 0),        # Pure black
+            (29, 29, 29),     # Container color (#1d1d1d)
+            (38, 38, 38),     # Hover color (#262626)
+            (69, 69, 69),     # Hover color (#454545)
+        ]
+        
+        # Filter out dark colors and background colors
+        def is_valid_color(rgb):
+            r, g, b = rgb
+            
+            # Calculate brightness using weighted RGB values
+            brightness = (r * 299 + g * 587 + b * 114) / 1000
+            
+            # Calculate saturation
+            max_val = max(r, g, b)
+            min_val = min(r, g, b)
+            if max_val == 0:
+                saturation = 0
+            else:
+                saturation = (max_val - min_val) / max_val
+            
+            # Check if color is too dark (higher brightness threshold)
+            if brightness < 50:  # Increased from 30 to 50
+                return False
+            
+            # Check if color is too desaturated (gray)
+            if saturation < 0.2:  # Added saturation check
+                return False
+            
+            # Check if color matches any of the excluded colors
+            for exclude in exclude_colors:
+                if abs(r - exclude[0]) < 5 and abs(g - exclude[1]) < 5 and abs(b - exclude[2]) < 5:
+                    return False
+            
+            return True
+        
+        # Filter pixels and count valid colors
+        valid_pixels = [pixel for pixel in pixels if is_valid_color(pixel)]
+        
+        if not valid_pixels:
+            # If no valid colors found, return a default color
+            return '#62df6e'
+        
+        # Count color frequencies
+        color_counts = Counter(valid_pixels)
+        
+        # Get the most common color
+        most_common = color_counts.most_common(1)[0][0]
+        
+        # Convert to hex
+        return '#{:02x}{:02x}{:02x}'.format(*most_common)
 
     def generate_club_name(self, location: Optional[str] = None, theme: Optional[str] = None) -> str:
         """Generate a football club name based on location and theme."""
@@ -93,8 +157,8 @@ class LogoService:
             "style_prompt": style_prompt
         }).content.strip()
 
-    def generate_logo_image(self, description: str) -> str:
-        """Generate a logo image using DALL-E based on the description."""
+    def generate_logo_image(self, description: str) -> Tuple[str, str]:
+        """Generate a logo image using DALL-E based on the description and return both the image and main color."""
         try:
             response = self.client.images.generate(
                 model="dall-e-3",
@@ -107,6 +171,9 @@ class LogoService:
             image_url = response.data[0].url
             image_response = requests.get(image_url)
             image = Image.open(BytesIO(image_response.content))
+            
+            # Get main color before processing the image
+            main_color = self.get_main_color(image)
             
             image = image.convert('RGBA')
             
@@ -121,7 +188,7 @@ class LogoService:
             output.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue()).decode()
             
-            return f"data:image/png;base64,{img_str}"
+            return f"data:image/png;base64,{img_str}", main_color
             
         except Exception as e:
             raise Exception(f"Error generating logo image: {str(e)}")
@@ -132,13 +199,13 @@ class LogoService:
         theme: Optional[str] = None,
         colors: Optional[List[str]] = None,
         style_preference: Optional[str] = None
-    ) -> Tuple[str, str, str]:
-        """Generate a club name, logo description, and logo image."""
+    ) -> Tuple[str, str, str, str]:
+        """Generate a club name, logo description, logo image, and main color."""
         club_name = self.generate_club_name(location, theme)
         logo_description = self.generate_logo_description(club_name, colors, style_preference)
-        logo_url = self.generate_logo_image(logo_description)
+        logo_url, main_color = self.generate_logo_image(logo_description)
         
-        return club_name, logo_description, logo_url
+        return club_name, logo_description, logo_url, main_color
 
     def get_similar_logos(self, query: str, k: int = 3) -> List[Dict[str, Any]]:
         """Find similar logos based on the query."""

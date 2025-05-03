@@ -31,7 +31,7 @@ match_service = MatchService()
 async def create_club_logo(request: LogoGenerationRequest):
     try:
         # Generate club name and logo
-        club_name, logo_description, logo_url = logo_service.generate_club(
+        club_name, logo_description, logo_url, main_color = logo_service.generate_club(
             theme=request.themes,
             colors=request.colors
         )
@@ -44,6 +44,7 @@ async def create_club_logo(request: LogoGenerationRequest):
             logo_description=logo_description,
             logo_url=logo_url,
             similar_logos=similar_logos,
+            main_color=main_color,
             success=True
         )
         

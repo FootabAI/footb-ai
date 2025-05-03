@@ -26,14 +26,22 @@ export type TeamTactic = 'Balanced' | 'Offensive' | 'Defensive' | 'Counter-Attac
 export type Team = {
   id: string;
   name: string;
-  logo: ManualLogoOptions | AILogoOptions;
+  logo: {
+    type: 'manual' | 'ai';
+    data: {
+      initials?: string;
+      backgroundColor?: string;
+      image?: string;
+      mainColor?: string;
+    };
+  };
   attributes: TeamAttributes;
   tactic: TeamTactic;
+  formation: Formation;
   points: number;
-  isBot?: boolean;
   players: Player[];
   userId: string;
-  formation: string;
+  isBot: boolean;
 };
 
 export type Player = {

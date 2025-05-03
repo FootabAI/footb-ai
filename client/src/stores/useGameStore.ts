@@ -26,8 +26,12 @@ const defaultBotTeam: Team = {
   id: 'bot-1',
   name: 'AI United',
   logo: {
-    initials: 'AI',
-    backgroundColor: '#ff4d4d',
+    type: 'manual',
+    data: {
+      initials: 'AI',
+      backgroundColor: '#ff4d4d',
+      mainColor: '#ff4d4d'
+    }
   },
   attributes: {
     passing: 70,

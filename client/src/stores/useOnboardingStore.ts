@@ -24,19 +24,32 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   error: null,
   success: null,
   teamId: '',
+  mainColor: '#62df6e',
 
   // Actions
   setTeamName: (name) => set({ teamName: name }),
   setLogoType: (type) => set({ logoType: type }),
   setInitials: (initials) => set({ initials }),
-  setBackgroundColor: (color) => set({ backgroundColor: color }),
+  setBackgroundColor: (color) => {
+    set({ 
+      backgroundColor: color,
+      mainColor: color // Also update mainColor when background color changes
+    });
+  },
   setFormation: (formation) => set({ formation }),
   setCustomizedName: (name) => set({ customizedName: name }),
   setThemeTags: (tags) => set({ themeTags: tags }),
   setColorTags: (tags) => set({ colorTags: tags }),
   setTeamId: (id) => set({ teamId: id }),
   generateRandomPlayers: (teamId: string, teamName: string) => generateRandomPlayers(teamId, teamName),
+  
   setTactic: (tactic) => set({ tactic }),
+  setMainColor: (color) => {
+    set({ 
+      mainColor: color,
+      backgroundColor: color // Also update backgroundColor when main color changes
+    });
+  },
 
   handleAttributeChange: (attr, newValue) => {
     const { attributes, pointsLeft } = get();
@@ -60,7 +73,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         throw new Error('User not authenticated');
       }
 
-      const { teamName, logoType, attributes, tactic, customizedName, formation } = get();
+      const { teamName, logoType, attributes, tactic, customizedName, formation, mainColor } = get();
       const teamStore = useTeamStore.getState();
 
       const teamId = crypto.randomUUID();
@@ -81,12 +94,25 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         logoUrl = await getDownloadURL(storageRef);
       }
 
+      console.log('Creating team with main color:', mainColor); // Debug log
+
       const newTeam: Team & { userId: string } = {
         id: teamId,
         name: finalName,
-        logo: logoType === 'manual'
-          ? { initials: logoData.initials!, backgroundColor: logoData.backgroundColor }
-          : { image: logoUrl, theme: logoData.theme!, backgroundColor: logoData.backgroundColor },
+        logo: {
+          type: logoType,
+          data: logoType === 'manual'
+            ? {
+                initials: logoData.initials!,
+                backgroundColor: mainColor,
+                mainColor: mainColor
+              }
+            : {
+                image: logoUrl,
+                mainColor: mainColor,
+                backgroundColor: mainColor
+              }
+        },
         attributes,
         tactic,
         formation,
@@ -121,6 +147,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       logoType: 'manual',
       initials: '',
       backgroundColor: '#62df6e',
+      mainColor: '#62df6e', // Reset mainColor as well
       formation: '4-3-3',
       customizedName: '',
       themeTags: [],

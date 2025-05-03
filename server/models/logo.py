@@ -16,3 +16,4 @@ class LogoGenerationResponse(BaseModel):
     similar_logos: List[SimilarLogo]
     success: bool
     error: Optional[str] = None 
+    main_color: str

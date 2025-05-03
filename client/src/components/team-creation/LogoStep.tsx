@@ -22,8 +22,9 @@ interface LogoStepProps {
   onColorTagsChange: (tags: string[]) => void;
   generatedLogo?: string;
   generatedClubName?: string;
+  mainColor: string;
+  onMainColorChange: (color: string) => void;
 }
-
 
 export const LogoStep = ({
   onLogoTypeChange,
@@ -42,6 +43,8 @@ export const LogoStep = ({
   onColorTagsChange,
   generatedLogo,
   generatedClubName,
+  mainColor,
+  onMainColorChange,
 }: LogoStepProps) => {
   // Auto-populate initials when team name changes
   useEffect(() => {
@@ -61,11 +64,22 @@ export const LogoStep = ({
     }
   }, [teamName, logoType, onInitialsChange]);
 
+  // Set mainColor to background color when using manual logo
+  useEffect(() => {
+    if (logoType === 'manual') {
+      onMainColorChange(backgroundColor);
+    }
+  }, [logoType, backgroundColor, onMainColorChange]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold">Team Design</h2>
       
-      <Tabs defaultValue="manual" value={logoType} onValueChange={(v) => onLogoTypeChange(v as 'manual' | 'ai')}>
+      <Tabs defaultValue="manual" value={logoType} onValueChange={(v) => {
+        onLogoTypeChange(v as 'manual' | 'ai');
+        // Reset mainColor when switching logo types
+        onMainColorChange('#62df6e');
+      }}>
         <TabsList className="bg-footbai-header">
           <TabsTrigger value="manual" className="data-[state=active]:bg-footbai-accent data-[state=active]:text-black">
             Manual Design
@@ -79,8 +93,12 @@ export const LogoStep = ({
           <div className="flex justify-center mb-6">
             <TeamLogo 
               logo={{ 
-                initials, 
-                backgroundColor, 
+                type: 'manual',
+                data: {
+                  initials, 
+                  backgroundColor,
+                  mainColor: backgroundColor
+                },
               }} 
               size="xl" 
               className="!w-48 !h-48"
@@ -137,8 +155,11 @@ export const LogoStep = ({
               <div className="flex justify-center mb-6">
                 <TeamLogo 
                   logo={{ 
-                    initials: "", 
-                    backgroundColor: "#333"
+                    type: 'ai',
+                    data: {
+                      image: generatedLogo,
+                      mainColor: "#333"
+                    }
                   }} 
                   size="xl"
                   className="!w-48 !h-48"
@@ -183,12 +204,12 @@ export const LogoStep = ({
               <div className="flex flex-wrap gap-2 justify-center">
                 { colorTags.map((tag) => (
                   <div key={tag} className="bg-footbai-accent/20 px-2 py-1 rounded-md text-sm">
-                    {tag}
+                    # {tag}
                   </div>
                 ))}
                 { themeTags.map((tag) => (
                   <div key={tag} className="bg-footbai-accent/20 px-2 py-1 rounded-md text-sm">
-                    {tag}
+                    # {tag}
                   </div>
                 ))}
               </div>

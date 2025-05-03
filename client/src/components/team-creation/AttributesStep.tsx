@@ -4,6 +4,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TeamAttributesForm from '@/components/TeamAttributesForm';
 import { TeamAttributes, TeamTactic } from '@/types';
+import { useTeamStore } from '@/stores/useTeamStore';
+import { useOnboardingStore } from '@/stores/useOnboardingStore';
 
 interface AttributesStepProps {
   attributes: TeamAttributes;
@@ -31,11 +33,13 @@ export const AttributesStep = ({
   totalPoints,
   pointsLeft,
 }: AttributesStepProps) => {
+  const { mainColor } = useOnboardingStore();
   return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-lg font-semibold">Team Attributes</h2>
+    <div className="space-y-4 animate-fade-in">
+      <h2 className="text-lg font-semibold">Team Attributes {mainColor}</h2>
       
       <TeamAttributesForm
+        mainColor={mainColor}
         attributes={attributes}
         onChange={onAttributeChange}
         totalPoints={totalPoints}

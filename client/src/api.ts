@@ -13,6 +13,7 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
       colors,
     }),
   });
+  console.log(response);
   return response.json();
 };
 

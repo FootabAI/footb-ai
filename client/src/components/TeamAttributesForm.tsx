@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Shield, Zap, ArrowRight, Dribbble, Target, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useOnboardingStore } from '@/stores/useOnboardingStore';
 
 type TeamAttributesFormProps = {
   attributes: {
@@ -13,6 +14,7 @@ type TeamAttributesFormProps = {
     defending: number;
     physicality: number;
   };
+  mainColor: string;
   onChange: (attr: string, value: number) => void;
   totalPoints: number;
   pointsLeft: number;
@@ -20,6 +22,7 @@ type TeamAttributesFormProps = {
 };
 
 const TeamAttributesForm = ({
+  mainColor,
   attributes,
   onChange,
   totalPoints,
@@ -40,7 +43,7 @@ const TeamAttributesForm = ({
       <div className="bg-footbai-header p-3 rounded-lg mb-6">
         <div className="flex justify-between items-center">
           <span>Points left to allocate:</span>
-          <span className={`font-bold ${pointsLeft === 0 ? 'text-footbai-accent' : 'text-yellow-400'}`}>
+          <span className={`font-bold ${pointsLeft === 0 ? 'text-red-500' : 'text-footbai-accent'}`}>
             {pointsLeft} / {totalPoints}
           </span>
         </div>
@@ -54,7 +57,7 @@ const TeamAttributesForm = ({
             <div key={attr} className="space-y-2">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <IconComponent className="h-4 w-4 text-footbai-accent" />
+                  <IconComponent className="h-4 w-4 text-footbai-accent" style={{ color: mainColor }} />
                   <Label htmlFor={attr} className="capitalize">{attr}</Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -75,6 +78,7 @@ const TeamAttributesForm = ({
               <Slider
                 id={attr}
                 min={1}
+                color={mainColor}
                 max={99}
                 step={1}
                 value={[attributes[attr]]}

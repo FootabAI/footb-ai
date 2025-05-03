@@ -66,7 +66,7 @@ const PlayMatch = () => {
             </h3>
             <AttributesDisplay
               attributes={team.attributes}
-              teamColor={team.logo.backgroundColor}
+              teamColor={team.logo.data.mainColor}
             />
           </CardContent>
         </Card>
@@ -112,7 +112,7 @@ const PlayMatch = () => {
               </h4>
               <AttributesDisplay
                 attributes={botTeam.attributes}
-                teamColor={botTeam.logo.backgroundColor}
+                teamColor={botTeam.logo.data.mainColor}
               />
             </CardContent>
             <CardFooter className="bg-footbai-header px-5 py-3">

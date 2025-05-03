@@ -55,114 +55,115 @@ const TeamOverview = () => {
         <p className="text-gray-400">Manage your squad and team tactics</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left column - Team Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Team card */}
-          <div className="flex-1 flex flex-row gap-6">
-            <Card className="flex-1 bg-footbai-container border-footbai-header">
-              <CardHeader className="bg-footbai-header p-3">
-                <CardTitle className="text-lg">My Squad</CardTitle>
-              </CardHeader>
-              <CardContent className="p-5">
-                {/* Team Identity Section */}
-                <div className="flex items-center gap-3 mb-8">
-                  <TeamLogo logo={team.logo} size="md" />
+
+          <Card className="flex-1 bg-footbai-container border-footbai-header">
+            <CardHeader className="bg-footbai-header p-3">
+              <CardTitle className="text-lg">My Squad</CardTitle>
+            </CardHeader>
+            <CardContent className="p-5">
+              {/* Team Identity Section */}
+              <div className="flex items-center gap-3 mb-8">
+                <TeamLogo logo={team.logo} size="md" />
+                <div>
+                  <h2 className="text-lg font-semibold">{team.name}</h2>
+                  <p className="text-sm text-gray-400">{team.tactic} Tactic</p>
+                </div>
+              </div>
+
+              {/* Team Stats Section */}
+              <div className="grid grid-cols-2 gap-6 mb-8">
+                <div className="bg-footbai-header/50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-400 mb-1">Team Rating</div>
+                  <div className="text-3xl font-bold text-footbai-accent">
+                    {calculateTeamStrength}
+                  </div>
+                </div>
+                <div className="bg-footbai-header/50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-400 mb-1">
+                    Available Points
+                  </div>
+                  <div className="text-3xl font-bold">{team.points} PTS</div>
+                </div>
+              </div>
+
+              {/* Team Settings Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between bg-footbai-header/50 p-4 rounded-lg">
                   <div>
-                    <h2 className="text-lg font-semibold">{team.name}</h2>
-                    <p className="text-sm text-gray-400">
-                      {team.tactic} Tactic
-                    </p>
+                    <div className="text-sm font-medium">Team Tactic</div>
+                    <div className="text-sm text-gray-400">
+                      Choose your team's playing style
+                    </div>
                   </div>
+                  <Select
+                    value={team.tactic}
+                    onValueChange={(value) =>
+                      handleSaveTactic(value as TeamTactic)
+                    }
+                  >
+                    <SelectTrigger className="w-[180px] bg-footbai-container border-footbai-hover">
+                      <SelectValue placeholder="Select tactic" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-footbai-container border-footbai-hover">
+                      <SelectItem value="Balanced">Balanced</SelectItem>
+                      <SelectItem value="Offensive">Offensive</SelectItem>
+                      <SelectItem value="Defensive">Defensive</SelectItem>
+                      <SelectItem value="Counter-Attacking">
+                        Counter-Attacking
+                      </SelectItem>
+                      <SelectItem value="Aggressive">Aggressive</SelectItem>
+                      <SelectItem value="Possession-Based">
+                        Possession-Based
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                {/* Team Stats Section */}
-                <div className="grid grid-cols-2 gap-6 mb-8">
-                  <div className="bg-footbai-header/50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-400 mb-1">
-                      Team Rating
-                    </div>
-                    <div className="text-3xl font-bold text-footbai-accent">
-                      {calculateTeamStrength}
-                    </div>
-                  </div>
-                  <div className="bg-footbai-header/50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-400 mb-1">
-                      Available Points
-                    </div>
-                    <div className="text-3xl font-bold">
-                      {team.points} PTS
-                    </div>
-                  </div>
-                </div>
-
-                {/* Team Settings Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-footbai-header/50 p-4 rounded-lg">
-                    <div>
-                      <div className="text-sm font-medium">Team Tactic</div>
-                      <div className="text-sm text-gray-400">
-                        Choose your team's playing style
-                      </div>
-                    </div>
-                    <Select
-                      value={team.tactic}
-                      onValueChange={(value) =>
-                        handleSaveTactic(value as TeamTactic)
-                      }
-                    >
-                      <SelectTrigger className="w-[180px] bg-footbai-container border-footbai-hover">
-                        <SelectValue placeholder="Select tactic" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-footbai-container border-footbai-hover">
-                        <SelectItem value="Balanced">Balanced</SelectItem>
-                        <SelectItem value="Offensive">Offensive</SelectItem>
-                        <SelectItem value="Defensive">Defensive</SelectItem>
-                        <SelectItem value="Counter-Attacking">
-                          Counter-Attacking
-                        </SelectItem>
-                        <SelectItem value="Aggressive">Aggressive</SelectItem>
-                        <SelectItem value="Possession-Based">
-                          Possession-Based
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="w-[400px] bg-footbai-container border-footbai-header">
-              <CardHeader className="bg-footbai-header p-3">
-                <CardTitle className="text-lg">Current Formation</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                <Tabs
-                  value={team.formation}
-                  onValueChange={(value) =>
-                    handleFormationChange(value as Formation)
-                  }
-                  className="mb-4"
-                >
-                  <TabsList className="grid w-full grid-cols-5">
-                    {formations.map((formation) => (
-                      <TabsTrigger key={formation} value={formation}>
-                        {formation}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-                <FormationDisplay
-                  formation={team.formation as Formation}
-                  size="small"
-                />
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className=" bg-footbai-container border-footbai-header">
+            <CardHeader className="bg-footbai-header p-3">
+              <CardTitle className="text-lg">Current Formation</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <Tabs
+                value={team.formation}
+                onValueChange={(value) =>
+                  handleFormationChange(value as Formation)
+                }
+                className="mb-4"
+              >
+                <TabsList className="grid w-full grid-cols-5">
+                  {formations.map((formation) => (
+                    <TabsTrigger key={formation} value={formation}>
+                      {formation}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              <FormationDisplay
+                formation={team.formation as Formation}
+                size="small"
+              />
+            </CardContent>
+          </Card>
 
           {/* Team upgrades */}
           <Card className="bg-footbai-container border-footbai-header">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2 flex-row justify-between items-center">
               <CardTitle className="text-lg">Team Upgrades</CardTitle>
+              <div className="flex justify-between items-center">
+                <div className="bg-footbai-header px-3 py-1 rounded-full text-sm text-gray-300 border border-footbai-hover">
+                  Available Points:{" "}
+                  <span className="font-bold text-footbai-accent">
+                    {team.points}
+                  </span>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <TeamUpgradeSection />
@@ -171,7 +172,7 @@ const TeamOverview = () => {
         </div>
 
         {/* Right column - Squad */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-2">
           <Card className="h-full bg-footbai-container border-footbai-header">
             <CardHeader className="bg-footbai-header">
               <div className="flex justify-between items-center">
@@ -224,7 +225,7 @@ const TeamOverview = () => {
                     {Object.entries(playersByPosition).map(
                       ([position, positionPlayers]) => (
                         <div key={position}>
-                          <h3 className="font-medium mb-2 text-footbai-accent">
+                          <h3 className="font-medium mb-2 text-white/50">
                             {position === "GK"
                               ? "Goalkeepers"
                               : position === "DEF"
@@ -255,7 +256,7 @@ const TeamOverview = () => {
                                     <StatBar
                                       value={player.rating}
                                       maxValue={99}
-                                      color={team.logo.backgroundColor}
+                                      color={team.logo.data.mainColor}
                                       showValue={false}
                                     />
                                   </div>
@@ -290,7 +291,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={team.logo.backgroundColor}
+                              color={team.logo.data.mainColor}
                               showValue={false}
                             />
                           </div>
@@ -321,7 +322,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={team.logo.backgroundColor}
+                              color={team.logo.data.mainColor}
                               showValue={false}
                             />
                           </div>
@@ -352,7 +353,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={team.logo.backgroundColor}
+                              color={team.logo.data.mainColor}
                               showValue={false}
                             />
                           </div>
@@ -383,7 +384,7 @@ const TeamOverview = () => {
                             <StatBar
                               value={player.rating}
                               maxValue={99}
-                              color={team.logo.backgroundColor}
+                              color={team.logo.data.mainColor}
                               showValue={false}
                             />
                           </div>

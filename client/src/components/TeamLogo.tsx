@@ -1,9 +1,16 @@
-import { ManualLogoOptions, AILogoOptions } from "@/types";
 import { CircleDot, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 type TeamLogoProps = {
-  logo?: ManualLogoOptions | AILogoOptions;
+  logo: {
+    type: 'manual' | 'ai';
+    data: {
+      initials?: string;
+      backgroundColor?: string;
+      image?: string;
+      mainColor?: string;
+    };
+  };
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 };
@@ -17,26 +24,24 @@ const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
     xl: "w-24 h-24 text-4xl"
   };
 
-  // Handle undefined or null logo
-  if (!logo) {
+  if (!logo?.data) {
     return (
       <div className={`${sizeClasses[size]} ${className} rounded-full flex items-center justify-center bg-footbai-container`}>
-        <CircleDot className="w-1/3 h-1/3 opacity-70" />
+        <CircleDot className="w-1/2 h-1/2 opacity-70" />
       </div>
-    );  
+    );
   }
 
-  // Handle AI-generated logo
-  if ('image' in logo) {
+  if (logo.type === 'ai' && logo.data.image) {
     return (
-      <div className={`${sizeClasses[size]} ${className} rounded-full overflow-hidden relative`}>
+      <div className={`${sizeClasses[size]} ${className} rounded-full overflow-hidden relative border-white/50 border`}>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="w-1/2 h-1/2 animate-spin text-footbai-accent" />
           </div>
         )}
         <img 
-          src={logo.image} 
+          src={logo.data.image} 
           onLoad={() => setIsLoading(false)}
           alt="Team Logo" 
           className={`w-full h-full object-cover ${isLoading ? 'opacity-0' : 'opacity-100'}`}
@@ -45,18 +50,17 @@ const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
     );
   }
 
-  // Handle manual logo
-  const hasInitials = logo.initials?.trim().length > 0;
+  const hasInitials = logo.data.initials?.trim().length > 0;
 
   return (
     <div
-      className={`${sizeClasses[size]} ${className} rounded-full flex items-center justify-center font-bold`}
-      style={{ backgroundColor: logo.backgroundColor || "#62df6e" }}
+      className={`${sizeClasses[size]} ${className} rounded-full flex items-center justify-center font-bold border-white/50 border`}
+      style={{ backgroundColor: logo.data.backgroundColor || "#62df6e" }}
     >
       {hasInitials ? (
-        logo.initials
+        logo.data.initials
       ) : (
-        <CircleDot className="w-1/3 h-1/3 opacity-70" />
+        <CircleDot className="w-1/2 h-1/2 opacity-70" />
       )}
     </div>
   );

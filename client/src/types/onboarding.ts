@@ -18,6 +18,7 @@ export type OnboardingState = {
   error: string | null;
   success: string | null;
   teamId: string;
+  mainColor: string;
 
   // Actions
   setTeamName: (name: string) => void;
@@ -30,6 +31,7 @@ export type OnboardingState = {
   setThemeTags: (tags: string[]) => void;
   setColorTags: (tags: string[]) => void;
   setTactic: (tactic: TeamTactic) => void;
+  setMainColor: (color: string) => void;
   handleAttributeChange: (attr: keyof TeamAttributes, newValue: number) => void;
   createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }) => Promise<void>;
   resetTeamCreation: () => void;
