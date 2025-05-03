@@ -40,29 +40,41 @@ class LogoService:
 
     def generate_logo_description(self, club_name: str, colors: Optional[List[str]] = None, style_preference: Optional[str] = None) -> str:
         """Generate a detailed logo description for DALL-E."""
-        template = """Create a description for a football club logo that will be used to generate an image.
+        template = """Create a description for a professional football club logo that will be used to generate an image.
         Club Name: {club_name}
         {colors_prompt}
         {style_prompt}
         
         CRITICAL REQUIREMENTS - DO NOT DEVIATE FROM THESE:
-        1. ABSOLUTELY NO TEXT - The logo must not contain any letters, numbers, words, or text of any kind
-        2. EXTREMELY SIMPLE DESIGN - Use only basic geometric shapes (circles, triangles, squares)
-        3. MINIMAL DETAILS - No complex patterns, no gradients, no shadows, no 3D effects
-        4. FLAT DESIGN ONLY - Everything must be flat, no depth or perspective
-        5. MAXIMUM 3 SHAPES - Use no more than 3 simple geometric shapes
-        6. NO SYMBOLS - Do not use any recognizable symbols or icons
-        7. NO ANIMALS OR OBJECTS - Do not include any animal or object representations
+        1. ABSOLUTELY NO TEXT OR LETTERS - The logo must not contain:
+           - No letters, numbers, or words
+           - No initials or abbreviations
+           - No text of any kind, even stylized
+           - No symbols that could be mistaken for letters
+        2. CLEAN DESIGN - Use simple, bold shapes and elements that are easily recognizable
+        3. MINIMAL DETAILS - Avoid complex patterns, gradients, or 3D effects
+        4. FLAT DESIGN - Keep the design flat and modern
+        5. MAXIMUM 3 MAIN ELEMENTS - Focus on 2-3 key elements that represent the theme
+        6. PROFESSIONAL LOOK - Must look like a real football club logo
         
-        The description should be very simple and include:
-        1. The basic geometric shapes to use (circle, triangle, square, etc.)
-        2. How these shapes are arranged (e.g., "circle inside a square")
-        3. The colors to use for each shape
+        The description should include:
+        1. The main theme elements (e.g., for Greek/Poseidon: trident, waves, or Greek column)
+        2. How these elements are arranged (e.g., "trident centered with wave elements around it")
+        3. The colors to use for each element
         
-        Example of a good description:
-        "A simple circle inside a square. The circle is blue and the square is white."
+        Example for Greek/Poseidon theme:
+        "A bold, stylized trident in the center with subtle wave elements around it. The trident is gold and the waves are deep blue."
         
-        Make the description extremely simple and clear.
+        Example for Viking theme:
+        "A simplified Viking helmet with crossed axes behind it. The helmet is silver and the axes are dark gray."
+        
+        BAD EXAMPLES (DO NOT USE):
+        - "A shield with the letters FC in the center" (contains text)
+        - "A lion with the team's initials below it" (contains text)
+        - "A stylized letter M made of waves" (contains text)
+        - "A trident with the word 'Poseidon' around it" (contains text)
+        
+        Make the description clear and focused on the theme while keeping it simple and professional.
         Only return the description, nothing else.
         """
         

@@ -24,13 +24,6 @@ interface LogoStepProps {
   generatedClubName?: string;
 }
 
-interface AILogoOptions {
-  name: string;
-  tags: string[];
-  backgroundColor: string;
-}
-
-const DEFAULT_AI_COLOR = '#62df6e';
 
 export const LogoStep = ({
   onLogoTypeChange,
@@ -145,7 +138,7 @@ export const LogoStep = ({
                 <TeamLogo 
                   logo={{ 
                     initials: "", 
-                    backgroundColor: DEFAULT_AI_COLOR
+                    backgroundColor: "#333"
                   }} 
                   size="xl"
                   className="!w-48 !h-48"
@@ -187,12 +180,24 @@ export const LogoStep = ({
                   className="w-48 h-48 object-contain rounded-full bg-transparent"
                 />
               </div>
+              <div className="flex flex-wrap gap-2 justify-center">
+                { colorTags.map((tag) => (
+                  <div key={tag} className="bg-footbai-accent/20 px-2 py-1 rounded-md text-sm">
+                    {tag}
+                  </div>
+                ))}
+                { themeTags.map((tag) => (
+                  <div key={tag} className="bg-footbai-accent/20 px-2 py-1 rounded-md text-sm">
+                    {tag}
+                  </div>
+                ))}
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="team-name">Team Name</Label>
                 <Input
                   id="team-name"
-                  value={customizedName}
+                  value={customizedName || generatedClubName}
                   onChange={(e) => onCustomizedNameChange(e.target.value)}
                   placeholder="Customize the generated team name"
                   className="bg-footbai-header border-footbai-hover focus:ring-footbai-accent"

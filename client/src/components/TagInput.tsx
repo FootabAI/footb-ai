@@ -1,7 +1,10 @@
 import React, { useState, KeyboardEvent } from "react";
-import { X, Tag } from "lucide-react";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import Tag from "./ui/Tag";
+
+
 interface TagInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
@@ -51,19 +54,7 @@ const TagInput = ({
 
       <div className="flex flex-wrap gap-2 pt-1 bg-color-black h-8">
         {tags.map((tag) => (
-          <div
-            key={tag}
-            className="flex items-center gap-1 bg-footbai-accent/20 text-footbai-accent px-2 py-1 rounded-md text-sm"
-          >
-            <span>{tag}</span>
-            <button
-              type="button"
-              onClick={() => removeTag(tag)}
-              className="text-footbai-accent hover:text-white"
-            >
-              <X size={14} />
-            </button>
-          </div>
+          <Tag key={tag} tag={tag} removeTag={removeTag} />
         ))}
       </div>
     </div>

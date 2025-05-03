@@ -20,10 +20,10 @@ const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
   // Handle undefined or null logo
   if (!logo) {
     return (
-      <div className={`${sizeClasses[size]} ${className} rounded-full flex items-center justify-center bg-gray-200`}>
-        <CircleDot className="w-1/2 h-1/2 opacity-70" />
+      <div className={`${sizeClasses[size]} ${className} rounded-full flex items-center justify-center bg-footbai-container`}>
+        <CircleDot className="w-1/3 h-1/3 opacity-70" />
       </div>
-    );
+    );  
   }
 
   // Handle AI-generated logo
@@ -56,7 +56,7 @@ const TeamLogo = ({ logo, size = "md", className = "" }: TeamLogoProps) => {
       {hasInitials ? (
         logo.initials
       ) : (
-        <CircleDot className="w-1/2 h-1/2 opacity-70" />
+        <CircleDot className="w-1/3 h-1/3 opacity-70" />
       )}
     </div>
   );
