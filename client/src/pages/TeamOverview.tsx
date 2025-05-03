@@ -148,6 +148,7 @@ const TeamOverview = () => {
               <FormationDisplay
                 formation={team.formation as Formation}
                 size="small"
+                isOnboarding={false}
               />
             </CardContent>
           </Card>

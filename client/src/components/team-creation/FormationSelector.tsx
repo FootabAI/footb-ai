@@ -9,12 +9,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface FormationDisplayProps {
   formation: Formation;
   size?: 'small' | 'large';
+  isOnboarding?: boolean;
 }
 
-export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplayProps) => {
+export const FormationDisplay = ({ formation, size = 'large', isOnboarding = false }: FormationDisplayProps) => {
   const positions = formation.split('-').map(Number);
   const totalPlayers = positions.reduce((a, b) => a + b, 0) + 1; // +1 for goalkeeper
+  const { team } = useTeamStore();
   const { mainColor } = useOnboardingStore();
+
+  const teamMainColor = isOnboarding
+  ? mainColor
+  : team?.logo?.data?.mainColor || '#62df6e';
 
 
   const sizeClasses = {
@@ -56,7 +62,7 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
           key={`gk-${formation}`}
           className={`absolute ${currentSize.spacing.gk} left-1/2 transform -translate-x-1/2 ${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
           variants={playerVariants}
-          style={{ backgroundColor: mainColor }}
+          style={{ backgroundColor: teamMainColor }}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -86,7 +92,7 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
               className={`${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
               variants={playerVariants}
               initial="initial"
-              style={{ backgroundColor: mainColor }}
+              style={{ backgroundColor: teamMainColor }}
               animate="animate"
               exit="exit"
               transition={{ duration: 0.3, delay: i * 0.05 }}
@@ -115,7 +121,7 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
                 className={`${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
                 variants={playerVariants}
                 initial="initial"
-                style={{ backgroundColor: mainColor }}
+                style={{ backgroundColor: teamMainColor }}
                 animate="animate"
                 exit="exit"
                 transition={{ duration: 0.3, delay: i * 0.05 }}
@@ -145,7 +151,7 @@ export const FormationDisplay = ({ formation, size = 'large' }: FormationDisplay
                 className={`${currentSize.player} rounded-full flex items-center justify-center text-white font-bold`}
                 variants={playerVariants}
                 initial="initial"
-                style={{ backgroundColor: mainColor }}
+                style={{ backgroundColor: teamMainColor }}
                 animate="animate"
                 exit="exit"
                 transition={{ duration: 0.3, delay: i * 0.05 }}
@@ -214,7 +220,7 @@ export const FormationSelector = ({
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <FormationDisplay formation={currentFormation} size={size} />
+              <FormationDisplay formation={currentFormation} size={size} isOnboarding={isOnboarding} />
             </motion.div>
           </AnimatePresence>
         </div>
