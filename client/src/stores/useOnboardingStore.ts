@@ -94,8 +94,6 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         logoUrl = await getDownloadURL(storageRef);
       }
 
-      console.log('Creating team with main color:', mainColor); // Debug log
-
       const newTeam: Team & { userId: string } = {
         id: teamId,
         name: finalName,
@@ -131,7 +129,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       newTeam.id = docRef.id;
 
       // Update TeamStore with the new team
-      await teamStore.updateTeam(newTeam);
+      teamStore.setTeam(newTeam);
       set({ success: 'Team created successfully!' });
     } catch (err) {
       console.error('Error creating team:', err);

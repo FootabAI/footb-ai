@@ -36,16 +36,18 @@ export const useTeamStore = create<TeamState>((set) => ({
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
 
+      // First update the store state
+      set({ team });
+
+      // Then update Firestore if the team exists
       const teamsCollection = collection(db, 'teams');
       const q = query(teamsCollection, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
-        throw new Error('No team found for user');
+      if (!querySnapshot.empty) {
+        const teamDoc = querySnapshot.docs[0];
+        await updateDoc(teamDoc.ref, team);
       }
-
-      const teamDoc = querySnapshot.docs[0];
-      await updateDoc(teamDoc.ref, team);
     } catch (error) {
       console.error('Error updating team:', error);
       throw error;

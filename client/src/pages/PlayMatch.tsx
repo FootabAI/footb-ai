@@ -17,7 +17,7 @@ import { useGameStore } from "@/stores/useGameStore";
 const PlayMatch = () => {
   const navigate = useNavigate();
   const { team } = useTeamStore();
-  const calculateTeamStrength = useCalculateTeamStrength(team);
+  const calculateTeamStrength = useCalculateTeamStrength(team?.attributes);
   const { botTeam, setupMatch } = useGameStore();
   if (!team) return null;
 
@@ -61,10 +61,11 @@ const PlayMatch = () => {
 
             <Separator className="my-4 bg-footbai-header" />
 
-            <h3 className="text-footbai-accent font-medium mb-4">
+            <h3 className="text-white font-medium mb-4">
               Team Attributes
             </h3>
             <AttributesDisplay
+              layout="single"
               attributes={team.attributes}
               teamColor={team.logo.data.mainColor}
             />
@@ -107,10 +108,11 @@ const PlayMatch = () => {
             </CardContent>
             <Separator className="bg-footbai-header" />
             <CardContent className="p-5">
-              <h4 className="text-sm font-medium text-footbai-accent mb-3">
+              <h4 className="text-sm font-medium text-white mb-3">
                 Opponent Attributes
               </h4>
               <AttributesDisplay
+                layout="grid"
                 attributes={botTeam.attributes}
                 teamColor={botTeam.logo.data.mainColor}
               />

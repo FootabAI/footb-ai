@@ -13,7 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
+import logo from "@/assets/logo.png";
 interface SidebarProps {
   isCollapsed?: boolean;
   onToggle?: () => void;
@@ -90,13 +90,14 @@ const Sidebar = ({ isCollapsed = false, onToggle }: SidebarProps) => {
         {/* App logo and name */}
         <div
           className={`mb-6 flex items-center ${
-            isCollapsed ? "justify-center" : ""
+            isCollapsed ? "justify-center" : "justify-start items-center gap-2"
           }`}
         >
-          <Logo size={32} className="w-8 h-8" color="#62df6e" />
+          {/* <Logo size={32} className="w-8 h-8" color="#62df6e" /> */}
+          <img src={logo} alt="footb-ai" className="object-contain" width={30} />
           {!isCollapsed && showHeaderText && (
-            <h1 className="text-xl font-bold ml-2 text-white transition-opacity duration-200">
-              footb-<span className="text-footbai-accent">ai</span>
+            <h1 className="text-xl font-bold text-white transition-opacity duration-200 mt-1">
+              Footb-<span className="text-footbai-accent">AI</span>
             </h1>
           )}
         </div>

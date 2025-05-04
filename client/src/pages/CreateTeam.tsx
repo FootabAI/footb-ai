@@ -55,19 +55,28 @@ const CreateTeam = () => {
   } = useLogoGeneration();
 
   const handleCreateTeam = async () => {
-    if (logoType === "manual") {
-      await createTeam({
-        initials,
-        backgroundColor,
-      });
-    } else {
-      await createTeam({
-        image: generatedLogo,
-        theme: "",
-        backgroundColor: "#62df6e",
+    try {
+      if (logoType === "manual") {
+        await createTeam({
+          initials,
+          backgroundColor,
+        });
+      } else {
+        await createTeam({
+          image: generatedLogo,
+          theme: "",
+          backgroundColor: "#62df6e",
+        });
+      }
+      navigate("/dashboard");
+    } catch (error) {
+      console.error('Error creating team:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create team. Please try again.",
+        variant: "destructive",
       });
     }
-    navigate("/dashboard");
   };
 
   const getNextStep = (currentStep: Step): Step | null => {

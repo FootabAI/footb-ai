@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Trophy, Users } from "lucide-react";
 import { useUserStore } from "@/stores/useUserStore";
+import logo from "@/assets/logo.png";
 const Home = () => {
   const navigate = useNavigate();
   const { isLoggedIn, setIsLoggedIn } = useUserStore();
@@ -28,9 +29,12 @@ const Home = () => {
     <div className="min-h-screen flex flex-col bg-footbai-background">
       {/* Hero section */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center">
-        <h1 className="text-4xl sm:text-6xl font-bold text-white mb-4">
-          footb-<span className="text-footbai-accent">ai</span>
-        </h1>
+        <div className="flex flex-row items-center justify-center gap-4 mb-8">
+          <img src={logo} alt="footb-ai" className="object-contain" width={60} />
+          <h1 className="text-4xl sm:text-6xl font-bold text-white pt-2">
+            Footb-<span className="text-footbai-accent">AI</span>
+          </h1>
+        </div>
         <p className="text-xl text-gray-300 mb-8 max-w-2xl">
           Create your football club, customize your team's attributes, and
           simulate matches in this interactive football simulation game.
