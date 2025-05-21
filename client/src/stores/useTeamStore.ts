@@ -1,27 +1,29 @@
 import { create } from 'zustand';
-import { Team, TeamAttributes, TeamTactic, Formation } from '@/types';
+import { Team, TeamAttributes, TeamTactic, Formation, TeamStats } from '@/types';
 import { db, auth } from '@/firebaseConfig';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { DEFAULT_TEAM_STATS } from '@/config/default_attributes';
+
 
 type TeamState = {
   team: Team | null;
   selectedFormation: Formation;
   isLoading: boolean;
   error: string | null;
-
   // Actions
   setTeam: (team: Team | null) => void;
   updateTeam: (team: Team) => Promise<void>;
   updateTeamAttributes: (attributes: TeamAttributes, points: number) => void;
   updateTeamTactic: (tactic: TeamTactic) => void;
   updateTeamFormation: (formation: Formation) => void;
+  updateTeamStats: (stats: Partial<TeamStats>) => Promise<void>;
   resetTeam: () => void;
   clearTeam: () => void;
   fetchTeam: () => Promise<void>;
 };
 
-export const useTeamStore = create<TeamState>((set) => ({
+export const useTeamStore = create<TeamState>((set, get) => ({
   // Initial state
   team: null,
   selectedFormation: '4-3-3' as Formation,
@@ -36,10 +38,7 @@ export const useTeamStore = create<TeamState>((set) => ({
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
 
-      // First update the store state
       set({ team });
-
-      // Then update Firestore if the team exists
       const teamsCollection = collection(db, 'teams');
       const q = query(teamsCollection, where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
@@ -83,6 +82,21 @@ export const useTeamStore = create<TeamState>((set) => ({
     if (state.team) {
       state.updateTeam({ ...state.team, formation }).catch(console.error);
     }
+  },
+  
+  updateTeamStats: async (stats) => {
+    const { team } = get();
+    if (!team) return;
+
+    const updatedTeam = {
+      ...team,
+      teamStats: {
+        ...(team.teamStats || DEFAULT_TEAM_STATS),
+        ...stats
+      }
+    };
+
+    await get().updateTeam(updatedTeam);
   },
   
   resetTeam: () => set({ team: null, selectedFormation: '4-3-3' as Formation }),

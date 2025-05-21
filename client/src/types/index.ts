@@ -1,3 +1,5 @@
+import { TeamStats } from '@/types';
+
 // Types
 export type TeamAttributes = {
   passing: number;
@@ -42,6 +44,7 @@ export type Team = {
   players: Player[];
   userId: string;
   isBot: boolean;
+  teamStats: TeamStats | null;
 };
 
 export type Player = {
@@ -145,3 +148,4 @@ export type TeamCreationContextType = {
 export * from './game';
 export * from './user';
 export * from './onboarding';
+export * from './team';

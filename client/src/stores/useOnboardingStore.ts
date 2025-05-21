@@ -1,39 +1,40 @@
-import { create } from 'zustand';
-import { db, auth, storage } from '@/firebaseConfig';
-import { addDoc, collection } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Team, Player, TeamAttributes, TeamTactic, Formation } from '@/types';
-import { useTeamStore } from './useTeamStore';
-import { DEFAULT_ATTRIBUTES, TOTAL_POINTS } from '@/config/default_attributes';
-import { OnboardingState } from '@/types/onboarding';
+import { create } from "zustand";
+import { db, auth, storage } from "@/firebaseConfig";
+import { addDoc, collection } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Team, Player} from "@/types";
+import { useTeamStore } from "./useTeamStore";
+import { DEFAULT_ATTRIBUTES, TOTAL_POINTS, DEFAULT_TEAM_STATS } from "@/config/default_attributes";
+import { OnboardingState } from "@/types/onboarding";
+
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   // Initial state
-  teamName: '',
-  logoType: 'manual',
-  initials: '',
-  backgroundColor: '#62df6e',
-  formation: '4-3-3',
-  customizedName: '',
+  teamName: "",
+  logoType: "manual",
+  initials: "",
+  backgroundColor: "#62df6e",
+  formation: "4-3-3",
+  customizedName: "",
   themeTags: [],
   colorTags: [],
   attributes: DEFAULT_ATTRIBUTES,
-  tactic: 'Balanced',
+  tactic: "Balanced",
   pointsLeft: TOTAL_POINTS,
   isLoading: false,
   error: null,
   success: null,
-  teamId: '',
-  mainColor: '#62df6e',
-
+  teamId: "",
+  mainColor: "#62df6e",
+  teamStats: DEFAULT_TEAM_STATS,
   // Actions
   setTeamName: (name) => set({ teamName: name }),
   setLogoType: (type) => set({ logoType: type }),
   setInitials: (initials) => set({ initials }),
   setBackgroundColor: (color) => {
-    set({ 
+    set({
       backgroundColor: color,
-      mainColor: color // Also update mainColor when background color changes
+      mainColor: color, // Also update mainColor when background color changes
     });
   },
   setFormation: (formation) => set({ formation }),
@@ -41,13 +42,13 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   setThemeTags: (tags) => set({ themeTags: tags }),
   setColorTags: (tags) => set({ colorTags: tags }),
   setTeamId: (id) => set({ teamId: id }),
-  generateRandomPlayers: (teamId: string, teamName: string) => generateRandomPlayers(teamId, teamName),
-  
+  generateRandomPlayers: (teamId: string, teamName: string) =>
+    generateRandomPlayers(teamId, teamName),
   setTactic: (tactic) => set({ tactic }),
   setMainColor: (color) => {
-    set({ 
+    set({
       mainColor: color,
-      backgroundColor: color // Also update backgroundColor when main color changes
+      backgroundColor: color, // Also update backgroundColor when main color changes
     });
   },
 
@@ -64,23 +65,31 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     });
   },
 
-  createTeam: async (logoData) => {
+  createTeam: async (logoData, teamStats) => {
     set({ isLoading: true, error: null, success: null });
 
     try {
       const user = auth.currentUser;
       if (!user) {
-        throw new Error('User not authenticated');
+        throw new Error("User not authenticated");
       }
 
-      const { teamName, logoType, attributes, tactic, customizedName, formation, mainColor } = get();
+      const {
+        teamName,
+        logoType,
+        attributes,
+        tactic,
+        customizedName,
+        formation,
+        mainColor,
+      } = get();
       const teamStore = useTeamStore.getState();
 
       const teamId = crypto.randomUUID();
-      const finalName = logoType === 'manual' ? teamName : customizedName;
+      const finalName = logoType === "manual" ? teamName : customizedName;
 
-      let logoUrl = '';
-      if (logoType === 'ai' && logoData.image) {
+      let logoUrl = "";
+      if (logoType === "ai" && logoData.image) {
         // Upload AI-generated logo to Firebase Storage
         const storageRef = ref(storage, `team-logos/${teamId}`);
         const response = await fetch(logoData.image);
@@ -88,8 +97,8 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         await uploadBytes(storageRef, blob, {
           customMetadata: {
             userId: user.uid,
-            teamId: teamId
-          }
+            teamId: teamId,
+          },
         });
         logoUrl = await getDownloadURL(storageRef);
       }
@@ -99,21 +108,23 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         name: finalName,
         logo: {
           type: logoType,
-          data: logoType === 'manual'
-            ? {
-                initials: logoData.initials!,
-                backgroundColor: mainColor,
-                mainColor: mainColor
-              }
-            : {
-                image: logoUrl,
-                mainColor: mainColor,
-                backgroundColor: mainColor
-              }
+          data:
+            logoType === "manual"
+              ? {
+                  initials: logoData.initials!,
+                  backgroundColor: mainColor,
+                  mainColor: mainColor,
+                }
+              : {
+                  image: logoUrl,
+                  mainColor: mainColor,
+                  backgroundColor: mainColor,
+                },
         },
         attributes,
         tactic,
         formation,
+        teamStats: teamStats,
         points: get().pointsLeft,
         players: [],
         userId: user.uid,
@@ -124,16 +135,16 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       newTeam.players = newPlayers;
 
       // Store team in Firestore
-      const teamsCollection = collection(db, 'teams');
+      const teamsCollection = collection(db, "teams");
       const docRef = await addDoc(teamsCollection, newTeam);
       newTeam.id = docRef.id;
 
       // Update TeamStore with the new team
       teamStore.setTeam(newTeam);
-      set({ success: 'Team created successfully!' });
+      set({ success: "Team created successfully!" });
     } catch (err) {
-      console.error('Error creating team:', err);
-      set({ error: 'Failed to create team. Please try again.' });
+      console.error("Error creating team:", err);
+      set({ error: "Failed to create team. Please try again." });
     } finally {
       set({ isLoading: false });
     }
@@ -141,17 +152,17 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
   resetTeamCreation: () => {
     set({
-      teamName: '',
-      logoType: 'manual',
-      initials: '',
-      backgroundColor: '#62df6e',
-      mainColor: '#62df6e', // Reset mainColor as well
-      formation: '4-3-3',
-      customizedName: '',
+      teamName: "",
+      logoType: "manual",
+      initials: "",
+      backgroundColor: "#62df6e",
+      mainColor: "#62df6e", // Reset mainColor as well
+      formation: "4-3-3",
+      customizedName: "",
       themeTags: [],
       colorTags: [],
       attributes: DEFAULT_ATTRIBUTES,
-      tactic: 'Balanced',
+      tactic: "Balanced",
       pointsLeft: TOTAL_POINTS,
     });
   },
@@ -160,43 +171,43 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 // Helper function to generate random players
 const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
   const positions = [
-    'GK',
-    'DEF',
-    'DEF',
-    'DEF',
-    'DEF',
-    'MID',
-    'MID',
-    'MID',
-    'ATT',
-    'ATT',
-    'ATT',
+    "GK",
+    "DEF",
+    "DEF",
+    "DEF",
+    "DEF",
+    "MID",
+    "MID",
+    "MID",
+    "ATT",
+    "ATT",
+    "ATT",
   ];
   const firstNames = [
-    'Alex',
-    'Sam',
-    'Jordan',
-    'Taylor',
-    'Casey',
-    'Morgan',
-    'Riley',
-    'Jamie',
-    'Avery',
-    'Cameron',
-    'Quinn',
+    "Alex",
+    "Sam",
+    "Jordan",
+    "Taylor",
+    "Casey",
+    "Morgan",
+    "Riley",
+    "Jamie",
+    "Avery",
+    "Cameron",
+    "Quinn",
   ];
   const lastNames = [
-    'Smith',
-    'Johnson',
-    'Williams',
-    'Brown',
-    'Jones',
-    'Garcia',
-    'Miller',
-    'Davis',
-    'Rodriguez',
-    'Martinez',
-    'Wilson',
+    "Smith",
+    "Johnson",
+    "Williams",
+    "Brown",
+    "Jones",
+    "Garcia",
+    "Miller",
+    "Davis",
+    "Rodriguez",
+    "Martinez",
+    "Wilson",
   ];
 
   return positions.map((pos, i) => ({
@@ -206,4 +217,4 @@ const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
     rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
     teamId,
   }));
-}; 
+};

@@ -45,6 +45,7 @@ const defaultBotTeam: Team = {
   points: 0,
   isBot: true,
   players: [],
+  teamStats: null,
   userId: '',
   formation: '4-3-3',
 };
