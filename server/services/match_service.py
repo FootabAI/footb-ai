@@ -2,7 +2,7 @@
 Real-life–shaped football-match simulator.
 
 • Reads per-match averages (goals, yellows, reds) from the
-  "Club-Football-Match-Data-2000-2025" CSV (once, via MatchStats).
+  "match_statistics.json" file.
 • Uses those numbers as Poisson parameters for each new MatchService instance.
 • Streams JSON lines identical to your original interface.
 • Optional GPT commentary (set use_llm=True).
@@ -26,58 +26,54 @@ except ImportError:
 # ──────────────────────────────────────────────────────────────────────────
 class MatchStats:
     """
-    Load *Club-Football-Match-Data-2000-2025* once and expose league-wide means.
+    Load match statistics from JSON file and expose league-wide means.
     """
 
-    REQUIRED_COLS = [
-        "FTHome", "FTAway",
-        "HomeYellow", "AwayYellow",
-        "HomeRed", "AwayRed",
-        "HomeShots", "AwayShots",
-        "HomeTarget", "AwayTarget",
-        "HomeFouls", "AwayFouls",
-        "HomeCorners", "AwayCorners",
-    ]
-
-    def __init__(self, csv_path: str | Path):
-        path = Path(csv_path)
+    def __init__(self, json_path: str | Path):
+        path = Path(json_path)
         if not path.exists():
             raise FileNotFoundError(path)
-        df = pd.read_csv(csv_path, low_memory=False)[self.REQUIRED_COLS]
+        
+        with open(path) as f:
+            stats = json.load(f)
 
         # per-team, per-match averages
-        self.lambda_home_goals = df["FTHome"].mean()
-        self.lambda_away_goals = df["FTAway"].mean()
-        self.lambda_home_yel   = df["HomeYellow"].mean()
-        self.lambda_away_yel   = df["AwayYellow"].mean()
-        self.lambda_home_shots = df["HomeShots"].mean()
-        self.lambda_away_shots = df["AwayShots"].mean()
-        self.lambda_home_sot   = df["HomeTarget"].mean()
-        self.lambda_away_sot   = df["AwayTarget"].mean()
-        self.lambda_home_fouls = df["HomeFouls"].mean()
-        self.lambda_away_fouls = df["AwayFouls"].mean()
-        self.lambda_home_corners = df["HomeCorners"].mean()
-        self.lambda_away_corners = df["AwayCorners"].mean()
+        self.lambda_home_goals = stats["FTHome"]["mean"]
+        self.lambda_away_goals = stats["FTAway"]["mean"]
+        self.lambda_home_yel   = stats["HomeYellow"]["mean"]
+        self.lambda_away_yel   = stats["AwayYellow"]["mean"]
+        self.lambda_home_shots = stats["HomeShots"]["mean"]
+        self.lambda_away_shots = stats["AwayShots"]["mean"]
+        self.lambda_home_sot   = stats["HomeTarget"]["mean"]
+        self.lambda_away_sot   = stats["AwayTarget"]["mean"]
+        self.lambda_home_fouls = stats["HomeFouls"]["mean"]
+        self.lambda_away_fouls = stats["AwayFouls"]["mean"]
+        self.lambda_home_corners = stats["HomeCorners"]["mean"]
+        self.lambda_away_corners = stats["AwayCorners"]["mean"]
 
         # Calculate possession based on shots and corners (as a proxy)
-        total_home_actions = df["HomeShots"].mean() + df["HomeCorners"].mean()
-        total_away_actions = df["AwayShots"].mean() + df["AwayCorners"].mean()
+        total_home_actions = stats["HomeShots"]["mean"] + stats["HomeCorners"]["mean"]
+        total_away_actions = stats["AwayShots"]["mean"] + stats["AwayCorners"]["mean"]
         total_actions = total_home_actions + total_away_actions
         self.lambda_home_poss = (total_home_actions / total_actions) * 100
         self.lambda_away_poss = (total_away_actions / total_actions) * 100
 
-        # # Calculate pass accuracy based on shots on target ratio
-        # self.lambda_home_pass_acc = (df["HomeTarget"].mean() / df["HomeShots"].mean()) * 100 if df["HomeShots"].mean() > 0 else 80
-        # self.lambda_away_pass_acc = (df["AwayTarget"].mean() / df["AwayShots"].mean()) * 100 if df["AwayShots"].mean() > 0 else 80
-
-        # # Calculate passes based on shots and corners (as a proxy)
-        # self.lambda_home_passes = (df["HomeShots"].mean() + df["HomeCorners"].mean()) * 40  # Rough estimate
-        # self.lambda_away_passes = (df["AwayShots"].mean() + df["AwayCorners"].mean()) * 40  # Rough estimate
-
-        # empirical probability that a yellow begets a red
-        total_yel = df["HomeYellow"].sum() + df["AwayYellow"].sum()
-        total_red = df["HomeRed"].sum()  + df["AwayRed"].sum()
+        # Calculate red card probability after yellow
+        total_yel = stats["HomeYellow"]["mean"] + stats["AwayYellow"]["mean"]
+        total_red = stats["HomeRed"]["mean"] + stats["AwayRed"]["mean"]
         self.prob_red_after_yel = total_red / total_yel if total_yel else 0.05
+
+        # Store standard deviations for more realistic variation
+        self.std_home_goals = stats["FTHome"]["std"]
+        self.std_away_goals = stats["FTAway"]["std"]
+        self.std_home_shots = stats["HomeShots"]["std"]
+        self.std_away_shots = stats["AwayShots"]["std"]
+        self.std_home_sot = stats["HomeTarget"]["std"]
+        self.std_away_sot = stats["AwayTarget"]["std"]
+        self.std_home_fouls = stats["HomeFouls"]["std"]
+        self.std_away_fouls = stats["AwayFouls"]["std"]
+        self.std_home_corners = stats["HomeCorners"]["std"]
+        self.std_away_corners = stats["AwayCorners"]["std"]
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -320,14 +316,50 @@ class MatchService:
 
     def _update_progressive_stats(self, progress: float) -> None:
         """Update statistics that progress with match time."""
-        self._stats["home"]["shots"] = int(self.SHOTS_HOME * progress)
-        self._stats["away"]["shots"] = int(self.SHOTS_AWAY * progress)
-        self._stats["home"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_HOME * progress)
-        self._stats["away"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_AWAY * progress)
-        self._stats["home"]["corners"] = int(self.CORNERS_HOME * progress)
-        self._stats["away"]["corners"] = int(self.CORNERS_AWAY * progress)
-        self._stats["home"]["fouls"] = int(self.FOULS_HOME * progress)
-        self._stats["away"]["fouls"] = int(self.FOULS_AWAY * progress)
+        if hasattr(self, 'stats_backend') and self.stats_backend:
+            # Use normal distribution with mean and std from stats
+            self._stats["home"]["shots"] = int(max(0, self._np_rng.normal(
+                self.SHOTS_HOME * progress,
+                self.stats_backend.std_home_shots * progress
+            )))
+            self._stats["away"]["shots"] = int(max(0, self._np_rng.normal(
+                self.SHOTS_AWAY * progress,
+                self.stats_backend.std_away_shots * progress
+            )))
+            self._stats["home"]["shotsOnTarget"] = int(max(0, self._np_rng.normal(
+                self.SHOTS_ON_TARGET_HOME * progress,
+                self.stats_backend.std_home_sot * progress
+            )))
+            self._stats["away"]["shotsOnTarget"] = int(max(0, self._np_rng.normal(
+                self.SHOTS_ON_TARGET_AWAY * progress,
+                self.stats_backend.std_away_sot * progress
+            )))
+            self._stats["home"]["corners"] = int(max(0, self._np_rng.normal(
+                self.CORNERS_HOME * progress,
+                self.stats_backend.std_home_corners * progress
+            )))
+            self._stats["away"]["corners"] = int(max(0, self._np_rng.normal(
+                self.CORNERS_AWAY * progress,
+                self.stats_backend.std_away_corners * progress
+            )))
+            self._stats["home"]["fouls"] = int(max(0, self._np_rng.normal(
+                self.FOULS_HOME * progress,
+                self.stats_backend.std_home_fouls * progress
+            )))
+            self._stats["away"]["fouls"] = int(max(0, self._np_rng.normal(
+                self.FOULS_AWAY * progress,
+                self.stats_backend.std_away_fouls * progress
+            )))
+        else:
+            # Fallback to simple linear progression
+            self._stats["home"]["shots"] = int(self.SHOTS_HOME * progress)
+            self._stats["away"]["shots"] = int(self.SHOTS_AWAY * progress)
+            self._stats["home"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_HOME * progress)
+            self._stats["away"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_AWAY * progress)
+            self._stats["home"]["corners"] = int(self.CORNERS_HOME * progress)
+            self._stats["away"]["corners"] = int(self.CORNERS_AWAY * progress)
+            self._stats["home"]["fouls"] = int(self.FOULS_HOME * progress)
+            self._stats["away"]["fouls"] = int(self.FOULS_AWAY * progress)
 
     def _normalize_stats(self) -> None:
         """Ensure all statistics are within realistic ranges."""
@@ -461,10 +493,23 @@ class MatchService:
     def _simulate_goals_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
         """Simulate goals for a specific time chunk."""
         events = []
-        # Adjust lambda based on chunk size
+        # Adjust lambda based on chunk size and add some randomness
         chunk_size = end_min - start_min
-        nh = int(self._np_rng.poisson(self.GOALS_LAMBDA_HOME * (chunk_size / 90)))
-        na = int(self._np_rng.poisson(self.GOALS_LAMBDA_AWAY * (chunk_size / 90)))
+        chunk_ratio = chunk_size / 90
+
+        # Use normal distribution with mean and std from stats
+        if hasattr(self, 'stats_backend') and self.stats_backend:
+            nh = int(max(0, self._np_rng.normal(
+                self.GOALS_LAMBDA_HOME * chunk_ratio,
+                self.stats_backend.std_home_goals * chunk_ratio
+            )))
+            na = int(max(0, self._np_rng.normal(
+                self.GOALS_LAMBDA_AWAY * chunk_ratio,
+                self.stats_backend.std_away_goals * chunk_ratio
+            )))
+        else:
+            nh = int(self._np_rng.poisson(self.GOALS_LAMBDA_HOME * chunk_ratio))
+            na = int(self._np_rng.poisson(self.GOALS_LAMBDA_AWAY * chunk_ratio))
 
         minutes = list(range(start_min + 1, end_min + 1))
         weights = self.GOAL_MINUTE_WEIGHTS[start_min:end_min]
@@ -528,7 +573,7 @@ class MatchService:
 #  Example usage (remove or comment out in production)
 # ──────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    stats = MatchStats("Matches.csv")
+    stats = MatchStats("match_statistics.json")
     svc = MatchService("Ajax", "PSV", seed=42, stats_backend=stats, use_llm=False)
 
     async def run():
