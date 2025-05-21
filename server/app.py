@@ -4,6 +4,8 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 import uvicorn
 import base64
+from typing import Dict
+import json
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from services.logo_service import LogoService
@@ -25,7 +27,9 @@ app.add_middleware(
 
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
-match_service = MatchService()
+
+# Store active matches
+active_matches: Dict[str, MatchService] = {}
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
@@ -58,13 +62,87 @@ async def simulate_match(request: Request):
         data = await request.json()
         user_team = data.get("user_team")
         opponent_team = data.get("opponent_team")
+        match_id = data.get("match_id")  # Client should generate a unique match ID
+        debug_mode = data.get("debug_mode", False)  # Default to False for production
 
-        if not user_team or not opponent_team:
-            raise HTTPException(status_code=400, detail="Missing team data")
+        if not user_team or not opponent_team or not match_id:
+            raise HTTPException(status_code=400, detail="Missing team data or match ID")
 
-        match_service.set_teams(user_team, opponent_team)
+        print(f"\n=== Starting match: {user_team} vs {opponent_team} ===")
+        print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
+
+        # Initialize MatchService with the teams
+        match_service = MatchService(
+            home_team=user_team,
+            away_team=opponent_team,
+            use_llm=not debug_mode,  # Invert debug_mode for use_llm
+            debug_mode=debug_mode
+        )
+        
+        # Store the match service instance
+        active_matches[match_id] = match_service
+        
+        async def event_generator():
+            try:
+                async for event in match_service.stream_first_half():
+                    yield event
+            except Exception as e:
+                print(f"Error in event generator: {e}")
+                yield json.dumps({"error": str(e)}) + "\n"
+        
         return StreamingResponse(
-            match_service.stream_match_events(),
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/change-formation")
+async def change_formation(request: Request):
+    """Handle formation changes at half-time."""
+    try:
+        data = await request.json()
+        match_id = data.get("match_id")
+        new_formation = data.get("formation")
+
+        if not match_id or not new_formation:
+            raise HTTPException(status_code=400, detail="Missing match ID or formation data")
+
+        if match_id not in active_matches:
+            raise HTTPException(status_code=404, detail="Match not found")
+
+        # Here you can implement formation change logic
+        # For now, we'll just acknowledge the change
+        return {"message": f"Formation changed to {new_formation}", "success": True}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/continue-match")
+async def continue_match(request: Request):
+    """Continue streaming match events from after half-time."""
+    try:
+        data = await request.json()
+        match_id = data.get("match_id")
+
+        if not match_id:
+            raise HTTPException(status_code=400, detail="Missing match ID")
+
+        if match_id not in active_matches:
+            raise HTTPException(status_code=404, detail="Match not found")
+
+        print("\n=== Starting second half ===")
+        match_service = active_matches[match_id]
+        
+        return StreamingResponse(
+            match_service.stream_second_half(),
             media_type="text/event-stream"
         )
     except ValueError as e:
@@ -72,16 +150,27 @@ async def simulate_match(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/continue-match")
-async def continue_match():
-    """Continue streaming match events from after half-time."""
+@app.post("/api/change-team-tactic")
+async def change_team_tactic(request: Request):
+    """Handle tactic and formation changes at half-time."""
     try:
-        return StreamingResponse(
-            match_service.continue_second_half(),
-            media_type="text/event-stream"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        data = await request.json()
+        match_id = data.get("match_id")
+        tactic = data.get("tactic")
+        formation = data.get("formation")
+
+        if not match_id or not tactic or not formation:
+            raise HTTPException(status_code=400, detail="Missing match ID, tactic, or formation data")
+
+        if match_id not in active_matches:
+            raise HTTPException(status_code=404, detail="Match not found")
+
+        # Here you can implement tactic and formation change logic
+        # For now, we'll just acknowledge the change
+        return {"message": f"Tactics changed to {tactic} with {formation} formation", "success": True}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

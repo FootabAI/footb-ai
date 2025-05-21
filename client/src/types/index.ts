@@ -54,7 +54,7 @@ export type Player = {
 
 export type MatchEvent = {
   id: string;
-  type: 'goal' | 'card' | 'injury' | 'substitution' | 'own-goal';
+  type: 'goal' | 'yellow_card' | 'red_card' | 'injury' | 'substitution' | 'own-goal' | 'half-time' | 'full-time';
   minute: number;
   teamId: string;
   description: string;
@@ -69,6 +69,7 @@ export type MatchStats = {
   fouls: number;
   yellowCards: number;
   redCards: number;
+  corners: number;
 };
 
 export type Match = {
@@ -140,3 +141,7 @@ export type TeamCreationContextType = {
   resetTeamCreation: () => void;
   generateRandomPlayers: (teamId: string, teamName: string) => Player[];
 }
+
+export * from './game';
+export * from './user';
+export * from './onboarding';
