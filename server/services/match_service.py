@@ -83,8 +83,8 @@ class MatchService:
     # default fall-back parameters (used if no MatchStats supplied)
     GOALS_LAMBDA_HOME = 1.4
     GOALS_LAMBDA_AWAY = 1.1
-    YELLOW_LAMBDA_HOME = 3.5
-    YELLOW_LAMBDA_AWAY = 3.5
+    YELLOW_LAMBDA_HOME = 2.5
+    YELLOW_LAMBDA_AWAY = 2.5
     RED_PROB_AFTER_YELLOW = 0.06
     SUBS_PER_TEAM = 3
     EXTRA_MINUTES = (1, 6)       # added time per half
@@ -308,6 +308,12 @@ class MatchService:
             self._stats[team]["shots"] += 1
             self._stats[team]["shotsOnTarget"] += 1
             self._current_score[team] += 1
+        elif event["event"]["type"] == "yellow_card":
+            team = event["event"]["team"]
+            self._stats[team]["yellowCards"] = self._stats[team].get("yellowCards", 0) + 1
+        elif event["event"]["type"] == "red_card":
+            team = event["event"]["team"]
+            self._stats[team]["redCards"] = self._stats[team].get("redCards", 0) + 1
         else:
             self._update_progressive_stats(progress)
 
