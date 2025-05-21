@@ -157,12 +157,43 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  completeMatch: (winnerId) => {
+  completeMatch: async (winnerId) => {
     const { currentMatch, userTeam } = get();
     if (!currentMatch || !userTeam) return;
 
     const isUserWinner = winnerId === userTeam.id;
     const pointsEarned = isUserWinner ? 50 : 10;
+    const isHomeTeam = currentMatch.homeTeam.id === userTeam.id;
+    const homeScore = currentMatch.homeScore;
+    const awayScore = currentMatch.awayScore;
+
+    // Update user team stats
+    const userTeamStats = {
+      totalMatches: (userTeam.teamStats?.totalMatches || 0) + 1,
+      wins: (userTeam.teamStats?.wins || 0) + (isUserWinner ? 1 : 0),
+      draws: (userTeam.teamStats?.draws || 0) + (homeScore === awayScore ? 1 : 0),
+      losses: (userTeam.teamStats?.losses || 0) + (!isUserWinner && homeScore !== awayScore ? 1 : 0),
+      goalsScored: (userTeam.teamStats?.goalsScored || 0) + (isHomeTeam ? homeScore : awayScore),
+      goalsConceded: (userTeam.teamStats?.goalsConceded || 0) + (isHomeTeam ? awayScore : homeScore),
+      cleanSheets: (userTeam.teamStats?.cleanSheets || 0) + ((isHomeTeam ? awayScore : homeScore) === 0 ? 1 : 0),
+    };
+
+    // Update bot team stats
+    const botTeamStats = {
+      totalMatches: (currentMatch.awayTeam.teamStats?.totalMatches || 0) + 1,
+      wins: (currentMatch.awayTeam.teamStats?.wins || 0) + (!isUserWinner ? 1 : 0),
+      draws: (currentMatch.awayTeam.teamStats?.draws || 0) + (homeScore === awayScore ? 1 : 0),
+      losses: (currentMatch.awayTeam.teamStats?.losses || 0) + (isUserWinner && homeScore !== awayScore ? 1 : 0),
+      goalsScored: (currentMatch.awayTeam.teamStats?.goalsScored || 0) + (isHomeTeam ? awayScore : homeScore),
+      goalsConceded: (currentMatch.awayTeam.teamStats?.goalsConceded || 0) + (isHomeTeam ? homeScore : awayScore),
+      cleanSheets: (currentMatch.awayTeam.teamStats?.cleanSheets || 0) + ((isHomeTeam ? homeScore : awayScore) === 0 ? 1 : 0),
+    };
+
+    // Update both teams in Firestore
+    await useTeamStore.getState().updateTeamStats(userTeamStats);
+    if (currentMatch.awayTeam.id !== 'bot-1') { // Only update if it's not the default bot team
+      await useTeamStore.getState().updateTeamStats(botTeamStats);
+    }
 
     set({
       currentMatch: {
@@ -173,6 +204,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       userTeam: {
         ...userTeam,
         points: userTeam.points + pointsEarned,
+        teamStats: userTeamStats,
       },
     });
   },
