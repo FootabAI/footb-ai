@@ -1,5 +1,5 @@
 import { MatchEvent } from "@/types";
-import { Goal, AlertCircle, ArrowUpRight, Clock } from "lucide-react";
+import { Goal, AlertCircle, Clock, ArrowLeftRight } from "lucide-react";
 
 interface EventProps {
   event: MatchEvent;
@@ -13,7 +13,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
   const getEventIcon = (event: MatchEvent) => {
     switch (event.type) {
       case "goal":
-        return <Goal className={`w-5 h-5 ${isUserTeam ? "text-green-500" : "text-red-500"}`} />;
+        return <Goal className="w-5 h-5 text-green-500" />;
       case "yellow_card":
         return <div className="w-4 h-5 bg-yellow-500 rounded-sm" />;
       case "red_card":
@@ -21,7 +21,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
       case "injury":
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       case "substitution":
-        return <ArrowUpRight className="w-5 h-5 text-blue-500" />;
+        return <ArrowLeftRight className="w-5 h-5 text-blue-500" />;
       case "own-goal":
         return <Goal className="w-5 h-5 text-purple-500" />;
       default:
@@ -36,7 +36,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
 
     switch (event.type) {
       case "goal":
-        return isUserTeam ? "border-green-500" : "border-red-500";
+        return "border-green-500";
       case "yellow_card":
         return "border-yellow-500";
       case "red_card":
@@ -59,7 +59,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
 
     switch (event.type) {
       case "goal":
-        return isUserTeam ? "bg-green-700/10" : "bg-red-700/10";
+        return "bg-green-700/10";
       case "yellow_card":
         return "bg-yellow-700/10";
       case "red_card":
@@ -81,7 +81,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
     }
     switch (event.type) {
       case "goal":
-        return isUserTeam ? "text-green-400" : "text-red-400";
+        return "text-green-400";
       case "yellow_card":
         return "text-yellow-400";
       case "red_card":

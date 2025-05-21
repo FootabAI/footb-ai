@@ -84,6 +84,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       fouls: 0,
       yellowCards: 0,
       redCards: 0,
+      corners: 0,
     };
 
     const newMatch: Match = {

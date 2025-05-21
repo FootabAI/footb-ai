@@ -69,6 +69,7 @@ export type MatchStats = {
   fouls: number;
   yellowCards: number;
   redCards: number;
+  corners: number;
 };
 
 export type Match = {

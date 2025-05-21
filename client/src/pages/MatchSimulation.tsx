@@ -14,7 +14,18 @@ import {
 } from "@/components/ui/select";
 import { MatchEvent, TeamTactic, MatchEventType, Formation } from "@/types";
 import TeamLogo from "@/components/TeamLogo";
-import { Play, Flag, AlertCircle } from "lucide-react";
+import {
+  Play,
+  Flag,
+  AlertCircle,
+  Timer,
+  Target,
+  Cone,
+  Bell,
+  CreditCard,
+  Ban,
+  Crosshair,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRef, useState, useEffect } from "react";
 import { startMatchSimulation, continueMatch, changeTeamTactics } from "@/api";
@@ -36,7 +47,6 @@ const MatchSimulation = () => {
   const { team } = useTeamStore();
   const { handleFormationChange, handleSaveTactic } = useTeamActions();
 
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isWarmingUp, setIsWarmingUp] = useState(true);
   const [minute, setMinute] = useState(0);
   const [isHalfTime, setIsHalfTime] = useState(false);
@@ -49,7 +59,7 @@ const MatchSimulation = () => {
   const [matchId] = useState(
     () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
-  const [debugMode] = useState(false);
+  const [debugMode] = useState(true);
   const [warmingUpMessage, setWarmingUpMessage] = useState(0);
 
   // Refs for scrolling
@@ -121,7 +131,6 @@ const MatchSimulation = () => {
         debugMode
       );
       setIsWarmingUp(false);
-      setIsPlaying(true);
 
       for await (const event of events) {
         if (!event) continue;
@@ -129,7 +138,7 @@ const MatchSimulation = () => {
         // Handle half-time
         if (event.event.type === "half-time") {
           console.log("\n=== HALF TIME ===");
-          setIsPlaying(false);
+
           setIsHalfTime(true);
         }
 
@@ -137,7 +146,7 @@ const MatchSimulation = () => {
         if (event.event.type === "full-time") {
           console.log("\n=== FULL TIME ===");
           console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
-          setIsPlaying(false);
+
           setIsFullTime(true);
           completeMatch(
             event.score.home > event.score.away
@@ -215,7 +224,6 @@ const MatchSimulation = () => {
       // Continue the match
       const { events } = await continueMatch(matchId);
       setIsHalfTime(false);
-      setIsPlaying(true);
 
       for await (const event of events) {
         if (!event) continue;
@@ -224,7 +232,7 @@ const MatchSimulation = () => {
         if (event.event.type === "full-time") {
           console.log("\n=== FULL TIME ===");
           console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
-          setIsPlaying(false);
+
           setIsFullTime(true);
           completeMatch(
             event.score.home > event.score.away
@@ -410,7 +418,9 @@ const MatchSimulation = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm text-gray-400">Formation</label>
+                      <label className="text-sm text-gray-400">
+                        Change Formation
+                      </label>
                       <div>
                         <Tabs
                           value={team.formation}
@@ -492,7 +502,9 @@ const MatchSimulation = () => {
                         {isFullTime && (
                           <div className="sticky bottom-0 left-0 right-0 bg-footbai-container/30 backdrop-blur-md border-t border-footbai-header py-6">
                             <div className="text-center space-y-4">
-                              <h3 className="text-xl font-semibold">Match Complete</h3>
+                              <h3 className="text-xl font-semibold">
+                                Match Complete
+                              </h3>
                               <Button
                                 className="bg-footbai-accent hover:bg-footbai-accent/80 text-black"
                                 onClick={() => navigate("/summary")}
@@ -529,17 +541,26 @@ const MatchSimulation = () => {
               <div className="mb-6">
                 <div className="flex justify-between text-sm mb-1">
                   <span>{Math.round(currentMatch.homeStats.possession)}%</span>
-                  <span className="text-gray-400">Possession</span>
+                  <span className="text-gray-400 flex items-center gap-1">
+                    <Timer size={16} />
+                    Possession
+                  </span>
                   <span>{Math.round(currentMatch.awayStats.possession)}%</span>
                 </div>
                 <div className="flex h-2 rounded overflow-hidden">
                   <div
-                    className="bg-blue-500"
-                    style={{ width: `${currentMatch.homeStats.possession}%` }}
+                    style={{
+                      width: `${currentMatch.homeStats.possession}%`,
+                      backgroundColor:
+                        currentMatch.homeTeam.logo.data.mainColor,
+                    }}
                   ></div>
                   <div
-                    className="bg-red-500"
-                    style={{ width: `${currentMatch.awayStats.possession}%` }}
+                    style={{
+                      width: `${currentMatch.awayStats.possession}%`,
+                      backgroundColor:
+                        currentMatch.awayTeam.logo.data.mainColor,
+                    }}
                   ></div>
                 </div>
               </div>
@@ -549,7 +570,10 @@ const MatchSimulation = () => {
                   <div className="text-xl font-semibold">
                     {currentMatch.homeStats.shots || 0}
                   </div>
-                  <div className="text-sm text-gray-400">Shots</div>
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <Crosshair size={16} />
+                    Shots
+                  </div>
                   <div className="text-xl font-semibold">
                     {currentMatch.awayStats.shots || 0}
                   </div>
@@ -558,32 +582,12 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.shotsOnTarget || 0}
                   </div>
-                  <div className="text-xs text-gray-400">On Target</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <Target size={16} />
+                    On Target
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.shotsOnTarget || 0}
-                  </div>
-                </div>
-              </div>
-
-              <Separator className="my-4 bg-footbai-header" />
-
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-xl font-semibold">
-                    {currentMatch.homeStats.passes || 0}
-                  </div>
-                  <div className="text-sm text-gray-400">Passes</div>
-                  <div className="text-xl font-semibold">
-                    {currentMatch.awayStats.passes || 0}
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm">
-                    {Math.round(currentMatch.homeStats.passAccuracy || 0)}%
-                  </div>
-                  <div className="text-xs text-gray-400">Accuracy</div>
-                  <div className="text-sm">
-                    {Math.round(currentMatch.awayStats.passAccuracy || 0)}%
                   </div>
                 </div>
               </div>
@@ -595,7 +599,10 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.fouls || 0}
                   </div>
-                  <div className="text-xs text-gray-400">Fouls</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <Ban size={16} />
+                    Fouls
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.fouls || 0}
                   </div>
@@ -604,7 +611,10 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.yellowCards || 0}
                   </div>
-                  <div className="text-xs text-gray-400">Yellow Cards</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <div className="w-3 h-4 bg-yellow-500 rounded-sm" />
+                    Yellow Cards
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.yellowCards || 0}
                   </div>
@@ -613,7 +623,10 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.redCards || 0}
                   </div>
-                  <div className="text-xs text-gray-400">Red Cards</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <div className="w-3 h-4 bg-red-500 rounded-sm" />
+                    Red Cards
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.redCards || 0}
                   </div>
@@ -622,20 +635,18 @@ const MatchSimulation = () => {
 
               <Separator className="my-4 bg-footbai-header" />
 
-              <div className="text-sm">
-                <div className="flex justify-between mb-2">
-                  <span className="font-semibold">
-                    {currentMatch.homeTeam.name}
-                  </span>
-                  <span className="text-gray-400">Tactic</span>
-                  <span className="font-semibold">
-                    {currentMatch.awayTeam.name}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{currentMatch.homeTeam.tactic}</span>
-                  <span className="text-transparent">-</span>
-                  <span>{currentMatch.awayTeam.tactic}</span>
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xl font-semibold">
+                    {currentMatch.homeStats.corners || 0}
+                  </div>
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <Flag size={16} />
+                    Corners
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {currentMatch.awayStats.corners || 0}
+                  </div>
                 </div>
               </div>
             </CardContent>

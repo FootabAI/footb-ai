@@ -66,13 +66,13 @@ class MatchStats:
         self.lambda_home_poss = (total_home_actions / total_actions) * 100
         self.lambda_away_poss = (total_away_actions / total_actions) * 100
 
-        # Calculate pass accuracy based on shots on target ratio
-        self.lambda_home_pass_acc = (df["HomeTarget"].mean() / df["HomeShots"].mean()) * 100 if df["HomeShots"].mean() > 0 else 80
-        self.lambda_away_pass_acc = (df["AwayTarget"].mean() / df["AwayShots"].mean()) * 100 if df["AwayShots"].mean() > 0 else 80
+        # # Calculate pass accuracy based on shots on target ratio
+        # self.lambda_home_pass_acc = (df["HomeTarget"].mean() / df["HomeShots"].mean()) * 100 if df["HomeShots"].mean() > 0 else 80
+        # self.lambda_away_pass_acc = (df["AwayTarget"].mean() / df["AwayShots"].mean()) * 100 if df["AwayShots"].mean() > 0 else 80
 
-        # Calculate passes based on shots and corners (as a proxy)
-        self.lambda_home_passes = (df["HomeShots"].mean() + df["HomeCorners"].mean()) * 40  # Rough estimate
-        self.lambda_away_passes = (df["AwayShots"].mean() + df["AwayCorners"].mean()) * 40  # Rough estimate
+        # # Calculate passes based on shots and corners (as a proxy)
+        # self.lambda_home_passes = (df["HomeShots"].mean() + df["HomeCorners"].mean()) * 40  # Rough estimate
+        # self.lambda_away_passes = (df["AwayShots"].mean() + df["AwayCorners"].mean()) * 40  # Rough estimate
 
         # empirical probability that a yellow begets a red
         total_yel = df["HomeYellow"].sum() + df["AwayYellow"].sum()
@@ -100,10 +100,8 @@ class MatchService:
     SHOTS_AWAY = 10
     SHOTS_ON_TARGET_HOME = 5
     SHOTS_ON_TARGET_AWAY = 4
-    PASSES_HOME = 450
-    PASSES_AWAY = 400
-    PASS_ACCURACY_HOME = 85
-    PASS_ACCURACY_AWAY = 82
+    CORNERS_HOME = 6
+    CORNERS_AWAY = 5
     FOULS_HOME = 8
     FOULS_AWAY = 9
 
@@ -143,10 +141,12 @@ class MatchService:
             self.SHOTS_AWAY = stats_backend.lambda_away_shots
             self.SHOTS_ON_TARGET_HOME = stats_backend.lambda_home_sot
             self.SHOTS_ON_TARGET_AWAY = stats_backend.lambda_away_sot
-            self.PASSES_HOME = stats_backend.lambda_home_passes
-            self.PASSES_AWAY = stats_backend.lambda_away_passes
-            self.PASS_ACCURACY_HOME = stats_backend.lambda_home_pass_acc
-            self.PASS_ACCURACY_AWAY = stats_backend.lambda_away_pass_acc
+            # self.PASSES_HOME = stats_backend.lambda_home_passes
+            # self.PASSES_AWAY = stats_backend.lambda_away_passes
+            # self.PASS_ACCURACY_HOME = stats_backend.lambda_home_pass_acc
+            # self.PASS_ACCURACY_AWAY = stats_backend.lambda_away_pass_acc
+            self.CORNERS_HOME = stats_backend.lambda_home_corners
+            self.CORNERS_AWAY = stats_backend.lambda_away_corners
             self.FOULS_HOME = stats_backend.lambda_home_fouls
             self.FOULS_AWAY = stats_backend.lambda_away_fouls
 
@@ -166,17 +166,19 @@ class MatchService:
                 "possession": 0,
                 "shots": 0,
                 "shotsOnTarget": 0,
-                "passes": 0,
-                "passAccuracy": 0,
+                # "passes": 0,
+                # "passAccuracy": 0,
                 "fouls": 0,
+                "corners": 0,
             },
             "away": {
                 "possession": 0,
                 "shots": 0,
                 "shotsOnTarget": 0,
-                "passes": 0,
-                "passAccuracy": 0,
+                # "passes": 0,
+                # "passAccuracy": 0,
                 "fouls": 0,
+                "corners": 0,
             }
         }
 
@@ -298,11 +300,9 @@ class MatchService:
             self._stats["home"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_HOME * progress)
             self._stats["away"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_AWAY * progress)
 
-        # Update passes and pass accuracy
-        self._stats["home"]["passes"] = int(self.PASSES_HOME * progress)
-        self._stats["away"]["passes"] = int(self.PASSES_AWAY * progress)
-        self._stats["home"]["passAccuracy"] = self.PASS_ACCURACY_HOME + self._rng.uniform(-2, 2)
-        self._stats["away"]["passAccuracy"] = self.PASS_ACCURACY_AWAY + self._rng.uniform(-2, 2)
+        # Update corners (proportional to match progress)
+        self._stats["home"]["corners"] = int(self.CORNERS_HOME * progress)
+        self._stats["away"]["corners"] = int(self.CORNERS_AWAY * progress)
 
         # Update fouls (proportional to match progress)
         self._stats["home"]["fouls"] = int(self.FOULS_HOME * progress)
@@ -311,8 +311,8 @@ class MatchService:
         # Ensure all values are within realistic ranges
         self._stats["home"]["possession"] = max(0, min(100, self._stats["home"]["possession"]))
         self._stats["away"]["possession"] = max(0, min(100, self._stats["away"]["possession"]))
-        self._stats["home"]["passAccuracy"] = max(0, min(100, self._stats["home"]["passAccuracy"]))
-        self._stats["away"]["passAccuracy"] = max(0, min(100, self._stats["away"]["passAccuracy"]))
+        # self._stats["home"]["passAccuracy"] = max(0, min(100, self._stats["home"]["passAccuracy"]))
+        # self._stats["away"]["passAccuracy"] = max(0, min(100, self._stats["away"]["passAccuracy"]))
 
     # ───────────────────────── SIMULATORS ───────────────────────────────
     def _simulate_goals(self) -> List[Dict[str, Any]]:
@@ -416,7 +416,7 @@ class MatchService:
 #  Example usage (remove or comment out in production)
 # ──────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    stats = MatchStats("mMatches.csv")
+    stats = MatchStats("Matches.csv")
     svc = MatchService("Ajax", "PSV", seed=42, stats_backend=stats, use_llm=False)
 
     async def run():
