@@ -12,6 +12,7 @@ from io import BytesIO
 import requests
 from collections import Counter
 
+
 class LogoService:
     def __init__(self, reference_images_dir: str):
         self.reference_images_dir = reference_images_dir
