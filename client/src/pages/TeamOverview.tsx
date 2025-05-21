@@ -11,35 +11,19 @@ import {
 import TeamLogo from "@/components/TeamLogo";
 import StatBar from "@/components/StatBar";
 import { ShieldCheck } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { TeamUpgradeSection } from "@/components/TeamUpgradeSection";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { formations } from "@/config/formations";
 import { useTeamStore } from "@/stores/useTeamStore";
 import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
+import { useTeamActions } from "@/hooks/useTeamActions";
 
 const TeamOverview = () => {
-  const { team, updateTeamTactic, updateTeamFormation } = useTeamStore();
+  const { team } = useTeamStore();
   const calculateTeamStrength = useCalculateTeamStrength(team.attributes);
-  const { toast } = useToast();
+  const { handleSaveTactic, handleFormationChange } = useTeamActions();
 
   if (!team) return null;
-
-  const handleSaveTactic = (tactic: TeamTactic) => {
-    updateTeamTactic(tactic);
-    toast({
-      title: "Tactic Updated",
-      description: `Your team now uses the ${tactic} tactic.`,
-    });
-  };
-
-  const handleFormationChange = (formation: string) => {
-    updateTeamFormation(formation as Formation);
-    toast({
-      title: "Formation Updated",
-      description: `Your team now uses the ${formation} formation.`,
-    });
-  };
 
   const playersByPosition = {
     GK: team.players.filter((p) => p.position === "GK"),

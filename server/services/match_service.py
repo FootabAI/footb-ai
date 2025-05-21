@@ -2,7 +2,7 @@
 Real-life–shaped football-match simulator.
 
 • Reads per-match averages (goals, yellows, reds) from the
-  “Club-Football-Match-Data-2000-2025” CSV (once, via MatchStats).
+  "Club-Football-Match-Data-2000-2025" CSV (once, via MatchStats).
 • Uses those numbers as Poisson parameters for each new MatchService instance.
 • Streams JSON lines identical to your original interface.
 • Optional GPT commentary (set use_llm=True).
@@ -79,9 +79,11 @@ class MatchService:
         stats_backend: Optional[MatchStats] = None,
         use_llm: bool = False,
         llm_temperature: float = 0.7,
+        debug_mode: bool = False,
     ):
         self.home_team = home_team
         self.away_team = away_team
+        self.debug_mode = debug_mode
 
         # RNGs
         self._rng = random.Random(seed)
@@ -98,7 +100,7 @@ class MatchService:
         # Optional GPT commentator
         self.llm = (
             ChatOpenAI(model_name="gpt-4o", temperature=llm_temperature)
-            if use_llm and ChatOpenAI
+            if use_llm and ChatOpenAI and not debug_mode
             else None
         )
 
@@ -115,11 +117,15 @@ class MatchService:
         for ev in self._events:
             if ev["minute"] > 45:
                 break
-            yield json.dumps(ev) + "\n"
-            await asyncio.sleep(1)
-            if ev["event"]["type"] == "half-time":
-                self._is_half_time = True
-                break
+            try:
+                yield json.dumps(ev) + "\n"
+                await asyncio.sleep(1)
+                if ev["event"]["type"] == "half-time":
+                    self._is_half_time = True
+                    break
+            except Exception as e:
+                print(f"Error streaming event: {e}")
+                continue
 
     async def stream_second_half(self) -> AsyncGenerator[str, None]:
         if not self._is_half_time:
@@ -127,11 +133,19 @@ class MatchService:
         for ev in self._events:
             if ev["minute"] <= 45:
                 continue
-            yield json.dumps(ev) + "\n"
-            await asyncio.sleep(1)
+            try:
+                yield json.dumps(ev) + "\n"
+                await asyncio.sleep(1)
+            except Exception as e:
+                print(f"Error streaming event: {e}")
+                continue
 
     # ───────────────────────── TIMELINE BUILD ───────────────────────────
     def _generate_timeline(self) -> None:
+        if self.debug_mode:
+            self._generate_debug_timeline()
+            return
+
         raw = (
             self._simulate_goals() +
             self._simulate_yellows_reds() +
@@ -152,6 +166,34 @@ class MatchService:
             ev["event"]["description"] = self._describe(ev)
 
         self._events = raw
+        self._generated = True
+
+    def _generate_debug_timeline(self) -> None:
+        """Generate a fixed sequence of events for testing."""
+        events = [
+            self._event(5, "home", "goal", description=f"GOAL! {self.home_team} score!"),
+            self._event(15, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(25, "home", "goal", description=f"GOAL! {self.home_team} score!"),
+            self._event(35, "away", "goal", description=f"GOAL! {self.away_team} score!"),
+            self._event(45, "info", "half-time", description="Half-time whistle."),
+            self._event(55, "home", "substitution", description=f"{self.home_team} make a substitution."),
+            self._event(65, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(75, "home", "goal", description=f"GOAL! {self.home_team} score!"),
+            self._event(85, "away", "goal", description=f"GOAL! {self.away_team} score!"),
+            self._event(90, "info", "full-time", description="Full-time, all over!"),
+        ]
+
+        # Add basic descriptions
+        home, away = 0, 0
+        for ev in events:
+            if ev["event"]["type"] == "goal":
+                if ev["event"]["team"] == "home":
+                    home += 1
+                elif ev["event"]["team"] == "away":
+                    away += 1
+            ev["score"] = {"home": home, "away": away}
+
+        self._events = events
         self._generated = True
 
     # ───────────────────────── SIMULATORS ───────────────────────────────
@@ -201,10 +243,15 @@ class MatchService:
 
     # ───────────────────────── UTILITIES ────────────────────────────────
     @staticmethod
-    def _event(minute: int, team: str, etype: str) -> Dict[str, Any]:
+    def _event(minute: int, team: str, etype: str, description: str = "") -> Dict[str, Any]:
         return {
             "minute": minute,
-            "event": {"team": team, "type": etype, "description": ""},
+            "event": {
+                "team": team,
+                "type": etype,
+                "description": description
+            },
+            "score": {"home": 0, "away": 0}  # Will be updated in _generate_timeline
         }
 
     def _describe(self, ev: Dict[str, Any]) -> str:
@@ -229,10 +276,14 @@ class MatchService:
             return base
 
         prompt = (
-            "You are a live-text commentator. "
-            "Write one punchy update for this event:\n"
-            f"Minute: {ev['minute']}\n"
-            f"Type: {etype}\n"
+            "You are a live-text football commentator. "
+            "Write one punchy, concise update for this event. "
+            "Rules:\n"
+            "1. Do not include the minute in the description\n"
+            "2. Do not use any emojis or special characters\n"
+            "3. Keep it short and impactful\n"
+            "4. Focus on the action and its significance\n"
+            f"Event: {etype}\n"
             f"Team: {team_name}\n"
             f"Score: {ev['score']['home']}–{ev['score']['away']}\n"
             "Return only the line."
