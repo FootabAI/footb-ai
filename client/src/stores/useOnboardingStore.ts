@@ -55,53 +55,54 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   handleAttributeChange: (attr, newValue) => {
     const { attributes, pointsLeft } = get();
     const oldValue = attributes[attr];
-    const pointDiff = newValue - oldValue;
+    const pointDifference = newValue - oldValue;
 
-    if (pointsLeft - pointDiff < 0) return;
+    if (pointsLeft - pointDifference < 0) {
+      return;
+    }
 
     set({
-      attributes: { ...attributes, [attr]: newValue },
-      pointsLeft: pointsLeft - pointDiff,
+      attributes: {
+        ...attributes,
+        [attr]: newValue,
+      },
+      pointsLeft: pointsLeft - pointDifference,
     });
   },
 
-  createTeam: async (logoData, teamStats) => {
+  createTeam: async (logoData) => {
     set({ isLoading: true, error: null, success: null });
-
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
       const {
         teamName,
         logoType,
+        initials,
+        backgroundColor,
+        formation,
+        customizedName,
         attributes,
         tactic,
-        customizedName,
-        formation,
+        pointsLeft,
         mainColor,
+        teamStats,
       } = get();
-      const teamStore = useTeamStore.getState();
 
-      const teamId = crypto.randomUUID();
-      const finalName = logoType === "manual" ? teamName : customizedName;
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+
+      const teamStore = useTeamStore.getState();
+      const teamId = `team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       let logoUrl = "";
       if (logoType === "ai" && logoData.image) {
-        // Upload AI-generated logo to Firebase Storage
-        const storageRef = ref(storage, `team-logos/${teamId}`);
+        const storageRef = ref(storage, `logos/${teamId}`);
         const response = await fetch(logoData.image);
         const blob = await response.blob();
-        await uploadBytes(storageRef, blob, {
-          customMetadata: {
-            userId: user.uid,
-            teamId: teamId,
-          },
-        });
+        await uploadBytes(storageRef, blob);
         logoUrl = await getDownloadURL(storageRef);
       }
+
+      const finalName = logoType === "manual" ? teamName : customizedName;
 
       const newTeam: Team & { userId: string } = {
         id: teamId,
@@ -124,8 +125,8 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         attributes,
         tactic,
         formation,
-        teamStats: teamStats,
-        points: get().pointsLeft,
+        teamStats: teamStats || DEFAULT_TEAM_STATS,
+        points: pointsLeft,
         players: [],
         userId: user.uid,
         isBot: false,
@@ -164,6 +165,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       attributes: DEFAULT_ATTRIBUTES,
       tactic: "Balanced",
       pointsLeft: TOTAL_POINTS,
+      teamStats: DEFAULT_TEAM_STATS,
     });
   },
 }));

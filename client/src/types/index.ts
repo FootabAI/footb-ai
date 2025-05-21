@@ -44,7 +44,7 @@ export type Team = {
   players: Player[];
   userId: string;
   isBot: boolean;
-  teamStats: TeamStats | null;
+  teamStats: TeamStats;
 };
 
 export type Player = {
