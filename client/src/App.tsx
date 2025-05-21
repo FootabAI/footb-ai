@@ -18,12 +18,14 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Loader from "./components/Loader";
 import { useTeamStore } from "./stores/useTeamStore";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { isLoading, isLoggedIn } = useUserStore();
   const { team, isLoading: isTeamLoading } = useTeamStore();
+
 
   console.log('App loading states:', { isLoading, isTeamLoading, isLoggedIn });
 

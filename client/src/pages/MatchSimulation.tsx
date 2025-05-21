@@ -59,7 +59,7 @@ const MatchSimulation = () => {
   const [matchId] = useState(
     () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
-  const [debugMode] = useState(true);
+  const [debugMode] = useState(false);
   const [warmingUpMessage, setWarmingUpMessage] = useState(0);
 
   // Refs for scrolling

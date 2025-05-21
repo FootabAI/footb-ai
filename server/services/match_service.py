@@ -123,6 +123,8 @@ class MatchService:
         self.home_team = home_team
         self.away_team = away_team
         self.debug_mode = debug_mode
+        self.chunk_size = 15  # minutes per chunk
+        self.event_delay = 0.5  # seconds between events
 
         # RNGs
         self._rng = random.Random(seed)
@@ -130,29 +132,11 @@ class MatchService:
 
         # Override parameters if dataset supplied
         if stats_backend:
-            self.GOALS_LAMBDA_HOME = stats_backend.lambda_home_goals
-            self.GOALS_LAMBDA_AWAY = stats_backend.lambda_away_goals
-            self.YELLOW_LAMBDA_HOME = stats_backend.lambda_home_yel
-            self.YELLOW_LAMBDA_AWAY = stats_backend.lambda_away_yel
-            self.RED_PROB_AFTER_YELLOW = stats_backend.prob_red_after_yel
-            self.POSSESSION_HOME = stats_backend.lambda_home_poss
-            self.POSSESSION_AWAY = stats_backend.lambda_away_poss
-            self.SHOTS_HOME = stats_backend.lambda_home_shots
-            self.SHOTS_AWAY = stats_backend.lambda_away_shots
-            self.SHOTS_ON_TARGET_HOME = stats_backend.lambda_home_sot
-            self.SHOTS_ON_TARGET_AWAY = stats_backend.lambda_away_sot
-            # self.PASSES_HOME = stats_backend.lambda_home_passes
-            # self.PASSES_AWAY = stats_backend.lambda_away_passes
-            # self.PASS_ACCURACY_HOME = stats_backend.lambda_home_pass_acc
-            # self.PASS_ACCURACY_AWAY = stats_backend.lambda_away_pass_acc
-            self.CORNERS_HOME = stats_backend.lambda_home_corners
-            self.CORNERS_AWAY = stats_backend.lambda_away_corners
-            self.FOULS_HOME = stats_backend.lambda_home_fouls
-            self.FOULS_AWAY = stats_backend.lambda_away_fouls
+            self._apply_stats_backend(stats_backend)
 
         # Optional GPT commentator
         self.llm = (
-            ChatOpenAI(model_name="gpt-4o", temperature=llm_temperature)
+            ChatOpenAI(model_name="gpt-4", temperature=llm_temperature)
             if use_llm and ChatOpenAI and not debug_mode
             else None
         )
@@ -161,13 +145,16 @@ class MatchService:
         self._events: List[Dict[str, Any]] = []
         self._generated = False
         self._is_half_time = False
-        self._stats = {
+        self._current_score = {"home": 0, "away": 0}
+        self._stats = self._initialize_stats()
+
+    def _initialize_stats(self) -> Dict[str, Any]:
+        """Initialize match statistics structure."""
+        return {
             "home": {
                 "possession": 0,
                 "shots": 0,
                 "shotsOnTarget": 0,
-                # "passes": 0,
-                # "passAccuracy": 0,
                 "fouls": 0,
                 "corners": 0,
             },
@@ -175,49 +162,81 @@ class MatchService:
                 "possession": 0,
                 "shots": 0,
                 "shotsOnTarget": 0,
-                # "passes": 0,
-                # "passAccuracy": 0,
                 "fouls": 0,
                 "corners": 0,
             }
         }
 
+    def _apply_stats_backend(self, stats_backend: MatchStats) -> None:
+        """Apply statistics from the backend."""
+        self.GOALS_LAMBDA_HOME = stats_backend.lambda_home_goals
+        self.GOALS_LAMBDA_AWAY = stats_backend.lambda_away_goals
+        self.YELLOW_LAMBDA_HOME = stats_backend.lambda_home_yel
+        self.YELLOW_LAMBDA_AWAY = stats_backend.lambda_away_yel
+        self.RED_PROB_AFTER_YELLOW = stats_backend.prob_red_after_yel
+        self.POSSESSION_HOME = stats_backend.lambda_home_poss
+        self.POSSESSION_AWAY = stats_backend.lambda_away_poss
+        self.SHOTS_HOME = stats_backend.lambda_home_shots
+        self.SHOTS_AWAY = stats_backend.lambda_away_shots
+        self.SHOTS_ON_TARGET_HOME = stats_backend.lambda_home_sot
+        self.SHOTS_ON_TARGET_AWAY = stats_backend.lambda_away_sot
+        self.CORNERS_HOME = stats_backend.lambda_home_corners
+        self.CORNERS_AWAY = stats_backend.lambda_away_corners
+        self.FOULS_HOME = stats_backend.lambda_home_fouls
+        self.FOULS_AWAY = stats_backend.lambda_away_fouls
+
     # ───────────────────────── STREAMING API ────────────────────────────
     async def stream_first_half(self) -> AsyncGenerator[str, None]:
+        """Stream first half events in chunks."""
         if not self._generated:
-            self._generate_timeline()
-
-        for ev in self._events:
-            if ev["minute"] > 45:
-                break
-            try:
-                # Update stats for this event
-                self._update_stats(ev)
-                ev["stats"] = self._stats
-                yield json.dumps(ev) + "\n"
-                await asyncio.sleep(1)
-                if ev["event"]["type"] == "half-time":
-                    self._is_half_time = True
+            self._events = []
+            async for event in self._stream_chunk(0, 45):
+                yield event
+            self._generated = True
+        else:
+            # Stream existing events
+            for ev in self._events:
+                if ev["minute"] > 45:
                     break
-            except Exception as e:
-                print(f"Error streaming event: {e}")
-                continue
+                yield await self._process_event(ev)
+
+        # Add half-time event
+        half_time_event = self._event(45, "info", "half-time")
+        yield await self._process_event(half_time_event)
+        self._is_half_time = True
 
     async def stream_second_half(self) -> AsyncGenerator[str, None]:
+        """Stream second half events in chunks."""
         if not self._is_half_time:
             raise RuntimeError("Second half requested before half-time.")
-        for ev in self._events:
-            if ev["minute"] <= 45:
-                continue
-            try:
-                # Update stats for this event
-                self._update_stats(ev)
-                ev["stats"] = self._stats
-                yield json.dumps(ev) + "\n"
-                await asyncio.sleep(1)
-            except Exception as e:
-                print(f"Error streaming event: {e}")
-                continue
+
+        async for event in self._stream_chunk(45, 90):
+            yield event
+
+        # Add full-time event
+        full_time_event = self._event(90, "info", "full-time")
+        yield await self._process_event(full_time_event)
+
+    async def _stream_chunk(self, start_min: int, end_min: int) -> AsyncGenerator[str, None]:
+        """Stream events for a specific time chunk."""
+        for chunk_start in range(start_min, end_min, self.chunk_size):
+            chunk_end = min(chunk_start + self.chunk_size, end_min)
+            new_events = self._generate_timeline_chunk(chunk_start, chunk_end)
+            self._events.extend(new_events)
+            
+            for ev in new_events:
+                yield await self._process_event(ev)
+
+    async def _process_event(self, event: Dict[str, Any]) -> str:
+        """Process a single event and return its JSON representation."""
+        try:
+            self._update_stats(event)
+            event["stats"] = self._stats
+            await asyncio.sleep(self.event_delay)
+            return json.dumps(event) + "\n"
+        except Exception as e:
+            print(f"Error processing event: {e}")
+            return ""
 
     # ───────────────────────── TIMELINE BUILD ───────────────────────────
     def _generate_timeline(self) -> None:
@@ -281,38 +300,44 @@ class MatchService:
     def _update_stats(self, event: Dict[str, Any]) -> None:
         """Update match statistics based on the current event."""
         minute = event["minute"]
-        progress = minute / 90  # Match progress as a percentage
+        progress = minute / 90
 
-        # Update possession (slight random variation around base values)
+        # Update possession with slight random variation
         self._stats["home"]["possession"] = self.POSSESSION_HOME + self._rng.uniform(-2, 2)
         self._stats["away"]["possession"] = 100 - self._stats["home"]["possession"]
 
-        # Update shots and shots on target (proportional to match progress)
+        # Update shots and shots on target
         if event["event"]["type"] == "goal":
-            # Goals increase shots and shots on target
             team = event["event"]["team"]
             self._stats[team]["shots"] += 1
             self._stats[team]["shotsOnTarget"] += 1
+            self._current_score[team] += 1
         else:
-            # Otherwise, gradually increase based on match progress
-            self._stats["home"]["shots"] = int(self.SHOTS_HOME * progress)
-            self._stats["away"]["shots"] = int(self.SHOTS_AWAY * progress)
-            self._stats["home"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_HOME * progress)
-            self._stats["away"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_AWAY * progress)
+            self._update_progressive_stats(progress)
 
-        # Update corners (proportional to match progress)
+        # Ensure values are within realistic ranges
+        self._normalize_stats()
+
+    def _update_progressive_stats(self, progress: float) -> None:
+        """Update statistics that progress with match time."""
+        self._stats["home"]["shots"] = int(self.SHOTS_HOME * progress)
+        self._stats["away"]["shots"] = int(self.SHOTS_AWAY * progress)
+        self._stats["home"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_HOME * progress)
+        self._stats["away"]["shotsOnTarget"] = int(self.SHOTS_ON_TARGET_AWAY * progress)
         self._stats["home"]["corners"] = int(self.CORNERS_HOME * progress)
         self._stats["away"]["corners"] = int(self.CORNERS_AWAY * progress)
-
-        # Update fouls (proportional to match progress)
         self._stats["home"]["fouls"] = int(self.FOULS_HOME * progress)
         self._stats["away"]["fouls"] = int(self.FOULS_AWAY * progress)
 
-        # Ensure all values are within realistic ranges
+    def _normalize_stats(self) -> None:
+        """Ensure all statistics are within realistic ranges."""
         self._stats["home"]["possession"] = max(0, min(100, self._stats["home"]["possession"]))
         self._stats["away"]["possession"] = max(0, min(100, self._stats["away"]["possession"]))
-        # self._stats["home"]["passAccuracy"] = max(0, min(100, self._stats["home"]["passAccuracy"]))
-        # self._stats["away"]["passAccuracy"] = max(0, min(100, self._stats["away"]["passAccuracy"]))
+        for team in ["home", "away"]:
+            self._stats[team]["shotsOnTarget"] = min(
+                self._stats[team]["shotsOnTarget"],
+                self._stats[team]["shots"]
+            )
 
     # ───────────────────────── SIMULATORS ───────────────────────────────
     def _simulate_goals(self) -> List[Dict[str, Any]]:
@@ -410,6 +435,93 @@ class MatchService:
             return self.llm.invoke(prompt).content.strip()
         except Exception:
             return base
+
+    def _generate_timeline_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
+        """Generate events for a specific time chunk."""
+        if self.debug_mode:
+            return self._generate_debug_timeline_chunk(start_min, end_min)
+
+        raw = (
+            self._simulate_goals_chunk(start_min, end_min) +
+            self._simulate_yellows_reds_chunk(start_min, end_min) +
+            self._simulate_substitutions_chunk(start_min, end_min)
+        )
+        raw.sort(key=lambda e: e["minute"])
+
+        # Update scores and add descriptions
+        for ev in raw:
+            if ev["event"]["type"] == "goal":
+                team = ev["event"]["team"]
+                self._current_score[team] += 1
+            ev["score"] = self._current_score.copy()
+            ev["event"]["description"] = self._describe(ev)
+
+        return raw
+
+    def _simulate_goals_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
+        """Simulate goals for a specific time chunk."""
+        events = []
+        # Adjust lambda based on chunk size
+        chunk_size = end_min - start_min
+        nh = int(self._np_rng.poisson(self.GOALS_LAMBDA_HOME * (chunk_size / 90)))
+        na = int(self._np_rng.poisson(self.GOALS_LAMBDA_AWAY * (chunk_size / 90)))
+
+        minutes = list(range(start_min + 1, end_min + 1))
+        weights = self.GOAL_MINUTE_WEIGHTS[start_min:end_min]
+        
+        for _ in range(nh):
+            m = self._rng.choices(minutes, weights=weights, k=1)[0]
+            events.append(self._event(m, "home", "goal"))
+        for _ in range(na):
+            m = self._rng.choices(minutes, weights=weights, k=1)[0]
+            events.append(self._event(m, "away", "goal"))
+        return events
+
+    def _simulate_yellows_reds_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
+        """Simulate cards for a specific time chunk."""
+        events = []
+        chunk_size = end_min - start_min
+        for team, lam in (("home", self.YELLOW_LAMBDA_HOME),
+                         ("away", self.YELLOW_LAMBDA_AWAY)):
+            ny = int(self._np_rng.poisson(lam * (chunk_size / 90)))
+            for _ in range(ny):
+                m = self._rng.choices(
+                    list(range(start_min + 1, end_min + 1)),
+                    weights=self.YEL_MINUTE_WEIGHTS[start_min:end_min],
+                    k=1
+                )[0]
+                events.append(self._event(m, team, "yellow_card"))
+                if self._rng.random() < self.RED_PROB_AFTER_YELLOW:
+                    red_min = self._rng.randint(m + 1, min(m + 25, end_min))
+                    events.append(self._event(red_min, team, "red_card"))
+        return events
+
+    def _simulate_substitutions_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
+        """Simulate substitutions for a specific time chunk."""
+        events = []
+        for team in ("home", "away"):
+            # Distribute substitutions across chunks
+            subs_in_chunk = max(0, min(1, self.SUBS_PER_TEAM - len([e for e in self._events if e["event"]["type"] == "substitution" and e["event"]["team"] == team])))
+            for _ in range(subs_in_chunk):
+                m = self._rng.randint(start_min + 1, end_min)
+                events.append(self._event(m, team, "substitution"))
+        return events
+
+    def _generate_debug_timeline_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
+        """Generate debug events for a specific time chunk."""
+        debug_events = [
+            self._event(5, "home", "goal", description=f"GOAL! {self.home_team} score!"),
+            self._event(15, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(25, "home", "goal", description=f"GOAL! {self.home_team} score!"),
+            self._event(35, "away", "goal", description=f"GOAL! {self.away_team} score!"),
+            self._event(45, "info", "half-time", description="Half-time whistle."),
+            self._event(55, "home", "substitution", description=f"{self.home_team} make a substitution."),
+            self._event(65, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(75, "home", "goal", description=f"GOAL! {self.home_team} score!"),
+            self._event(85, "away", "goal", description=f"GOAL! {self.away_team} score!"),
+            self._event(90, "info", "full-time", description="Full-time, all over!"),
+        ]
+        return [e for e in debug_events if start_min < e["minute"] <= end_min]
 
 
 # ──────────────────────────────────────────────────────────────────────────
