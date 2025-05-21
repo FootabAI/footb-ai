@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useTeamStore } from "@/stores/useTeamStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/ui/logo";
+
 import {
   Home,
   Users,
@@ -13,7 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/Logo-2.png";
 interface SidebarProps {
   isCollapsed?: boolean;
   onToggle?: () => void;

@@ -58,33 +58,33 @@ const MatchSimulation = () => {
   const simulationSpeed = 300; // milliseconds per minute
 
   // Hard-coded simulation events
-  // const hardCodedEvents = [
-  //   { minute: 1, type: 'goal', teamId: 'system', description: 'The match has started!' },
-  //   { minute: 5, type: 'goal', teamId: 'home', description: 'GOAL! J. Smith scores for the home team!' },
-  //   { minute: 12, type: 'card', teamId: 'away', description: 'Yellow Card: A. Johnson is booked for a foul.' },
-  //   { minute: 18, type: 'substitution', teamId: 'home', description: 'Substitution: T. Williams comes on for R. Brown.' },
-  //   { minute: 24, type: 'injury', teamId: 'away', description: 'Injury Concern: M. Garcia is down and receiving treatment.' },
-  //   { minute: 32, type: 'goal', teamId: 'away', description: 'GOAL! P. Martinez scores for the away team!' },
-  //   { minute: 45, type: 'goal', teamId: 'system', description: 'Half Time! The players head to the dressing room.' },
-  //   { minute: 46, type: 'goal', teamId: 'system', description: 'Second half begins!' },
-  //   { minute: 52, type: 'goal', teamId: 'home', description: 'GOAL! C. Wilson scores for the home team!' },
-  //   { minute: 61, type: 'card', teamId: 'home', description: 'Yellow Card: D. Thomas is booked for a late challenge.' },
-  //   { minute: 68, type: 'goal', teamId: 'away', description: 'GOAL! F. Rodriguez scores for the away team!' },
-  //   { minute: 75, type: 'substitution', teamId: 'away', description: 'Substitution: L. Taylor comes on for K. Anderson.' },
-  //   { minute: 84, type: 'goal', teamId: 'home', description: 'GOAL! S. Jackson scores for the home team!' },
-  //   { minute: 90, type: 'goal', teamId: 'system', description: 'Full Time! The match has ended.' },
-  // ];
+  const hardCodedEvents = [
+    { minute: 1, type: 'goal', teamId: 'system', description: 'The match has started!' },
+    { minute: 5, type: 'goal', teamId: 'home', description: 'GOAL! J. Smith scores for the home team!' },
+    { minute: 12, type: 'card', teamId: 'away', description: 'Yellow Card: A. Johnson is booked for a foul.' },
+    { minute: 18, type: 'substitution', teamId: 'home', description: 'Substitution: T. Williams comes on for R. Brown.' },
+    { minute: 24, type: 'injury', teamId: 'away', description: 'Injury Concern: M. Garcia is down and receiving treatment.' },
+    { minute: 32, type: 'goal', teamId: 'away', description: 'GOAL! P. Martinez scores for the away team!' },
+    { minute: 45, type: 'goal', teamId: 'system', description: 'Half Time! The players head to the dressing room.' },
+    { minute: 46, type: 'goal', teamId: 'system', description: 'Second half begins!' },
+    { minute: 52, type: 'goal', teamId: 'home', description: 'GOAL! C. Wilson scores for the home team!' },
+    { minute: 61, type: 'card', teamId: 'home', description: 'Yellow Card: D. Thomas is booked for a late challenge.' },
+    { minute: 68, type: 'goal', teamId: 'away', description: 'GOAL! F. Rodriguez scores for the away team!' },
+    { minute: 75, type: 'substitution', teamId: 'away', description: 'Substitution: L. Taylor comes on for K. Anderson.' },
+    { minute: 84, type: 'goal', teamId: 'home', description: 'GOAL! S. Jackson scores for the home team!' },
+    { minute: 90, type: 'goal', teamId: 'system', description: 'Full Time! The match has ended.' },
+  ];
 
-  // // Stats update points
-  // const statsUpdates = [
-  //   { minute: 5, home: { possession: 55, shots: 1, shotsOnTarget: 1, passes: 20, passAccuracy: 85 }, away: { possession: 45, shots: 0, shotsOnTarget: 0, passes: 12, passAccuracy: 78 } },
-  //   { minute: 15, home: { possession: 52, shots: 2, shotsOnTarget: 1, passes: 45, passAccuracy: 82 }, away: { possession: 48, shots: 1, shotsOnTarget: 0, passes: 35, passAccuracy: 75 } },
-  //   { minute: 30, home: { possession: 48, shots: 3, shotsOnTarget: 2, passes: 78, passAccuracy: 81 }, away: { possession: 52, shots: 3, shotsOnTarget: 1, passes: 80, passAccuracy: 79 } },
-  //   { minute: 45, home: { possession: 50, shots: 4, shotsOnTarget: 2, passes: 120, passAccuracy: 83, fouls: 2, yellowCards: 0 }, away: { possession: 50, shots: 5, shotsOnTarget: 2, passes: 110, passAccuracy: 77, fouls: 3, yellowCards: 1 } },
-  //   { minute: 60, home: { possession: 53, shots: 6, shotsOnTarget: 3, passes: 180, passAccuracy: 80, fouls: 3, yellowCards: 1 }, away: { possession: 47, shots: 7, shotsOnTarget: 3, passes: 165, passAccuracy: 76, fouls: 4, yellowCards: 1 } },
-  //   { minute: 75, home: { possession: 51, shots: 8, shotsOnTarget: 4, passes: 230, passAccuracy: 79, fouls: 5, yellowCards: 1 }, away: { possession: 49, shots: 8, shotsOnTarget: 3, passes: 215, passAccuracy: 78, fouls: 5, yellowCards: 1 } },
-  //   { minute: 90, home: { possession: 50, shots: 10, shotsOnTarget: 5, passes: 280, passAccuracy: 81, fouls: 6, yellowCards: 1 }, away: { possession: 50, shots: 9, shotsOnTarget: 4, passes: 270, passAccuracy: 77, fouls: 7, yellowCards: 2 } },
-  // ];
+  // Stats update points
+  const statsUpdates = [
+    { minute: 5, home: { possession: 55, shots: 1, shotsOnTarget: 1, passes: 20, passAccuracy: 85 }, away: { possession: 45, shots: 0, shotsOnTarget: 0, passes: 12, passAccuracy: 78 } },
+    { minute: 15, home: { possession: 52, shots: 2, shotsOnTarget: 1, passes: 45, passAccuracy: 82 }, away: { possession: 48, shots: 1, shotsOnTarget: 0, passes: 35, passAccuracy: 75 } },
+    { minute: 30, home: { possession: 48, shots: 3, shotsOnTarget: 2, passes: 78, passAccuracy: 81 }, away: { possession: 52, shots: 3, shotsOnTarget: 1, passes: 80, passAccuracy: 79 } },
+    { minute: 45, home: { possession: 50, shots: 4, shotsOnTarget: 2, passes: 120, passAccuracy: 83, fouls: 2, yellowCards: 0 }, away: { possession: 50, shots: 5, shotsOnTarget: 2, passes: 110, passAccuracy: 77, fouls: 3, yellowCards: 1 } },
+    { minute: 60, home: { possession: 53, shots: 6, shotsOnTarget: 3, passes: 180, passAccuracy: 80, fouls: 3, yellowCards: 1 }, away: { possession: 47, shots: 7, shotsOnTarget: 3, passes: 165, passAccuracy: 76, fouls: 4, yellowCards: 1 } },
+    { minute: 75, home: { possession: 51, shots: 8, shotsOnTarget: 4, passes: 230, passAccuracy: 79, fouls: 5, yellowCards: 1 }, away: { possession: 49, shots: 8, shotsOnTarget: 3, passes: 215, passAccuracy: 78, fouls: 5, yellowCards: 1 } },
+    { minute: 90, home: { possession: 50, shots: 10, shotsOnTarget: 5, passes: 280, passAccuracy: 81, fouls: 6, yellowCards: 1 }, away: { possession: 50, shots: 9, shotsOnTarget: 4, passes: 270, passAccuracy: 77, fouls: 7, yellowCards: 2 } },
+  ];
 
   useEffect(() => {
     // If there's no currentMatch or userTeam, redirect to the play page
@@ -101,164 +101,164 @@ const MatchSimulation = () => {
   // Get the home and away teams
   const { homeTeam, awayTeam, homeScore, awayScore, events } = currentMatch;
 
-  // useEffect(() => {
-  //   // Start simulation after a short delay
-  //   const timer = setTimeout(() => {
-  //     setIsPlaying(true);
+  useEffect(() => {
+    // Start simulation after a short delay
+    const timer = setTimeout(() => {
+      setIsPlaying(true);
 
-  //     // Add match start event
-  //     const startEvent = {
-  //       id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  //       type: 'goal' as const,
-  //       minute: 0,
-  //       teamId: 'system',
-  //       description: 'The match has started!',
-  //     };
+      // Add match start event
+      const startEvent = {
+        id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'goal' as const,
+        minute: 0,
+        teamId: 'system',
+        description: 'The match has started!',
+      };
 
-  //     setMatchEvents([startEvent]);
+      setMatchEvents([startEvent]);
 
-  //     // Also add to the context
-  //     addMatchEvent({
-  //       type: 'goal',
-  //       minute: 0,
-  //       teamId: 'system',
-  //       description: 'The match has started!',
-  //     });
+      // Also add to the context
+      addMatchEvent({
+        type: 'goal',
+        minute: 0,
+        teamId: 'system',
+        description: 'The match has started!',
+      });
 
-  //     // Update initial stats
-  //     updateMatchStats(
-  //       { possession: 50, passes: 0, passAccuracy: 80 },
-  //       { possession: 50, passes: 0, passAccuracy: 75 }
-  //     );
-  //   }, 1000);
+      // Update initial stats
+      updateMatchStats(
+        { possession: 50, passes: 0, passAccuracy: 80 },
+        { possession: 50, passes: 0, passAccuracy: 75 }
+      );
+    }, 1000);
 
-  //   return () => clearTimeout(timer);
-  // }, []);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Auto-scroll to the bottom of the events container when new events are added
-  // useEffect(() => {
-  //   if (!matchEvents || matchEvents.length === 0) return;
+  useEffect(() => {
+    if (!matchEvents || matchEvents.length === 0) return;
 
-  //   const scrollToBottom = () => {
-  //     // Direct access to the viewport element using its ref
-  //     if (viewportRef.current) {
-  //       viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
-  //     }
-  //   };
+    const scrollToBottom = () => {
+      // Direct access to the viewport element using its ref
+      if (viewportRef.current) {
+        viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+      }
+    };
 
-  //   // We need to do this after rendering is complete
-  //   const timeoutId = setTimeout(scrollToBottom, 50);
-  //   return () => clearTimeout(timeoutId);
-  // }, [matchEvents]);
+    // We need to do this after rendering is complete
+    const timeoutId = setTimeout(scrollToBottom, 50);
+    return () => clearTimeout(timeoutId);
+  }, [matchEvents]);
 
-  // useEffect(() => {
-  //   let simulationInterval: ReturnType<typeof setInterval>;
+  useEffect(() => {
+    let simulationInterval: ReturnType<typeof setInterval>;
 
-  //   if (isPlaying && !isFullTime) {
-  //     simulationInterval = setInterval(() => {
-  //       setMinute(prev => {
-  //         const newMinute = prev + 1;
+    if (isPlaying && !isFullTime) {
+      simulationInterval = setInterval(() => {
+        setMinute(prev => {
+          const newMinute = prev + 1;
 
-  //         // Check for half time
-  //         if (newMinute === halfTime && !isHalfTime) {
-  //           setIsPlaying(false);
-  //           setIsHalfTime(true);
+          // Check for half time
+          if (newMinute === halfTime && !isHalfTime) {
+            setIsPlaying(false);
+            setIsHalfTime(true);
 
-  //           return newMinute;
-  //         }
+            return newMinute;
+          }
 
-  //         // Check for full time
-  //         if (newMinute >= totalMinutes) {
-  //           setIsPlaying(false);
-  //           setIsFullTime(true);
+          // Check for full time
+          if (newMinute >= totalMinutes) {
+            setIsPlaying(false);
+            setIsFullTime(true);
 
-  //           // Determine the winner based on score
-  //           if (homeScore > awayScore) {
-  //             completeMatch(homeTeam.id);
-  //           } else if (awayScore > homeScore) {
-  //             completeMatch(awayTeam.id);
-  //           } else {
-  //             // It's a draw, give it to home team for MVP simplicity
-  //             completeMatch(homeTeam.id);
-  //           }
+            // Determine the winner based on score
+            if (homeScore > awayScore) {
+              completeMatch(homeTeam.id);
+            } else if (awayScore > homeScore) {
+              completeMatch(awayTeam.id);
+            } else {
+              // It's a draw, give it to home team for MVP simplicity
+              completeMatch(homeTeam.id);
+            }
 
-  //           // Navigate to summary after a delay
-  //           setTimeout(() => {
-  //             navigate('/summary');
-  //           }, 5000);
+            // Navigate to summary after a delay
+            setTimeout(() => {
+              navigate('/summary');
+            }, 5000);
 
-  //           return totalMinutes;
-  //         }
+            return totalMinutes;
+          }
 
-  //         // Process hard-coded events for this minute
-  //         processHardCodedEvents(newMinute);
+          // Process hard-coded events for this minute
+          processHardCodedEvents(newMinute);
 
-  //         // Update stats for this minute
-  //         updateHardCodedStats(newMinute);
+          // Update stats for this minute
+          updateHardCodedStats(newMinute);
 
-  //         return newMinute;
-  //       });
-  //     }, simulationSpeed);
-  //   }
+          return newMinute;
+        });
+      }, simulationSpeed);
+    }
 
-  //   return () => {
-  //     if (simulationInterval) clearInterval(simulationInterval);
-  //   };
-  // }, [isPlaying, isFullTime, isHalfTime]);
+    return () => {
+      if (simulationInterval) clearInterval(simulationInterval);
+    };
+  }, [isPlaying, isFullTime, isHalfTime]);
 
   // Process hard-coded events for the current minute
-  // const processHardCodedEvents = (currentMinute: number) => {
-  //   const eventsForThisMinute = hardCodedEvents.filter(event => event.minute === currentMinute);
+  const processHardCodedEvents = (currentMinute: number) => {
+    const eventsForThisMinute = hardCodedEvents.filter(event => event.minute === currentMinute);
 
-  //   if (eventsForThisMinute.length > 0) {
-  //     const newEvents = eventsForThisMinute.map(event => {
-  //       let teamId: string;
+    if (eventsForThisMinute.length > 0) {
+      const newEvents = eventsForThisMinute.map(event => {
+        let teamId: string;
 
-  //       // Determine which team ID to use based on 'home' or 'away'
-  //       if (event.teamId === 'home') {
-  //         teamId = homeTeam.id;
-  //       } else if (event.teamId === 'away') {
-  //         teamId = awayTeam.id;
-  //       } else {
-  //         teamId = event.teamId;
-  //       }
+        // Determine which team ID to use based on 'home' or 'away'
+        if (event.teamId === 'home') {
+          teamId = homeTeam.id;
+        } else if (event.teamId === 'away') {
+          teamId = awayTeam.id;
+        } else {
+          teamId = event.teamId;
+        }
 
-  //       // Create the event object with a unique ID
-  //       const newEvent = {
-  //         id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  //         type: event.type as any,
-  //         minute: currentMinute,
-  //         teamId: teamId,
-  //         description: event.description,
-  //       };
+        // Create the event object with a unique ID
+        const newEvent = {
+          id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: event.type as any,
+          minute: currentMinute,
+          teamId: teamId,
+          description: event.description,
+        };
 
-  //       // Also add to the context
-  //       addMatchEvent({
-  //         type: event.type as any,
-  //         minute: currentMinute,
-  //         teamId: teamId,
-  //         description: event.description,
-  //       });
+        // Also add to the context
+        addMatchEvent({
+          type: event.type as any,
+          minute: currentMinute,
+          teamId: teamId,
+          description: event.description,
+        });
 
-  //       return newEvent;
-  //     });
+        return newEvent;
+      });
 
-  //     // Update the local state with the new events
-  //     setMatchEvents(prev => [...prev, ...newEvents]);
-  //   }
-  // };
+      // Update the local state with the new events
+      setMatchEvents(prev => [...prev, ...newEvents]);
+    }
+  };
 
   // Update stats based on hard-coded data
-  // const updateHardCodedStats = (currentMinute: number) => {
-  //   // Find the closest stats update point that's less than or equal to the current minute
-  //   const relevantUpdate = [...statsUpdates]
-  //     .reverse()
-  //     .find(update => update.minute <= currentMinute);
+  const updateHardCodedStats = (currentMinute: number) => {
+    // Find the closest stats update point that's less than or equal to the current minute
+    const relevantUpdate = [...statsUpdates]
+      .reverse()
+      .find(update => update.minute <= currentMinute);
 
-  //   if (relevantUpdate) {
-  //     updateMatchStats(relevantUpdate.home, relevantUpdate.away);
-  //   }
-  // };
+    if (relevantUpdate) {
+      updateMatchStats(relevantUpdate.home, relevantUpdate.away);
+    }
+  };
 
   const handleContinue = () => {
     setIsHalfTime(false);

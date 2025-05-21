@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Trophy, Users } from "lucide-react";
 import { useUserStore } from "@/stores/useUserStore";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/Logo-2.png";
 const Home = () => {
   const navigate = useNavigate();
   const { isLoggedIn, setIsLoggedIn } = useUserStore();
