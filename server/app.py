@@ -10,6 +10,7 @@ import json
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from services.logo_service import LogoService
 from services.match_service import MatchService
+from services.commentary_service import CommentaryService
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +28,7 @@ app.add_middleware(
 
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
+commentary_service = CommentaryService()
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
@@ -62,8 +64,8 @@ async def simulate_match(request: Request):
         data = await request.json()
         user_team = data.get("user_team")
         opponent_team = data.get("opponent_team")
-        match_id = data.get("match_id")  # Client should generate a unique match ID
-        debug_mode = data.get("debug_mode", False)  # Default to False for production
+        match_id = data.get("match_id")
+        debug_mode = data.get("debug_mode", False)
 
         if not user_team or not opponent_team or not match_id:
             raise HTTPException(status_code=400, detail="Missing team data or match ID")
@@ -75,7 +77,7 @@ async def simulate_match(request: Request):
         match_service = MatchService(
             home_team=user_team,
             away_team=opponent_team,
-            use_llm=not debug_mode,  # Invert debug_mode for use_llm
+            use_llm=not debug_mode,
             debug_mode=debug_mode
         )
         
@@ -85,7 +87,8 @@ async def simulate_match(request: Request):
         async def event_generator():
             try:
                 async for event in match_service.stream_first_half():
-                    yield event
+                    if event:  # Only yield non-empty events
+                        yield event
             except Exception as e:
                 print(f"Error in event generator: {e}")
                 yield json.dumps({"error": str(e)}) + "\n"
@@ -96,7 +99,9 @@ async def simulate_match(request: Request):
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
+                "X-Accel-Buffering": "no",
+                "Content-Type": "text/event-stream",
+                "Transfer-Encoding": "chunked"
             }
         )
     except ValueError as e:
@@ -141,9 +146,25 @@ async def continue_match(request: Request):
         print("\n=== Starting second half ===")
         match_service = active_matches[match_id]
         
+        async def event_generator():
+            try:
+                async for event in match_service.stream_second_half():
+                    if event:  # Only yield non-empty events
+                        yield event
+            except Exception as e:
+                print(f"Error in event generator: {e}")
+                yield json.dumps({"error": str(e)}) + "\n"
+        
         return StreamingResponse(
-            match_service.stream_second_half(),
-            media_type="text/event-stream"
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+                "Content-Type": "text/event-stream",
+                "Transfer-Encoding": "chunked"
+            }
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -171,6 +192,60 @@ async def change_team_tactic(request: Request):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.post("/api/simulate-match-with-commentary")
+# async def simulate_match_with_commentary(request: Request):
+#     """Stream a simulated match with events and commentary until half-time."""
+#     try:
+#         data = await request.json()
+#         user_team = data.get("user_team")
+#         opponent_team = data.get("opponent_team")
+#         match_id = data.get("match_id")
+#         debug_mode = data.get("debug_mode", False)
+
+#         if not user_team or not opponent_team or not match_id:
+#             raise HTTPException(status_code=400, detail="Missing team data or match ID")
+
+#         print(f"\n=== Starting match with commentary: {user_team} vs {opponent_team} ===")
+#         print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
+
+#         # Initialize MatchService with the teams
+#         match_service = MatchService(
+#             home_team=user_team,
+#             away_team=opponent_team,
+#             use_llm=not debug_mode,
+#             debug_mode=debug_mode
+#         )
+        
+#         # Store the match service instance
+#         active_matches[match_id] = match_service
+        
+#         async def event_and_commentary_generator():
+#             try:
+#                 # Stream events from match service
+#                 event_stream = match_service.stream_first_half()
+                
+#                 # Stream commentary for each event
+#                 async for commentary_data in commentary_service.stream_commentary(match_id, event_stream):
+#                     yield commentary_data
+                    
+#             except Exception as e:
+#                 print(f"Error in event and commentary generator: {e}")
+#                 yield json.dumps({"error": str(e)}) + "\n"
+        
+#         return StreamingResponse(
+#             event_and_commentary_generator(),
+#             media_type="text/event-stream",
+#             headers={
+#                 "Cache-Control": "no-cache",
+#                 "Connection": "keep-alive",
+#                 "X-Accel-Buffering": "no"
+#             }
+#         )
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,4 +1,5 @@
-import { TeamAttributes, TeamTactic, Formation, Player } from "@/types";
+import { TeamAttributes, TeamTactic, Formation, Player , TeamStats} from "@/types";
+import {  } from "./team";
 
 
 export type OnboardingState = {
@@ -19,6 +20,7 @@ export type OnboardingState = {
   success: string | null;
   teamId: string;
   mainColor: string;
+  teamStats: TeamStats | null;
 
   // Actions
   setTeamName: (name: string) => void;
@@ -33,7 +35,7 @@ export type OnboardingState = {
   setTactic: (tactic: TeamTactic) => void;
   setMainColor: (color: string) => void;
   handleAttributeChange: (attr: keyof TeamAttributes, newValue: number) => void;
-  createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }) => Promise<void>;
+  createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }, teamStats: TeamStats) => Promise<void>;
   resetTeamCreation: () => void;
   generateRandomPlayers: (teamId: string, teamName: string) => Player[];
 };
