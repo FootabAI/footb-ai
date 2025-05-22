@@ -61,8 +61,7 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
 export const startMatchSimulation = async (
   matchId: string,
   userTeam: Team,
-  opponentTeam: Team,
-  debugMode: boolean = false
+  opponentTeam: Team
 ): Promise<MatchSimulationResponse> => {
   const response = await fetch(`${API_URL}/api/simulate-match`, {
     method: "POST",
@@ -71,9 +70,20 @@ export const startMatchSimulation = async (
     },
     body: JSON.stringify({
       match_id: matchId,
-      user_team: userTeam.name,
-      opponent_team: opponentTeam.name,
-      debug_mode: debugMode,
+      user_team: {
+        name: userTeam.name,
+        attributes: userTeam.attributes,
+        tactic: userTeam.tactic,
+        formation: userTeam.formation,
+        teamStats: userTeam.teamStats
+      },
+      opponent_team: {
+        name: opponentTeam.name,
+        attributes: opponentTeam.attributes,
+        tactic: opponentTeam.tactic,
+        formation: opponentTeam.formation,
+        teamStats: opponentTeam.teamStats
+      }
     }),
   });
   console.log(response);
@@ -123,6 +133,8 @@ export const changeTeamTactics = async (
   tactic: TeamTactic,
   formation: Formation
 ): Promise<void> => {
+  console.log("Changing tactics:", { matchId, tactic, formation });
+  
   const response = await fetch(`${API_URL}/api/change-team-tactic`, {
     method: "POST",
     headers: {
@@ -134,7 +146,9 @@ export const changeTeamTactics = async (
       formation,
     }),
   });
-  console.log(response);
+  
+  const data = await response.json();
+  console.log("Tactics change response:", data);
 
   if (!response.ok) {
     throw new Error('Failed to change team tactics');

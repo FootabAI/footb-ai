@@ -33,7 +33,7 @@ import Event from "@/components/Event";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { formations } from "@/config/formations";
-import { useTeamActions } from "@/hooks/useTeamActions";
+// import { v4 as uuidv4 } from "uuid";
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -45,21 +45,17 @@ const MatchSimulation = () => {
     completeMatch,
   } = useGameStore();
   const { team } = useTeamStore();
-  const { handleFormationChange, handleSaveTactic } = useTeamActions();
 
   const [isWarmingUp, setIsWarmingUp] = useState(true);
   const [minute, setMinute] = useState(0);
   const [isHalfTime, setIsHalfTime] = useState(false);
   const [isFullTime, setIsFullTime] = useState(false);
   const [changeTactic, setChangeTactic] = useState<TeamTactic | null>(null);
-  const [changeFormation, setChangeFormation] = useState<Formation | null>(
-    null
-  );
+  const [changeFormation, setChangeFormation] = useState<Formation | null>(null);
   const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
   const [matchId] = useState(
     () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
-  const [debugMode] = useState(false);
   const [warmingUpMessage, setWarmingUpMessage] = useState(0);
 
   // Refs for scrolling
@@ -123,12 +119,10 @@ const MatchSimulation = () => {
   const startMatch = async () => {
     try {
       console.log("\n=== Starting match simulation ===");
-      console.log(`Debug mode: ${debugMode ? "ON" : "OFF"}`);
       const { events } = await startMatchSimulation(
         matchId,
         team,
-        currentMatch.awayTeam,
-        debugMode
+        currentMatch.awayTeam
       );
       setIsWarmingUp(false);
 
@@ -200,14 +194,15 @@ const MatchSimulation = () => {
       if (changeTactic || changeFormation) {
         console.log("\n=== Changing tactics ===");
         console.log(`Tactic: ${changeTactic || currentMatch.homeTeam.tactic}`);
-        console.log(
-          `Formation: ${changeFormation || currentMatch.homeTeam.formation}`
-        );
+        console.log(`Formation: ${changeFormation || currentMatch.homeTeam.formation}`);
+        
+        // Send the changes to the server
         await changeTeamTactics(
           matchId,
           changeTactic || currentMatch.homeTeam.tactic,
           changeFormation || currentMatch.homeTeam.formation
         );
+
         toast({
           title: "Tactics Changed",
           description: `Your team is now using ${
@@ -239,7 +234,6 @@ const MatchSimulation = () => {
               ? team.id
               : currentMatch.awayTeam.id
           );
-          // setTimeout(() => navigate('/summary'), 5000);
         }
 
         // Log event
@@ -395,9 +389,7 @@ const MatchSimulation = () => {
                       </label>
                       <Select
                         value={changeTactic || currentMatch.homeTeam.tactic}
-                        onValueChange={(value) =>
-                          handleSaveTactic(value as TeamTactic)
-                        }
+                        onValueChange={(value) => setChangeTactic(value as TeamTactic)}
                       >
                         <SelectTrigger className="bg-footbai-header border-footbai-hover">
                           <SelectValue placeholder="Select tactic" />
@@ -423,10 +415,11 @@ const MatchSimulation = () => {
                       </label>
                       <div>
                         <Tabs
-                          value={team.formation}
-                          onValueChange={(value) =>
-                            handleFormationChange(value as Formation)
-                          }
+                          value={changeFormation || currentMatch.homeTeam.formation}
+                          onValueChange={(value) => {
+                            console.log("Formation changed to:", value);
+                            setChangeFormation(value as Formation);
+                          }}
                           className="mb-4"
                         >
                           <TabsList className="grid w-full grid-cols-5">
@@ -438,7 +431,7 @@ const MatchSimulation = () => {
                           </TabsList>
                         </Tabs>
                         <FormationDisplay
-                          formation={team.formation as Formation}
+                          formation={changeFormation || currentMatch.homeTeam.formation}
                           size="small"
                           isOnboarding={false}
                         />

@@ -15,6 +15,68 @@ import { Play, Info } from "lucide-react";
 import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
 import { useGameStore } from "@/stores/useGameStore";
 import { useBotTeamStore } from "@/stores/useBotTeamStore";
+import { Team } from "@/types";
+
+interface BotTeamCardProps {
+  botTeam: Team;
+  onPlayMatch: (team: Team) => void;
+}
+
+const BotTeamCard = ({ botTeam, onPlayMatch }: BotTeamCardProps) => {
+  const botTeamStrength = useCalculateTeamStrength(botTeam.attributes);
+
+  return (
+    <Card className="bg-footbai-container border-footbai-header">
+      <CardContent className="p-5">
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <TeamLogo logo={botTeam.logo} size="md" />
+              <div>
+                <h3 className="font-semibold text-lg">
+                  {botTeam.name}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  {botTeam.tactic} Tactic
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-sm text-gray-400">Team Rating</div>
+              <div className="text-3xl font-bold">
+                {botTeamStrength}
+              </div>
+            </div>
+          </div>
+          <Button
+            className="bg-footbai-accent hover:bg-footbai-accent/80 text-black w-full"
+            onClick={() => onPlayMatch(botTeam)}
+          >
+            <Play size={16} className="mr-2" />
+            Play {botTeam.name}
+          </Button>
+        </div>
+      </CardContent>
+      <Separator className="bg-footbai-header" />
+      <CardContent className="p-5">
+        <h4 className="text-sm font-medium text-white mb-3">
+          Opponent Attributes
+        </h4>
+        <AttributesDisplay
+          layout="grid"
+          attributes={botTeam.attributes}
+          teamColor={botTeam.logo.data.mainColor}
+        />
+      </CardContent>
+      <CardFooter className="bg-footbai-header px-5 py-3">
+        <div className="flex items-center text-xs text-gray-400">
+          <Info size={14} className="mr-2" />
+          Matches against bot opponents are always available
+        </div>
+      </CardFooter>
+    </Card>
+  );
+};
 
 const PlayMatch = () => {
   const navigate = useNavigate();
@@ -77,58 +139,11 @@ const PlayMatch = () => {
           {/* Bot teams grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {botTeams.map((botTeam) => (
-              <Card
+              <BotTeamCard
                 key={botTeam.id}
-                className="bg-footbai-container border-footbai-header"
-              >
-                <CardContent className="p-5">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <TeamLogo logo={botTeam.logo} size="md" />
-                        <div>
-                          <h3 className="font-semibold text-lg">
-                            {botTeam.name}
-                          </h3>
-                          <p className="text-sm text-gray-400">
-                            {botTeam.tactic} Tactic
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <div className="text-sm text-gray-400">Team Rating</div>
-                        <div className="text-3xl font-bold">
-                          {calculateTeamStrength}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      className="bg-footbai-accent hover:bg-footbai-accent/80 text-black w-full"
-                      onClick={() => handlePlayMatch(botTeam)}
-                    >
-                      <Play size={16} className="mr-2" />
-                      Play {botTeam.name}
-                    </Button>
-                  </div>
-                </CardContent>
-                <Separator className="bg-footbai-header" />
-                <CardContent className="p-5">
-                  <h4 className="text-sm font-medium text-white mb-3">
-                    Opponent Attributes
-                  </h4>
-                  <AttributesDisplay
-                    layout="grid"
-                    attributes={botTeam.attributes}
-                    teamColor={botTeam.logo.data.mainColor}
-                  />
-                </CardContent>
-                <CardFooter className="bg-footbai-header px-5 py-3">
-                  <div className="flex items-center text-xs text-gray-400">
-                    <Info size={14} className="mr-2" />
-                    Matches against bot opponents are always available
-                  </div>
-                </CardFooter>
-              </Card>
+                botTeam={botTeam}
+                onPlayMatch={handlePlayMatch}
+              />
             ))}
 
             {/* Coming soon card */}

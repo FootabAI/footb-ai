@@ -119,12 +119,30 @@ class MatchService:
         use_llm: bool = False,
         llm_temperature: float = 0.7,
         debug_mode: bool = False,
+        home_team_attributes: Optional[Dict[str, int]] = None,
+        away_team_attributes: Optional[Dict[str, int]] = None,
+        home_team_tactic: Optional[str] = None,
+        away_team_tactic: Optional[str] = None,
+        home_team_formation: Optional[str] = None,
+        away_team_formation: Optional[str] = None,
+        home_team_stats: Optional[Dict[str, Any]] = None,
+        away_team_stats: Optional[Dict[str, Any]] = None,
     ):
         self.home_team = home_team
         self.away_team = away_team
         self.debug_mode = debug_mode
         self.chunk_size = 15  # minutes per chunk
         self.event_delay = 0.5  # seconds between events
+
+        # Store team attributes and tactics
+        self.home_team_attributes = home_team_attributes or {}
+        self.away_team_attributes = away_team_attributes or {}
+        self.home_team_tactic = home_team_tactic or "Balanced"
+        self.away_team_tactic = away_team_tactic or "Balanced"
+        self.home_team_formation = home_team_formation or "4-3-3"
+        self.away_team_formation = away_team_formation or "4-3-3"
+        self.home_team_stats = home_team_stats or {}
+        self.away_team_stats = away_team_stats or {}
 
         # RNGs
         self._rng = random.Random(seed)
@@ -133,7 +151,9 @@ class MatchService:
         # Override parameters if dataset supplied
         if stats_backend:
             self._apply_stats_backend(stats_backend)
-
+        else:
+            # Adjust parameters based on team attributes
+            self._adjust_parameters_from_attributes()
 
         # Optional GPT commentator
         self.llm = (
@@ -148,6 +168,99 @@ class MatchService:
         self._is_half_time = False
         self._current_score = {"home": 0, "away": 0}
         self._stats = self._initialize_stats()
+
+    def _adjust_parameters_from_attributes(self) -> None:
+        """Adjust match parameters based on team attributes."""
+        print("\n=== Adjusting Match Parameters ===")
+        print(f"Home Team: {self.home_team}")
+        print(f"Home Tactic: {self.home_team_tactic}")
+        print(f"Home Formation: {self.home_team_formation}")
+        
+        # Adjust goal probabilities based on shooting and passing
+        home_shooting = self.home_team_attributes.get("shooting", 50)
+        home_passing = self.home_team_attributes.get("passing", 50)
+        away_shooting = self.away_team_attributes.get("shooting", 50)
+        away_passing = self.away_team_attributes.get("passing", 50)
+
+        print(f"\nTeam Attributes:")
+        print(f"Home Shooting: {home_shooting}")
+        print(f"Home Passing: {home_passing}")
+        print(f"Away Shooting: {away_shooting}")
+        print(f"Away Passing: {away_passing}")
+
+        # Base adjustment factor (0.8 to 1.2 range)
+        home_factor = (home_shooting + home_passing) / 100
+        away_factor = (away_shooting + away_passing) / 100
+
+        print(f"\nBase Factors:")
+        print(f"Home Factor: {home_factor}")
+        print(f"Away Factor: {away_factor}")
+
+        # Adjust goal probabilities
+        self.GOALS_LAMBDA_HOME *= home_factor
+        self.GOALS_LAMBDA_AWAY *= away_factor
+
+        # Adjust possession based on passing and tactic
+        home_passing_skill = home_passing / 100
+        away_passing_skill = away_passing / 100
+
+        # Tactic adjustments
+        tactic_adjustments = {
+            "Possession-Based": 1.2,
+            "Balanced": 1.0,
+            "Counter-Attacking": 0.8,
+            "Defensive": 0.7,
+            "Offensive": 1.1,
+            "Aggressive": 1.1
+        }
+
+        home_tactic_factor = tactic_adjustments.get(self.home_team_tactic, 1.0)
+        away_tactic_factor = tactic_adjustments.get(self.away_team_tactic, 1.0)
+
+        print(f"\nTactic Factors:")
+        print(f"Home Tactic Factor: {home_tactic_factor}")
+        print(f"Away Tactic Factor: {away_tactic_factor}")
+
+        # Calculate possession
+        total_skill = home_passing_skill * home_tactic_factor + away_passing_skill * away_tactic_factor
+        self.POSSESSION_HOME = (home_passing_skill * home_tactic_factor / total_skill) * 100
+        self.POSSESSION_AWAY = 100 - self.POSSESSION_HOME
+
+        # Adjust shots based on shooting and tactic
+        self.SHOTS_HOME = int(12 * home_factor * home_tactic_factor)
+        self.SHOTS_AWAY = int(12 * away_factor * away_tactic_factor)
+
+        # Adjust shots on target based on shooting
+        self.SHOTS_ON_TARGET_HOME = int(self.SHOTS_HOME * (home_shooting / 100))
+        self.SHOTS_ON_TARGET_AWAY = int(self.SHOTS_AWAY * (away_shooting / 100))
+
+        # Adjust passes based on passing skill
+        self.PASSES_HOME = int(450 * home_passing_skill)
+        self.PASSES_AWAY = int(450 * away_passing_skill)
+
+        # Adjust pass accuracy based on passing skill
+        self.PASS_ACCURACY_HOME = int(70 + (home_passing_skill * 20))
+        self.PASS_ACCURACY_AWAY = int(70 + (away_passing_skill * 20))
+
+        # Adjust fouls based on physicality
+        home_physicality = self.home_team_attributes.get("physicality", 50)
+        away_physicality = self.away_team_attributes.get("physicality", 50)
+        self.FOULS_HOME = int(8 * (home_physicality / 50))
+        self.FOULS_AWAY = int(8 * (away_physicality / 50))
+
+        # Adjust corners based on attacking play
+        self.CORNERS_HOME = int(6 * home_factor)
+        self.CORNERS_AWAY = int(6 * away_factor)
+
+        print(f"\nFinal Parameters:")
+        print(f"Goals Lambda Home: {self.GOALS_LAMBDA_HOME}")
+        print(f"Possession Home: {self.POSSESSION_HOME}")
+        print(f"Shots Home: {self.SHOTS_HOME}")
+        print(f"Shots On Target Home: {self.SHOTS_ON_TARGET_HOME}")
+        print(f"Passes Home: {self.PASSES_HOME}")
+        print(f"Pass Accuracy Home: {self.PASS_ACCURACY_HOME}")
+        print(f"Fouls Home: {self.FOULS_HOME}")
+        print(f"Corners Home: {self.CORNERS_HOME}")
 
     def _initialize_stats(self) -> Dict[str, Any]:
         """Initialize match statistics structure."""
@@ -188,18 +301,19 @@ class MatchService:
 
     # ───────────────────────── STREAMING API ────────────────────────────
     async def stream_first_half(self) -> AsyncGenerator[str, None]:
-        """Stream first half events in chunks."""
+        """Generate and stream all first half events at once."""
         if not self._generated:
             self._events = []
-            async for event in self._stream_chunk(0, 45):
-                yield event
+            # Generate all events for first half
+            first_half_events = self._generate_timeline_chunk(0, 45)
+            self._events.extend(first_half_events)
             self._generated = True
-        else:
-            # Stream existing events
-            for ev in self._events:
-                if ev["minute"] > 45:
-                    break
-                yield await self._process_event(ev)
+
+        # Stream all first half events
+        for ev in self._events:
+            if ev["minute"] > 45:
+                break
+            yield await self._process_event(ev)
 
         # Add half-time event
         half_time_event = self._event(45, "info", "half-time")
@@ -207,33 +321,28 @@ class MatchService:
         self._is_half_time = True
 
     async def stream_second_half(self) -> AsyncGenerator[str, None]:
-        """Stream second half events in chunks."""
+        """Generate and stream all second half events at once."""
         if not self._is_half_time:
             raise RuntimeError("Second half requested before half-time.")
 
-        async for event in self._stream_chunk(45, 90):
-            yield event
+        # Generate all events for second half
+        second_half_events = self._generate_timeline_chunk(45, 90)
+        self._events.extend(second_half_events)
+
+        # Stream all second half events
+        for ev in second_half_events:
+            yield await self._process_event(ev)
 
         # Add full-time event
         full_time_event = self._event(90, "info", "full-time")
         yield await self._process_event(full_time_event)
-
-    async def _stream_chunk(self, start_min: int, end_min: int) -> AsyncGenerator[str, None]:
-        """Stream events for a specific time chunk."""
-        for chunk_start in range(start_min, end_min, self.chunk_size):
-            chunk_end = min(chunk_start + self.chunk_size, end_min)
-            new_events = self._generate_timeline_chunk(chunk_start, chunk_end)
-            self._events.extend(new_events)
-            
-            for ev in new_events:
-                yield await self._process_event(ev)
 
     async def _process_event(self, event: Dict[str, Any]) -> str:
         """Process a single event and return its JSON representation."""
         try:
             self._update_stats(event)
             event["stats"] = self._stats
-            await asyncio.sleep(self.event_delay)
+            await asyncio.sleep(self.event_delay)  # Keep a small delay for readability
             return json.dumps(event) + "\n"
         except Exception as e:
             print(f"Error processing event: {e}")
@@ -480,7 +589,7 @@ class MatchService:
             return base
 
     def _generate_timeline_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
-        """Generate events for a specific time chunk."""
+        """Generate all events for a specific time period."""
         if self.debug_mode:
             return self._generate_debug_timeline_chunk(start_min, end_min)
 

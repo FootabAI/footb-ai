@@ -4,13 +4,13 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 import uvicorn
 import base64
-from typing import Dict
+from typing import Dict, Optional
 import json
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from services.logo_service import LogoService
 from services.match_service import MatchService
-from services.commentary_service import CommentaryService
+
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +28,9 @@ app.add_middleware(
 
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
-commentary_service = CommentaryService()
+
+# Central control for match simulation
+USE_LLM = False  # Set to False to use hardcoded events
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
@@ -62,23 +64,30 @@ async def simulate_match(request: Request):
     """Stream a simulated match with events until half-time."""
     try:
         data = await request.json()
-        user_team = data.get("user_team")
-        opponent_team = data.get("opponent_team")
+        user_team_data = data.get("user_team")
+        opponent_team_data = data.get("opponent_team")
         match_id = data.get("match_id")
-        debug_mode = data.get("debug_mode", False)
 
-        if not user_team or not opponent_team or not match_id:
+        if not user_team_data or not opponent_team_data or not match_id:
             raise HTTPException(status_code=400, detail="Missing team data or match ID")
 
-        print(f"\n=== Starting match: {user_team} vs {opponent_team} ===")
-        print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
+        print(f"\n=== Starting match: {user_team_data['name']} vs {opponent_team_data['name']} ===")
+        print(f"LLM Commentary: {'ON' if USE_LLM else 'OFF'}")
 
-        # Initialize MatchService with the teams
+        # Initialize MatchService with the teams and their attributes
         match_service = MatchService(
-            home_team=user_team,
-            away_team=opponent_team,
-            use_llm=not debug_mode,
-            debug_mode=debug_mode
+            home_team=user_team_data["name"],
+            away_team=opponent_team_data["name"],
+            use_llm=USE_LLM,  # Use central control
+            debug_mode=not USE_LLM,  # Use debug mode when LLM is off
+            home_team_attributes=user_team_data["attributes"],
+            away_team_attributes=opponent_team_data["attributes"],
+            home_team_tactic=user_team_data["tactic"],
+            away_team_tactic=opponent_team_data["tactic"],
+            home_team_formation=user_team_data["formation"],
+            away_team_formation=opponent_team_data["formation"],
+            home_team_stats=user_team_data["teamStats"],
+            away_team_stats=opponent_team_data["teamStats"]
         )
         
         # Store the match service instance
@@ -109,26 +118,26 @@ async def simulate_match(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/change-formation")
-async def change_formation(request: Request):
-    """Handle formation changes at half-time."""
-    try:
-        data = await request.json()
-        match_id = data.get("match_id")
-        new_formation = data.get("formation")
+# @app.post("/api/change-formation")
+# async def change_formation(request: Request):
+#     """Handle formation changes at half-time."""
+#     try:
+#         data = await request.json()
+#         match_id = data.get("match_id")
+#         new_formation = data.get("formation")
 
-        if not match_id or not new_formation:
-            raise HTTPException(status_code=400, detail="Missing match ID or formation data")
+#         if not match_id or not new_formation:
+#             raise HTTPException(status_code=400, detail="Missing match ID or formation data")
 
-        if match_id not in active_matches:
-            raise HTTPException(status_code=404, detail="Match not found")
+#         if match_id not in active_matches:
+#             raise HTTPException(status_code=404, detail="Match not found")
 
-        # Here you can implement formation change logic
-        # For now, we'll just acknowledge the change
-        return {"message": f"Formation changed to {new_formation}", "success": True}
+#         # Here you can implement formation change logic
+#         # For now, we'll just acknowledge the change
+#         return {"message": f"Formation changed to {new_formation}", "success": True}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/continue-match")
 async def continue_match(request: Request):
@@ -180,72 +189,55 @@ async def change_team_tactic(request: Request):
         tactic = data.get("tactic")
         formation = data.get("formation")
 
+        print(f"\n=== Tactics Change Request ===")
+        print(f"Match ID: {match_id}")
+        print(f"New Tactic: {tactic}")
+        print(f"New Formation: {formation}")
+
         if not match_id or not tactic or not formation:
             raise HTTPException(status_code=400, detail="Missing match ID, tactic, or formation data")
 
         if match_id not in active_matches:
             raise HTTPException(status_code=404, detail="Match not found")
 
-        # Here you can implement tactic and formation change logic
-        # For now, we'll just acknowledge the change
-        return {"message": f"Tactics changed to {tactic} with {formation} formation", "success": True}
+        # Get the match service instance
+        match_service = active_matches[match_id]
+        
+        print(f"\n=== Current Match State ===")
+        print(f"Home Team: {match_service.home_team}")
+        print(f"Current Tactic: {match_service.home_team_tactic}")
+        print(f"Current Formation: {match_service.home_team_formation}")
+        
+        # Update the home team's tactic and formation
+        match_service.home_team_tactic = tactic
+        match_service.home_team_formation = formation
+        
+        # Recalculate match parameters based on new tactics
+        match_service._adjust_parameters_from_attributes()
+        
+        print(f"\n=== Updated Match State ===")
+        print(f"New Tactic: {match_service.home_team_tactic}")
+        print(f"New Formation: {match_service.home_team_formation}")
+        print(f"Updated Parameters:")
+        print(f"- Goals Lambda Home: {match_service.GOALS_LAMBDA_HOME}")
+        print(f"- Possession Home: {match_service.POSSESSION_HOME}")
+        print(f"- Shots Home: {match_service.SHOTS_HOME}")
+
+        return {
+            "message": f"Tactics changed to {tactic} with {formation} formation",
+            "success": True,
+            "new_tactic": tactic,
+            "new_formation": formation,
+            "updated_parameters": {
+                "goals_lambda": match_service.GOALS_LAMBDA_HOME,
+                "possession": match_service.POSSESSION_HOME,
+                "shots": match_service.SHOTS_HOME
+            }
+        }
 
     except Exception as e:
+        print(f"Error in change_team_tactic: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# @app.post("/api/simulate-match-with-commentary")
-# async def simulate_match_with_commentary(request: Request):
-#     """Stream a simulated match with events and commentary until half-time."""
-#     try:
-#         data = await request.json()
-#         user_team = data.get("user_team")
-#         opponent_team = data.get("opponent_team")
-#         match_id = data.get("match_id")
-#         debug_mode = data.get("debug_mode", False)
-
-#         if not user_team or not opponent_team or not match_id:
-#             raise HTTPException(status_code=400, detail="Missing team data or match ID")
-
-#         print(f"\n=== Starting match with commentary: {user_team} vs {opponent_team} ===")
-#         print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
-
-#         # Initialize MatchService with the teams
-#         match_service = MatchService(
-#             home_team=user_team,
-#             away_team=opponent_team,
-#             use_llm=not debug_mode,
-#             debug_mode=debug_mode
-#         )
-        
-#         # Store the match service instance
-#         active_matches[match_id] = match_service
-        
-#         async def event_and_commentary_generator():
-#             try:
-#                 # Stream events from match service
-#                 event_stream = match_service.stream_first_half()
-                
-#                 # Stream commentary for each event
-#                 async for commentary_data in commentary_service.stream_commentary(match_id, event_stream):
-#                     yield commentary_data
-                    
-#             except Exception as e:
-#                 print(f"Error in event and commentary generator: {e}")
-#                 yield json.dumps({"error": str(e)}) + "\n"
-        
-#         return StreamingResponse(
-#             event_and_commentary_generator(),
-#             media_type="text/event-stream",
-#             headers={
-#                 "Cache-Control": "no-cache",
-#                 "Connection": "keep-alive",
-#                 "X-Accel-Buffering": "no"
-#             }
-#         )
-#     except ValueError as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
