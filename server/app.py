@@ -1,15 +1,18 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import uvicorn
 import base64
 from typing import Dict, Optional
 import json
+from pathlib import Path
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from services.logo_service import LogoService
 from services.match_service import MatchService
+from services.tts_service import TTSService
 
 
 # Load environment variables
@@ -26,11 +29,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create temp_audio directory if it doesn't exist
+temp_audio_dir = Path("temp_audio")
+temp_audio_dir.mkdir(exist_ok=True)
+
+# Mount the temp_audio directory to serve audio files
+app.mount("/audio", StaticFiles(directory="temp_audio"), name="audio")
+
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
+tts_service = TTSService()
 
-# Central control for match simulation
-USE_LLM = False  # Set to False to use hardcoded events
+# Global settings
+USE_LLM = False  # Central control for LLM commentary
+USE_TTS = False  # Central control for TTS
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
@@ -73,6 +85,7 @@ async def simulate_match(request: Request):
 
         print(f"\n=== Starting match: {user_team_data['name']} vs {opponent_team_data['name']} ===")
         print(f"LLM Commentary: {'ON' if USE_LLM else 'OFF'}")
+        print(f"TTS: {'ON' if USE_TTS else 'OFF'}")
 
         # Initialize MatchService with the teams and their attributes
         match_service = MatchService(
@@ -97,6 +110,19 @@ async def simulate_match(request: Request):
             try:
                 async for event in match_service.stream_first_half():
                     if event:  # Only yield non-empty events
+                        # Add TTS audio URL if TTS is enabled
+                        if USE_TTS:
+                            event_data = json.loads(event)
+                            if ("event" in event_data and 
+                                "commentary" in event_data["event"] and 
+                                event_data["event"]["commentary"] is not None):
+                                audio_url = await tts_service.generate_audio(
+                                    event_data["event"]["commentary"],
+                                    event_data["event"]["type"]
+                                )
+                                if audio_url:
+                                    event_data["event"]["audio_url"] = audio_url
+                            event = json.dumps(event_data) + "\n"
                         yield event
             except Exception as e:
                 print(f"Error in event generator: {e}")
@@ -104,12 +130,12 @@ async def simulate_match(request: Request):
         
         return StreamingResponse(
             event_generator(),
-            media_type="text/event-stream",
+            media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
-                "Content-Type": "text/event-stream",
+                "Content-Type": "application/x-ndjson",
                 "Transfer-Encoding": "chunked"
             }
         )
@@ -159,6 +185,19 @@ async def continue_match(request: Request):
             try:
                 async for event in match_service.stream_second_half():
                     if event:  # Only yield non-empty events
+                        # Add TTS audio URL if TTS is enabled
+                        if USE_TTS:
+                            event_data = json.loads(event)
+                            if ("event" in event_data and 
+                                "commentary" in event_data["event"] and 
+                                event_data["event"]["commentary"] is not None):
+                                audio_url = await tts_service.generate_audio(
+                                    event_data["event"]["commentary"],
+                                    event_data["event"]["type"]
+                                )
+                                if audio_url:
+                                    event_data["event"]["audio_url"] = audio_url
+                            event = json.dumps(event_data) + "\n"
                         yield event
             except Exception as e:
                 print(f"Error in event generator: {e}")
@@ -166,12 +205,12 @@ async def continue_match(request: Request):
         
         return StreamingResponse(
             event_generator(),
-            media_type="text/event-stream",
+            media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
-                "Content-Type": "text/event-stream",
+                "Content-Type": "application/x-ndjson",
                 "Transfer-Encoding": "chunked"
             }
         )

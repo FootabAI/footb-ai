@@ -55,13 +55,15 @@ export type Player = {
   teamId: string;
 };
 
-export type MatchEvent = {
+export interface MatchEvent {
   id: string;
-  type: 'goal' | 'yellow_card' | 'red_card' | 'injury' | 'substitution' | 'own-goal' | 'half-time' | 'full-time';
-  minute: number;
-  teamId: string;
+  type: string;
+  team: string;
   description: string;
-};
+  minute: number;
+  commentary: string;
+  audio_url?: string;  // Optional audio URL for TTS commentary
+}
 
 export type MatchStats = {
   possession: number;

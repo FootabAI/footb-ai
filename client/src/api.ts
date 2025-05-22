@@ -2,6 +2,13 @@ import { Formation, Match, Team, TeamTactic } from "./types";
 
 export const API_URL = "http://127.0.0.1:8000";
 
+// Helper function to ensure audio URLs are absolute
+const ensureAbsoluteUrl = (url: string | undefined) => {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url}`;
+};
+
 // Types for match simulation
 export interface MatchEvent {
   minute: number;
@@ -9,6 +16,8 @@ export interface MatchEvent {
     type: string;
     team: string;
     description: string;
+    commentary?: string;
+    audio_url?: string;
   };
   score: {
     home: number;
@@ -116,6 +125,10 @@ export const startMatchSimulation = async (
 
             try {
               const event = JSON.parse(events[0]);
+              // Ensure audio URL is absolute
+              if (event.event?.audio_url) {
+                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
+              }
               return { done: false, value: event };
             } catch (e) {
               console.error('Error parsing event:', e);
@@ -197,6 +210,10 @@ export const continueMatch = async (
 
             try {
               const event = JSON.parse(events[0]);
+              // Ensure audio URL is absolute
+              if (event.event?.audio_url) {
+                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
+              }
               return { done: false, value: event };
             } catch (e) {
               console.error('Error parsing event:', e);
