@@ -96,10 +96,14 @@ class MatchService:
     SHOTS_AWAY = 10
     SHOTS_ON_TARGET_HOME = 5
     SHOTS_ON_TARGET_AWAY = 4
-    CORNERS_HOME = 6
-    CORNERS_AWAY = 5
+    PASSES_HOME = 450
+    PASSES_AWAY = 400
+    PASS_ACCURACY_HOME = 85
+    PASS_ACCURACY_AWAY = 82
     FOULS_HOME = 8
     FOULS_AWAY = 9
+    CORNERS_HOME = 6  # Default corners per match
+    CORNERS_AWAY = 5  # Default corners per match
 
     GOAL_MINUTE_WEIGHTS = [1 if m < 75 else 1.4 for m in range(1, 91)]
     YEL_MINUTE_WEIGHTS  = [1 if m < 60 else 1.3 for m in range(1, 91)]
@@ -129,6 +133,7 @@ class MatchService:
         # Override parameters if dataset supplied
         if stats_backend:
             self._apply_stats_backend(stats_backend)
+
 
         # Optional GPT commentator
         self.llm = (
