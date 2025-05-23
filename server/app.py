@@ -144,27 +144,6 @@ async def simulate_match(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# @app.post("/api/change-formation")
-# async def change_formation(request: Request):
-#     """Handle formation changes at half-time."""
-#     try:
-#         data = await request.json()
-#         match_id = data.get("match_id")
-#         new_formation = data.get("formation")
-
-#         if not match_id or not new_formation:
-#             raise HTTPException(status_code=400, detail="Missing match ID or formation data")
-
-#         if match_id not in active_matches:
-#             raise HTTPException(status_code=404, detail="Match not found")
-
-#         # Here you can implement formation change logic
-#         # For now, we'll just acknowledge the change
-#         return {"message": f"Formation changed to {new_formation}", "success": True}
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/api/continue-match")
 async def continue_match(request: Request):
     """Continue streaming match events from after half-time."""
