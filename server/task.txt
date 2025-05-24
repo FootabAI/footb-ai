@@ -1,0 +1,33 @@
+Tiki-Taka: Passing (90), Dribbling (75), Pace (60). Rationale: Ball circulation, technical control, positional rotation requires passing quality and technical agility.
+Gegenpressing (Counter-Pressing): Pace (85), Defending (80), Physicality (80). Rationale: Immediate recovery requires speed, pressing intensity and physical capacity.
+Catenaccio: Defending (95), Physicality (70), Pace (55). Rationale: Deep, structured defense requires defensive strength, as well as ability for quick transitions.
+Total Football: Passing (80), Dribbling (80), Pace (80). Rationale: Flexibility and position switching requires technique and movement at a high level.
+Park the Bus: Defending (90), Physicality (80), Passing (45). Rationale: Focus on blocking space and winning duels, not on building attacks.
+Direct Play: Physicality (85), Shooting (75), Pace (70). Rationale: Quick counters require strength, finishing ability and running power.
+
+Key Attributes per tactic:
+Passing: Tiki-Taka, Total Football, Park the Bus. Dribbling: Tiki-Taka, Total Football. Shooting: Direct Play. Defending: Gegenpressing, Catenaccio, Park the Bus. Pace: Tiki-Taka, Gegenpressing, Catenaccio, Total Football, Direct Play. Physicality: Gegenpressing, Catenaccio, Park the Bus, Direct Play.
+Home advantage with tactical fit:
+Tiki-Taka: FT Home +10%, Home Shots +8%, Home Target +10%, Home Corners +12%, Home Fouls -5%, Home Yellow -5%, Home Red -20%.
+Gegenpressing: FT Home +12%, Home Shots +15%, Home Target +18%, Home Corners +5%, Home Fouls +10%, Home Yellow +10%, Home Red +10%.
+Catenaccio: FT Home +3%, Home Shots -10%, Home Target -10%, Home Corners -15%, Home Fouls -10%, Home Yellow -5%, Home Red 0%.
+Total Football: FT Home +11%, Home Shots +12%, Home Target +12%, Home Corners +10%, Home Fouls 0%, Home Yellow 0%, Home Red 0%.
+Park the Bus: FT Home +2%, Home Shots -12%, Home Target -10%, Home Corners -10%, Home Fouls -15%, Home Yellow -10%, Home Red -10%.
+Direct: FT Home +9%, Home Shots +20%, Home Target +15%, Home Corners +8%, Home Fouls +5%, Home Yellow +5%, Home Red 0%.
+
+
+When the home team uses a given tactic with high tactical fit, the away team's statistics will often be negatively affected or defensively impacted as a response. The table below shows expected percentage changes in the away team's match statistics based on the home team's tactic.
+Away team statistics impact:
+Tiki-Taka: FT Away -8%, Away Shots -10%, Away Target -12%, Away Corners -10%, Away Fouls -5%, Away Yellow -5%, Away Red -10%.
+Gegenpressing: FT Away -12%, Away Shots -15%, Away Target -15%, Away Corners -8%, Away Fouls +10%, Away Yellow +10%, Away Red +5%.
+Catenaccio: FT Away -2%, Away Shots -5%, Away Target -5%, Away Corners -10%, Away Fouls -2%, Away Yellow -5%, Away Red 0%.
+Total Football: FT Away -10%, Away Shots -10%, Away Target -10%, Away Corners -5%, Away Fouls 0%, Away Yellow 0%, Away Red 0%.
+Park the Bus: FT Away 0%, Away Shots -5%, Away Target -5%, Away Corners -5%, Away Fouls -10%, Away Yellow -5%, Away Red -5%.
+Long Ball/Direct: FT Away -5%, Away Shots -2%, Away Target -2%, Away Corners -5%, Away Fouls +5%, Away Yellow +5%, Away Red 0%.
+
+
+Effect Model:
+TFS ≥ 0.80: Positive effect on own team - 100% of max effect. Effect on opponent - 100% negative effect. Negative penalty on own team - 0% penalty.
+TFS 0.50-0.79: Positive effect on own team - Linear scaling: E=(TFS-0.5)/0.3E = (TFS - 0.5)/0.3E=(TFS-0.5)/0.3. Effect on opponent - Same scaling. Negative penalty on own team - 0% penalty.
+TFS 0.40-0.49: Positive effect on own team - 0% positive effect. Effect on opponent - 0% effect on opponent. Negative penalty on own team - Linear penalty: S=(0.5-TFS)/0.1S = (0.5 - TFS)/0.1S=(0.5-TFS)/0.1.
+TFS < 0.40: Positive effect on own team - 0% positive effect. Effect on opponent - 0% effect on opponent. Negative penalty on own team - Max penalty (100%).
