@@ -35,7 +35,7 @@ export type OnboardingState = {
   setTactic: (tactic: TeamTactic) => void;
   setMainColor: (color: string) => void;
   handleAttributeChange: (attr: keyof TeamAttributes, newValue: number) => void;
-  createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }, teamStats: TeamStats) => Promise<void>;
+  createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }, teamStats: TeamStats, attributes: TeamAttributes, tactic: TeamTactic, formation: Formation) => Promise<void>;
   resetTeamCreation: () => void;
   generateRandomPlayers: (teamId: string, teamName: string) => Player[];
 };

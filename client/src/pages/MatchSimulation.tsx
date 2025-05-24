@@ -12,7 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MatchEvent, TeamTactic, MatchEventType, Formation } from "@/types";
+import { MatchEvent, TeamTactic, Formation, MatchStats } from "@/types";
+import { MatchEventType } from "@/types/match";
+import { MatchUpdate, MatchEventUpdate, MinuteUpdate } from "@/types/match-simulation";
 import TeamLogo from "@/components/TeamLogo";
 import {
   Play,
@@ -33,7 +35,16 @@ import Event from "@/components/Event";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { formations } from "@/config/formations";
-import { useTeamActions } from "@/hooks/useTeamActions";
+import { TacticSelect } from "@/components/TacticSelect";
+// import { v4 as uuidv4 } from "uuid";
+
+interface ServerEvent {
+  type: MatchEventType;
+  team: string;
+  description: string;
+  commentary: string;
+  audio_url?: string;
+}
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -45,22 +56,19 @@ const MatchSimulation = () => {
     completeMatch,
   } = useGameStore();
   const { team } = useTeamStore();
-  const { handleFormationChange, handleSaveTactic } = useTeamActions();
 
   const [isWarmingUp, setIsWarmingUp] = useState(true);
   const [minute, setMinute] = useState(0);
   const [isHalfTime, setIsHalfTime] = useState(false);
   const [isFullTime, setIsFullTime] = useState(false);
   const [changeTactic, setChangeTactic] = useState<TeamTactic | null>(null);
-  const [changeFormation, setChangeFormation] = useState<Formation | null>(
-    null
-  );
+  const [changeFormation, setChangeFormation] = useState<Formation | null>(null);
   const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
   const [matchId] = useState(
     () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
-  const [debugMode] = useState(false);
   const [warmingUpMessage, setWarmingUpMessage] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs for scrolling
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -123,65 +131,75 @@ const MatchSimulation = () => {
   const startMatch = async () => {
     try {
       console.log("\n=== Starting match simulation ===");
-      console.log(`Debug mode: ${debugMode ? "ON" : "OFF"}`);
       const { events } = await startMatchSimulation(
         matchId,
         team,
-        currentMatch.awayTeam,
-        debugMode
+        currentMatch.awayTeam
       );
       setIsWarmingUp(false);
 
       for await (const event of events) {
         if (!event) continue;
 
-        // Handle half-time
-        if (event.event.type === "half-time") {
-          console.log("\n=== HALF TIME ===");
-
-          setIsHalfTime(true);
+        // Handle minute updates
+        if (event.type === "minute_update") {
+          setMinute(event.minute);
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
+          continue;
         }
 
-        // Handle full-time
-        if (event.event.type === "full-time") {
-          console.log("\n=== FULL TIME ===");
-          console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
+        // Handle match events
+        if (event.type === "event") {
+          // Handle half-time
+          if (event.event.type === "half-time") {
+            console.log("\n=== HALF TIME ===");
+            setIsHalfTime(true);
+          }
 
-          setIsFullTime(true);
-          completeMatch(
-            event.score.home > event.score.away
-              ? team.id
-              : currentMatch.awayTeam.id
-          );
-          // setTimeout(() => navigate("/summary"), 5000);
-        }
+          // Handle full-time
+          if (event.event.type === "full-time") {
+            console.log("\n=== FULL TIME ===");
+            console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
 
-        // Log event
-        console.log(`[${event.minute}'] ${event.event.description}`);
+            setIsFullTime(true);
+            completeMatch(
+              event.score.home > event.score.away
+                ? team.id
+                : currentMatch.awayTeam.id
+            );
+          }
 
-        // Update minute
-        setMinute(event.minute);
+          // Log event
+          console.log(`[${event.minute}'] ${event.event.description}`);
 
-        // Add event to state
-        const newEvent: MatchEvent = {
-          id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          type: event.event.type as MatchEventType,
-          minute: event.minute,
-          teamId:
-            event.event.team === "home"
-              ? team.id
-              : event.event.team === "away"
-              ? currentMatch.awayTeam.id
-              : "system",
-          description: event.event.description,
-        };
+          // Add event to state
+          const newEvent: MatchEvent = {
+            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: event.event.type,
+            team: event.event.team,
+            description: event.event.description,
+            commentary: event.event.commentary,
+            audio_url: event.event.audio_url,
+            minute: event.minute,
+          };
 
-        setMatchEvents((prev) => [...prev, newEvent]);
-        addMatchEvent(newEvent);
+          setMatchEvents((prev) => [...prev, newEvent]);
+          addMatchEvent(newEvent);
 
-        // Update stats if available
-        if (event.stats) {
-          updateMatchStats(event.stats.home, event.stats.away);
+          // Update stats if available
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
+
+          // Play audio commentary if available and wait for it to finish
+          if (event.event.audio_url) {
+            await playAudioCommentary(event.event.audio_url);
+          } else {
+            // If no audio, still add a small delay between events
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       }
     } catch (error) {
@@ -200,14 +218,15 @@ const MatchSimulation = () => {
       if (changeTactic || changeFormation) {
         console.log("\n=== Changing tactics ===");
         console.log(`Tactic: ${changeTactic || currentMatch.homeTeam.tactic}`);
-        console.log(
-          `Formation: ${changeFormation || currentMatch.homeTeam.formation}`
-        );
+        console.log(`Formation: ${changeFormation || currentMatch.homeTeam.formation}`);
+        
+        // Send the changes to the server
         await changeTeamTactics(
           matchId,
           changeTactic || currentMatch.homeTeam.tactic,
           changeFormation || currentMatch.homeTeam.formation
         );
+
         toast({
           title: "Tactics Changed",
           description: `Your team is now using ${
@@ -228,8 +247,17 @@ const MatchSimulation = () => {
       for await (const event of events) {
         if (!event) continue;
 
+        // Handle minute updates
+        if (event.type === "minute_update") {
+          setMinute(event.minute);
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
+          continue;
+        }
+
         // Handle full-time
-        if (event.event.type === "full-time") {
+        if ('event' in event && event.event.type === "full-time") {
           console.log("\n=== FULL TIME ===");
           console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
 
@@ -239,35 +267,41 @@ const MatchSimulation = () => {
               ? team.id
               : currentMatch.awayTeam.id
           );
-          // setTimeout(() => navigate('/summary'), 5000);
         }
 
         // Log event
-        console.log(`[${event.minute}'] ${event.event.description}`);
+        if ('event' in event) {
+          console.log(`[${event.minute}'] ${event.event.description}`);
 
-        // Update minute
-        setMinute(event.minute);
+          // Update minute
+          setMinute(event.minute);
 
-        // Add event to state
-        const newEvent: MatchEvent = {
-          id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          type: event.event.type as MatchEventType,
-          minute: event.minute,
-          teamId:
-            event.event.team === "home"
-              ? team.id
-              : event.event.team === "away"
-              ? currentMatch.awayTeam.id
-              : "system",
-          description: event.event.description,
-        };
+          // Add event to state
+          const newEvent: MatchEvent = {
+            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: event.event.type,
+            team: event.event.team,
+            description: event.event.description,
+            commentary: event.event.commentary,
+            audio_url: event.event.audio_url || "",
+            minute: event.minute,
+          };
 
-        setMatchEvents((prev) => [...prev, newEvent]);
-        addMatchEvent(newEvent);
+          setMatchEvents((prev) => [...prev, newEvent]);
+          addMatchEvent(newEvent);
 
-        // Update stats if available
-        if (event.stats) {
-          updateMatchStats(event.stats.home, event.stats.away);
+          // Update stats if available
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
+
+          // Play audio commentary if available and wait for it to finish
+          if (event.event.audio_url) {
+            await playAudioCommentary(event.event.audio_url);
+          } else {
+            // If no audio, still add a small delay between events
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       }
     } catch (error) {
@@ -281,12 +315,13 @@ const MatchSimulation = () => {
   };
 
   const handleForfeit = () => {
-    const forfeitEvent = {
+    const forfeitEvent: MatchEvent = {
       id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: "goal" as const,
-      minute: minute,
-      teamId: "system",
+      type: "goal",
+      team: "system",
       description: `${team.name} has forfeited the match.`,
+      commentary: `${team.name} has forfeited the match.`,
+      minute: null,
     };
 
     setMatchEvents((prev) => [...prev, forfeitEvent]);
@@ -302,6 +337,56 @@ const MatchSimulation = () => {
     if (minutes > 90) return `90+${minutes - 90}'`;
     return `${minutes}'`;
   };
+
+  // Function to play audio commentary
+  const playAudioCommentary = (audioUrl: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (!audioUrl) {
+        resolve();
+        return;
+      }
+      
+      console.log("Playing audio from URL:", audioUrl);
+      
+      // Create a new audio element for each event
+      const audio = new Audio();
+      
+      // Add event listeners
+      audio.addEventListener('error', (e) => {
+        console.error("Error playing audio:", e);
+        console.error("Audio URL:", audioUrl);
+        console.error("Audio error code:", audio.error?.code);
+        console.error("Audio error message:", audio.error?.message);
+        resolve(); // Resolve on error to continue with next event
+      });
+
+      audio.addEventListener('ended', () => {
+        console.log("Audio finished playing");
+        resolve(); // Resolve when audio finishes playing
+      });
+
+      audio.addEventListener('canplaythrough', () => {
+        console.log("Audio can play through, starting playback");
+        audio.play().catch(error => {
+          console.error("Error playing audio:", error);
+          resolve(); // Resolve on error to continue with next event
+        });
+      });
+
+      // Set the source and start loading
+      audio.src = audioUrl;
+    });
+  };
+
+  // Clean up audio elements when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
+  }, []);
 
   return (
     <div className="animate-fade-in">
@@ -393,28 +478,13 @@ const MatchSimulation = () => {
                       <label className="text-sm text-gray-400">
                         Change Team Tactic
                       </label>
-                      <Select
+                      <TacticSelect
                         value={changeTactic || currentMatch.homeTeam.tactic}
-                        onValueChange={(value) =>
-                          handleSaveTactic(value as TeamTactic)
-                        }
-                      >
-                        <SelectTrigger className="bg-footbai-header border-footbai-hover">
-                          <SelectValue placeholder="Select tactic" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-footbai-container border-footbai-hover">
-                          <SelectItem value="Balanced">Balanced</SelectItem>
-                          <SelectItem value="Offensive">Offensive</SelectItem>
-                          <SelectItem value="Defensive">Defensive</SelectItem>
-                          <SelectItem value="Counter-Attacking">
-                            Counter-Attacking
-                          </SelectItem>
-                          <SelectItem value="Aggressive">Aggressive</SelectItem>
-                          <SelectItem value="Possession-Based">
-                            Possession-Based
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                        onValueChange={(value) => {
+                          setChangeTactic(value);
+                          console.log("Tactic changed to:", value);
+                        }}
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -423,10 +493,11 @@ const MatchSimulation = () => {
                       </label>
                       <div>
                         <Tabs
-                          value={team.formation}
-                          onValueChange={(value) =>
-                            handleFormationChange(value as Formation)
-                          }
+                          value={changeFormation || currentMatch.homeTeam.formation}
+                          onValueChange={(value) => {
+                            console.log("Formation changed to:", value);
+                            setChangeFormation(value as Formation);
+                          }}
                           className="mb-4"
                         >
                           <TabsList className="grid w-full grid-cols-5">
@@ -438,7 +509,7 @@ const MatchSimulation = () => {
                           </TabsList>
                         </Tabs>
                         <FormationDisplay
-                          formation={team.formation as Formation}
+                          formation={changeFormation || currentMatch.homeTeam.formation}
                           size="small"
                           isOnboarding={false}
                         />
@@ -502,9 +573,7 @@ const MatchSimulation = () => {
                         {isFullTime && (
                           <div className="sticky bottom-0 left-0 right-0 bg-footbai-container/30 backdrop-blur-md border-t border-footbai-header py-6">
                             <div className="text-center space-y-4">
-                              <h3 className="text-xl font-semibold">
-                                Match Complete
-                              </h3>
+                             
                               <Button
                                 className="bg-footbai-accent hover:bg-footbai-accent/80 text-black"
                                 onClick={() => navigate("/summary")}

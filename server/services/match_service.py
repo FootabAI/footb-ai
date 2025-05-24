@@ -119,12 +119,30 @@ class MatchService:
         use_llm: bool = False,
         llm_temperature: float = 0.7,
         debug_mode: bool = False,
+        home_team_attributes: Optional[Dict[str, int]] = None,
+        away_team_attributes: Optional[Dict[str, int]] = None,
+        home_team_tactic: Optional[str] = None,
+        away_team_tactic: Optional[str] = None,
+        home_team_formation: Optional[str] = None,
+        away_team_formation: Optional[str] = None,
+        home_team_stats: Optional[Dict[str, Any]] = None,
+        away_team_stats: Optional[Dict[str, Any]] = None,
     ):
         self.home_team = home_team
         self.away_team = away_team
         self.debug_mode = debug_mode
         self.chunk_size = 15  # minutes per chunk
         self.event_delay = 0.5  # seconds between events
+
+        # Store team attributes and tactics
+        self.home_team_attributes = home_team_attributes or {}
+        self.away_team_attributes = away_team_attributes or {}
+        self.home_team_tactic = home_team_tactic or "Balanced"
+        self.away_team_tactic = away_team_tactic or "Balanced"
+        self.home_team_formation = home_team_formation or "4-3-3"
+        self.away_team_formation = away_team_formation or "4-3-3"
+        self.home_team_stats = home_team_stats or {}
+        self.away_team_stats = away_team_stats or {}
 
         # RNGs
         self._rng = random.Random(seed)
@@ -133,7 +151,9 @@ class MatchService:
         # Override parameters if dataset supplied
         if stats_backend:
             self._apply_stats_backend(stats_backend)
-
+        else:
+            # Adjust parameters based on team attributes
+            self._adjust_parameters_from_attributes()
 
         # Optional GPT commentator
         self.llm = (
@@ -148,6 +168,99 @@ class MatchService:
         self._is_half_time = False
         self._current_score = {"home": 0, "away": 0}
         self._stats = self._initialize_stats()
+
+    def _adjust_parameters_from_attributes(self) -> None:
+        """Adjust match parameters based on team attributes."""
+        print("\n=== Adjusting Match Parameters ===")
+        print(f"Home Team: {self.home_team}")
+        print(f"Home Tactic: {self.home_team_tactic}")
+        print(f"Home Formation: {self.home_team_formation}")
+        
+        # Adjust goal probabilities based on shooting and passing
+        home_shooting = self.home_team_attributes.get("shooting", 50)
+        home_passing = self.home_team_attributes.get("passing", 50)
+        away_shooting = self.away_team_attributes.get("shooting", 50)
+        away_passing = self.away_team_attributes.get("passing", 50)
+
+        print(f"\nTeam Attributes:")
+        print(f"Home Shooting: {home_shooting}")
+        print(f"Home Passing: {home_passing}")
+        print(f"Away Shooting: {away_shooting}")
+        print(f"Away Passing: {away_passing}")
+
+        # Base adjustment factor (0.8 to 1.2 range)
+        home_factor = (home_shooting + home_passing) / 100
+        away_factor = (away_shooting + away_passing) / 100
+
+        print(f"\nBase Factors:")
+        print(f"Home Factor: {home_factor}")
+        print(f"Away Factor: {away_factor}")
+
+        # Adjust goal probabilities
+        self.GOALS_LAMBDA_HOME *= home_factor
+        self.GOALS_LAMBDA_AWAY *= away_factor
+
+        # Adjust possession based on passing and tactic
+        home_passing_skill = home_passing / 100
+        away_passing_skill = away_passing / 100
+
+        # Tactic adjustments
+        tactic_adjustments = {
+            "Tiki-Taka": 1.2,
+            "Park-The-Bus": 0.7,
+            "Direct-Play": 0.9,
+            "Total-Football": 1.1,
+            "Catenaccio": 0.8,
+            "Gegenpressing": 1.1
+        }
+
+        home_tactic_factor = tactic_adjustments.get(self.home_team_tactic, 1.0)
+        away_tactic_factor = tactic_adjustments.get(self.away_team_tactic, 1.0)
+
+        print(f"\nTactic Factors:")
+        print(f"Home Tactic Factor: {home_tactic_factor}")
+        print(f"Away Tactic Factor: {away_tactic_factor}")
+
+        # Calculate possession
+        total_skill = home_passing_skill * home_tactic_factor + away_passing_skill * away_tactic_factor
+        self.POSSESSION_HOME = (home_passing_skill * home_tactic_factor / total_skill) * 100
+        self.POSSESSION_AWAY = 100 - self.POSSESSION_HOME
+
+        # Adjust shots based on shooting and tactic
+        self.SHOTS_HOME = int(12 * home_factor * home_tactic_factor)
+        self.SHOTS_AWAY = int(12 * away_factor * away_tactic_factor)
+
+        # Adjust shots on target based on shooting
+        self.SHOTS_ON_TARGET_HOME = int(self.SHOTS_HOME * (home_shooting / 100))
+        self.SHOTS_ON_TARGET_AWAY = int(self.SHOTS_AWAY * (away_shooting / 100))
+
+        # Adjust passes based on passing skill
+        self.PASSES_HOME = int(450 * home_passing_skill)
+        self.PASSES_AWAY = int(450 * away_passing_skill)
+
+        # Adjust pass accuracy based on passing skill
+        self.PASS_ACCURACY_HOME = int(70 + (home_passing_skill * 20))
+        self.PASS_ACCURACY_AWAY = int(70 + (away_passing_skill * 20))
+
+        # Adjust fouls based on physicality
+        home_physicality = self.home_team_attributes.get("physicality", 50)
+        away_physicality = self.away_team_attributes.get("physicality", 50)
+        self.FOULS_HOME = int(8 * (home_physicality / 50))
+        self.FOULS_AWAY = int(8 * (away_physicality / 50))
+
+        # Adjust corners based on attacking play
+        self.CORNERS_HOME = int(6 * home_factor)
+        self.CORNERS_AWAY = int(6 * away_factor)
+
+        print(f"\nFinal Parameters:")
+        print(f"Goals Lambda Home: {self.GOALS_LAMBDA_HOME}")
+        print(f"Possession Home: {self.POSSESSION_HOME}")
+        print(f"Shots Home: {self.SHOTS_HOME}")
+        print(f"Shots On Target Home: {self.SHOTS_ON_TARGET_HOME}")
+        print(f"Passes Home: {self.PASSES_HOME}")
+        print(f"Pass Accuracy Home: {self.PASS_ACCURACY_HOME}")
+        print(f"Fouls Home: {self.FOULS_HOME}")
+        print(f"Corners Home: {self.CORNERS_HOME}")
 
     def _initialize_stats(self) -> Dict[str, Any]:
         """Initialize match statistics structure."""
@@ -188,52 +301,72 @@ class MatchService:
 
     # ───────────────────────── STREAMING API ────────────────────────────
     async def stream_first_half(self) -> AsyncGenerator[str, None]:
-        """Stream first half events in chunks."""
+        """Generate and stream all first half events at once."""
         if not self._generated:
             self._events = []
-            async for event in self._stream_chunk(0, 45):
-                yield event
+            # Generate all events for first half
+            first_half_events = self._generate_timeline_chunk(0, 45)
+            self._events.extend(first_half_events)
             self._generated = True
-        else:
-            # Stream existing events
-            for ev in self._events:
-                if ev["minute"] > 45:
-                    break
-                yield await self._process_event(ev)
 
-        # Add half-time event
-        half_time_event = self._event(45, "info", "half-time")
-        yield await self._process_event(half_time_event)
+        # Stream all first half events with minute updates
+        current_minute = 0
+        for ev in self._events:
+            if ev["minute"] > 45:
+                break
+                
+            # Stream minutes up to the next event
+            while current_minute < ev["minute"]:
+                current_minute += 1
+                # Send a simple minute update without creating an event
+                minute_update = {
+                    "type": "minute_update",
+                    "minute": current_minute,
+                    "score": self._current_score.copy(),
+                    "stats": self._stats
+                }
+                yield json.dumps(minute_update) + "\n"
+                await asyncio.sleep(0.5)  # Small delay between minutes
+            
+            # Stream the actual event
+            yield await self._process_event(ev)
+
+        # Set half-time state
         self._is_half_time = True
 
     async def stream_second_half(self) -> AsyncGenerator[str, None]:
-        """Stream second half events in chunks."""
+        """Generate and stream all second half events at once."""
         if not self._is_half_time:
             raise RuntimeError("Second half requested before half-time.")
 
-        async for event in self._stream_chunk(45, 90):
-            yield event
+        # Generate all events for second half
+        second_half_events = self._generate_timeline_chunk(45, 90)
+        self._events.extend(second_half_events)
 
-        # Add full-time event
-        full_time_event = self._event(90, "info", "full-time")
-        yield await self._process_event(full_time_event)
-
-    async def _stream_chunk(self, start_min: int, end_min: int) -> AsyncGenerator[str, None]:
-        """Stream events for a specific time chunk."""
-        for chunk_start in range(start_min, end_min, self.chunk_size):
-            chunk_end = min(chunk_start + self.chunk_size, end_min)
-            new_events = self._generate_timeline_chunk(chunk_start, chunk_end)
-            self._events.extend(new_events)
+        # Stream all second half events with minute updates
+        current_minute = 45
+        for ev in second_half_events:
+            # Stream minutes up to the next event
+            while current_minute < ev["minute"]:
+                current_minute += 1
+                # Send a simple minute update without creating an event
+                minute_update = {
+                    "type": "minute_update",
+                    "minute": current_minute,
+                    "score": self._current_score.copy(),
+                    "stats": self._stats
+                }
+                yield json.dumps(minute_update) + "\n"
+                await asyncio.sleep(0.5)  # Small delay between minutes
             
-            for ev in new_events:
-                yield await self._process_event(ev)
+            # Stream the actual event
+            yield await self._process_event(ev)
 
     async def _process_event(self, event: Dict[str, Any]) -> str:
         """Process a single event and return its JSON representation."""
         try:
             self._update_stats(event)
-            event["stats"] = self._stats
-            await asyncio.sleep(self.event_delay)
+            await asyncio.sleep(self.event_delay)  # Keep a small delay for readability
             return json.dumps(event) + "\n"
         except Exception as e:
             print(f"Error processing event: {e}")
@@ -324,6 +457,10 @@ class MatchService:
 
         # Ensure values are within realistic ranges
         self._normalize_stats()
+
+        # Update the event's stats
+        event["stats"] = self._stats
+        event["score"] = self._current_score.copy()
 
     def _update_progressive_stats(self, progress: float) -> None:
         """Update statistics that progress with match time."""
@@ -431,11 +568,13 @@ class MatchService:
     @staticmethod
     def _event(minute: int, team: str, etype: str, description: str = "") -> Dict[str, Any]:
         return {
+            "type": "event",  # Add type field
             "minute": minute,
             "event": {
                 "team": team,
                 "type": etype,
-                "description": description
+                "description": description,
+                "commentary": ""  # Will be filled in later
             },
             "score": {"home": 0, "away": 0}  # Will be updated in _generate_timeline
         }
@@ -448,39 +587,63 @@ class MatchService:
             else ""
         )
 
-        # basic template
-        base = {
-            "goal":         f"GOAL! {team_name} score!",
-            "yellow_card":  f"Yellow card for {team_name}.",
-            "red_card":     f"RED CARD! {team_name} down to 10 men!",
-            "substitution": f"{team_name} make a substitution.",
-            "half-time":    "Half-time whistle.",
-            "full-time":    "Full-time, all over!",
+        # Generate formal description
+        formal = {
+            "goal":         f"Goal scored by {team_name}.",
+            "yellow_card":  f"Yellow card shown to {team_name} player.",
+            "red_card":     f"Red card shown to {team_name} player.",
+            "substitution": f"Substitution made by {team_name}.",
+            "half-time":    "Half-time whistle blown.",
+            "full-time":    "Full-time whistle blown.",
         }[etype]
 
-        if not self.llm:
-            return base
+        # Set the formal description
+        ev["event"]["description"] = formal
 
-        prompt = (
-            "You are a live-text football commentator. "
-            "Write one punchy, concise update for this event. "
-            "Rules:\n"
-            "1. Do not include the minute in the description\n"
-            "2. Do not use any emojis or special characters\n"
-            "3. Keep it short and impactful\n"
-            "4. Focus on the action and its significance\n"
-            f"Event: {etype}\n"
-            f"Team: {team_name}\n"
-            f"Score: {ev['score']['home']}–{ev['score']['away']}\n"
-            "Return only the line."
-        )
-        try:
-            return self.llm.invoke(prompt).content.strip()
-        except Exception:
-            return base
+        # Always generate commentary for significant events
+        if etype in ["goal", "red_card", "half-time", "full-time"]:
+            if self.llm:
+                prompt = (
+                    "You are a passionate British football commentator. "
+                    "Generate an exciting, dramatic commentary for this match event. "
+                    "Rules:\n"
+                    "1. Use typical British football commentary phrases\n"
+                    "2. Be dramatic and emotional\n"
+                    "3. Include crowd reactions\n"
+                    "4. Keep it concise (1-2 sentences)\n"
+                    "5. No emojis or special characters\n"
+                    f"Event: {etype}\n"
+                    f"Team: {team_name}\n"
+                    f"Score: {ev['score']['home']}–{ev['score']['away']}\n"
+                    "Return only the commentary line."
+                )
+                try:
+                    commentary = self.llm.invoke(prompt).content.strip()
+                except Exception:
+                    commentary = self._get_default_commentary(etype, team_name)
+            else:
+                commentary = self._get_default_commentary(etype, team_name)
+            
+            ev["event"]["commentary"] = commentary
+        else:
+            # Add default commentary for other events too
+            ev["event"]["commentary"] = self._get_default_commentary(etype, team_name)
+
+        return formal  # Return formal description for backward compatibility
+
+    def _get_default_commentary(self, etype: str, team_name: str) -> str:
+        """Get default commentary when LLM is not available."""
+        return {
+            "goal":         f"GOOOOOAL! {team_name} have done it! The crowd goes absolutely wild!",
+            "yellow_card":  f"Yellow card! The referee has his book out for {team_name}!",
+            "red_card":     f"RED CARD! RED CARD! {team_name} are down to 10 men! This could change everything!",
+            "substitution": f"Here comes a substitution for {team_name}. A tactical change perhaps?",
+            "half-time":    f"And that's the end of the first half! What a 45 minutes of football we've witnessed!",
+            "full-time":    f"FULL TIME! What a match we've witnessed! The crowd are on their feet!",
+        }[etype]
 
     def _generate_timeline_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
-        """Generate events for a specific time chunk."""
+        """Generate all events for a specific time period."""
         if self.debug_mode:
             return self._generate_debug_timeline_chunk(start_min, end_min)
 
@@ -489,6 +652,14 @@ class MatchService:
             self._simulate_yellows_reds_chunk(start_min, end_min) +
             self._simulate_substitutions_chunk(start_min, end_min)
         )
+
+        # Add static markers if they fall within this chunk
+        if start_min <= 45 <= end_min:
+            raw.append(self._event(45, "info", "half-time"))
+        if start_min <= 90 <= end_min:
+            extra = self._rng.randint(*self.EXTRA_MINUTES)
+            raw.append(self._event(90 + extra, "info", "full-time"))
+
         raw.sort(key=lambda e: e["minute"])
 
         # Update scores and add descriptions
@@ -497,6 +668,37 @@ class MatchService:
                 team = ev["event"]["team"]
                 self._current_score[team] += 1
             ev["score"] = self._current_score.copy()
+            
+            # Add commentary for all events
+            team_name = self.home_team if ev["event"]["team"] == "home" else self.away_team
+            try:
+                if self.llm:
+                    prompt = (
+                        "You are a passionate British football commentator. "
+                        "Generate an exciting, dramatic commentary for this match event. "
+                        "Rules:\n"
+                        "1. Use typical British football commentary phrases\n"
+                        "2. Be dramatic and emotional\n"
+                        "3. Include crowd reactions\n"
+                        "4. Keep it concise (1-2 sentences)\n"
+                        "5. No emojis or special characters\n"
+                        f"Event: {ev['event']['type']}\n"
+                        f"Team: {team_name}\n"
+                        f"Score: {ev['score']['home']}–{ev['score']['away']}\n"
+                        "Return only the commentary line."
+                    )
+                    try:
+                        commentary = self.llm.invoke(prompt).content.strip()
+                        ev["event"]["commentary"] = commentary
+                    except Exception as e:
+                        print(f"Error generating LLM commentary: {e}")
+                        ev["event"]["commentary"] = self._get_default_commentary(ev["event"]["type"], team_name)
+                else:
+                    ev["event"]["commentary"] = self._get_default_commentary(ev["event"]["type"], team_name)
+            except Exception as e:
+                print(f"Error in commentary generation: {e}")
+                ev["event"]["commentary"] = self._get_default_commentary(ev["event"]["type"], team_name)
+            
             ev["event"]["description"] = self._describe(ev)
 
         return raw
@@ -566,17 +768,48 @@ class MatchService:
     def _generate_debug_timeline_chunk(self, start_min: int, end_min: int) -> List[Dict[str, Any]]:
         """Generate debug events for a specific time chunk."""
         debug_events = [
-            self._event(5, "home", "goal", description=f"GOAL! {self.home_team} score!"),
-            self._event(15, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
-            self._event(25, "home", "goal", description=f"GOAL! {self.home_team} score!"),
-            self._event(35, "away", "goal", description=f"GOAL! {self.away_team} score!"),
+            # First Half
+            self._event(2, "home", "yellow_card", description=f"Early yellow card for {self.home_team}."),
+            self._event(5, "home", "goal", description=f"GOAL! {self.home_team} take an early lead!"),
+            self._event(12, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(15, "away", "goal", description=f"GOAL! {self.away_team} equalize!"),
+            self._event(18, "home", "substitution", description=f"{self.home_team} make their first substitution."),
+            self._event(25, "home", "goal", description=f"GOAL! {self.home_team} regain the lead!"),
+            self._event(28, "away", "yellow_card", description=f"Another yellow card for {self.away_team}."),
+            self._event(32, "home", "yellow_card", description=f"Yellow card for {self.home_team}."),
+            self._event(35, "away", "goal", description=f"GOAL! {self.away_team} level the score again!"),
+            self._event(38, "away", "red_card", description=f"RED CARD! {self.away_team} are down to 10 men!"),
+            self._event(42, "home", "goal", description=f"GOAL! {self.home_team} take advantage of the extra man!"),
             self._event(45, "info", "half-time", description="Half-time whistle."),
-            self._event(55, "home", "substitution", description=f"{self.home_team} make a substitution."),
-            self._event(65, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
-            self._event(75, "home", "goal", description=f"GOAL! {self.home_team} score!"),
-            self._event(85, "away", "goal", description=f"GOAL! {self.away_team} score!"),
+            
+            # Second Half
+            self._event(48, "away", "substitution", description=f"{self.away_team} make a tactical change."),
+            self._event(52, "home", "yellow_card", description=f"Yellow card for {self.home_team}."),
+            self._event(55, "home", "substitution", description=f"{self.home_team} make their second substitution."),
+            self._event(58, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(62, "home", "goal", description=f"GOAL! {self.home_team} extend their lead!"),
+            self._event(65, "away", "substitution", description=f"{self.away_team} make their final substitution."),
+            self._event(68, "home", "yellow_card", description=f"Yellow card for {self.home_team}."),
+            self._event(72, "away", "goal", description=f"GOAL! {self.away_team} pull one back!"),
+            self._event(75, "home", "substitution", description=f"{self.home_team} make their final substitution."),
+            self._event(78, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(82, "home", "goal", description=f"GOAL! {self.home_team} seal the victory!"),
+            self._event(85, "away", "yellow_card", description=f"Yellow card for {self.away_team}."),
+            self._event(88, "home", "yellow_card", description=f"Yellow card for {self.home_team}."),
             self._event(90, "info", "full-time", description="Full-time, all over!"),
         ]
+
+        # Add commentary and update scores for all events
+        for ev in debug_events:
+            if ev["event"]["type"] == "goal":
+                team = ev["event"]["team"]
+                self._current_score[team] += 1
+            ev["score"] = self._current_score.copy()
+            
+            # Add commentary for all events
+            team_name = self.home_team if ev["event"]["team"] == "home" else self.away_team
+            ev["event"]["commentary"] = self._get_default_commentary(ev["event"]["type"], team_name)
+
         return [e for e in debug_events if start_min < e["minute"] <= end_min]
 
 

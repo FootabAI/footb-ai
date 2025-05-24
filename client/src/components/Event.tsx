@@ -8,7 +8,7 @@ interface EventProps {
 }
 
 const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
-  const isUserTeam = event.teamId === userTeamId;
+  const isUserTeam = event.team === userTeamId;
 
   const getEventIcon = (event: MatchEvent) => {
     switch (event.type) {
@@ -30,7 +30,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
   };
 
   const getEventBorderColor = (event: MatchEvent) => {
-    if (event.teamId === "system") {
+    if (event.team === "system") {
       return "border-gray-700";
     }
 
@@ -53,7 +53,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
   };
 
   const getEventBgColor = (event: MatchEvent) => {
-    if (event.teamId === "system") {
+    if (event.team === "system") {
       return "bg-footbai-header";
     }
 
@@ -76,7 +76,7 @@ const Event = ({ event, formatMatchTime, userTeamId }: EventProps) => {
   };
 
   const getEventTextColor = (event: MatchEvent) => {
-    if (event.teamId === "system") {
+    if (event.team === "system") {
       return "text-gray-300";
     }
     switch (event.type) {

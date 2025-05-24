@@ -1,47 +1,14 @@
 import { Formation, Match, Team, TeamTactic } from "./types";
+import { MatchEventUpdate, MatchSimulationResponse } from './types/match-simulation';
 
 export const API_URL = "http://127.0.0.1:8000";
 
-// Types for match simulation
-export interface MatchEvent {
-  minute: number;
-  event: {
-    type: string;
-    team: string;
-    description: string;
-  };
-  score: {
-    home: number;
-    away: number;
-  };
-  stats?: {
-    home: {
-      possession: number;
-      shots: number;
-      shotsOnTarget: number;
-      passes: number;
-      passAccuracy: number;
-      fouls?: number;
-      yellowCards?: number;
-      redCards?: number;
-    };
-    away: {
-      possession: number;
-      shots: number;
-      shotsOnTarget: number;
-      passes: number;
-      passAccuracy: number;
-      fouls?: number;
-      yellowCards?: number;
-      redCards?: number;
-    };
-  };
-}
-
-export interface MatchSimulationResponse {
-  match_id: string;
-  events: AsyncIterable<MatchEvent>;
-}
+// Helper function to ensure audio URLs are absolute
+const ensureAbsoluteUrl = (url: string | undefined) => {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${API_URL}${url}`;
+};
 
 export const create_club_logo = async (themes: string[], colors: string[]) => {
   const response = await fetch(`${API_URL}/create_club_logo`, {
@@ -61,8 +28,7 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
 export const startMatchSimulation = async (
   matchId: string,
   userTeam: Team,
-  opponentTeam: Team,
-  debugMode: boolean = false
+  opponentTeam: Team
 ): Promise<MatchSimulationResponse> => {
   const response = await fetch(`${API_URL}/api/simulate-match`, {
     method: "POST",
@@ -71,9 +37,20 @@ export const startMatchSimulation = async (
     },
     body: JSON.stringify({
       match_id: matchId,
-      user_team: userTeam.name,
-      opponent_team: opponentTeam.name,
-      debug_mode: debugMode,
+      user_team: {
+        name: userTeam.name,
+        attributes: userTeam.attributes,
+        tactic: userTeam.tactic,
+        formation: userTeam.formation,
+        teamStats: userTeam.teamStats
+      },
+      opponent_team: {
+        name: opponentTeam.name,
+        attributes: opponentTeam.attributes,
+        tactic: opponentTeam.tactic,
+        formation: opponentTeam.formation,
+        teamStats: opponentTeam.teamStats
+      }
     }),
   });
   console.log(response);
@@ -106,6 +83,10 @@ export const startMatchSimulation = async (
 
             try {
               const event = JSON.parse(events[0]);
+              // Ensure audio URL is absolute
+              if (event.event?.audio_url) {
+                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
+              }
               return { done: false, value: event };
             } catch (e) {
               console.error('Error parsing event:', e);
@@ -123,6 +104,8 @@ export const changeTeamTactics = async (
   tactic: TeamTactic,
   formation: Formation
 ): Promise<void> => {
+  console.log("Changing tactics:", { matchId, tactic, formation });
+  
   const response = await fetch(`${API_URL}/api/change-team-tactic`, {
     method: "POST",
     headers: {
@@ -134,7 +117,9 @@ export const changeTeamTactics = async (
       formation,
     }),
   });
-  console.log(response);
+  
+  const data = await response.json();
+  console.log("Tactics change response:", data);
 
   if (!response.ok) {
     throw new Error('Failed to change team tactics');
@@ -183,6 +168,10 @@ export const continueMatch = async (
 
             try {
               const event = JSON.parse(events[0]);
+              // Ensure audio URL is absolute
+              if (event.event?.audio_url) {
+                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
+              }
               return { done: false, value: event };
             } catch (e) {
               console.error('Error parsing event:', e);

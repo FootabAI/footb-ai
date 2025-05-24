@@ -17,6 +17,7 @@ import { formations } from "@/config/formations";
 import { useTeamStore } from "@/stores/useTeamStore";
 import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
 import { useTeamActions } from "@/hooks/useTeamActions";
+import { TacticSelect } from "@/components/TacticSelect";
 
 const TeamOverview = () => {
   const { team } = useTeamStore();
@@ -83,28 +84,10 @@ const TeamOverview = () => {
                       Choose your team's playing style
                     </div>
                   </div>
-                  <Select
+                  <TacticSelect
                     value={team.tactic}
-                    onValueChange={(value) =>
-                      handleSaveTactic(value as TeamTactic)
-                    }
-                  >
-                    <SelectTrigger className="w-[180px] bg-footbai-container border-footbai-hover">
-                      <SelectValue placeholder="Select tactic" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-footbai-container border-footbai-hover">
-                      <SelectItem value="Balanced">Balanced</SelectItem>
-                      <SelectItem value="Offensive">Offensive</SelectItem>
-                      <SelectItem value="Defensive">Defensive</SelectItem>
-                      <SelectItem value="Counter-Attacking">
-                        Counter-Attacking
-                      </SelectItem>
-                      <SelectItem value="Aggressive">Aggressive</SelectItem>
-                      <SelectItem value="Possession-Based">
-                        Possession-Based
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onValueChange={(value) => handleSaveTactic(value)}
+                  />
                 </div>
               </div>
             </CardContent>
