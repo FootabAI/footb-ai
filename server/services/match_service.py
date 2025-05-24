@@ -206,12 +206,12 @@ class MatchService:
 
         # Tactic adjustments
         tactic_adjustments = {
-            "Possession-Based": 1.2,
-            "Balanced": 1.0,
-            "Counter-Attacking": 0.8,
-            "Defensive": 0.7,
-            "Offensive": 1.1,
-            "Aggressive": 1.1
+            "Tiki-Taka": 1.2,
+            "Park-The-Bus": 0.7,
+            "Direct-Play": 0.9,
+            "Total-Football": 1.1,
+            "Catenaccio": 0.8,
+            "Gegenpressing": 1.1
         }
 
         home_tactic_factor = tactic_adjustments.get(self.home_team_tactic, 1.0)
@@ -320,8 +320,8 @@ class MatchService:
                 current_minute += 1
                 # Send a simple minute update without creating an event
                 minute_update = {
-                    "minute": current_minute,
                     "type": "minute_update",
+                    "minute": current_minute,
                     "score": self._current_score.copy(),
                     "stats": self._stats
                 }
@@ -351,8 +351,8 @@ class MatchService:
                 current_minute += 1
                 # Send a simple minute update without creating an event
                 minute_update = {
-                    "minute": current_minute,
                     "type": "minute_update",
+                    "minute": current_minute,
                     "score": self._current_score.copy(),
                     "stats": self._stats
                 }
@@ -366,7 +366,6 @@ class MatchService:
         """Process a single event and return its JSON representation."""
         try:
             self._update_stats(event)
-            event["stats"] = self._stats
             await asyncio.sleep(self.event_delay)  # Keep a small delay for readability
             return json.dumps(event) + "\n"
         except Exception as e:
@@ -458,6 +457,10 @@ class MatchService:
 
         # Ensure values are within realistic ranges
         self._normalize_stats()
+
+        # Update the event's stats
+        event["stats"] = self._stats
+        event["score"] = self._current_score.copy()
 
     def _update_progressive_stats(self, progress: float) -> None:
         """Update statistics that progress with match time."""
@@ -565,11 +568,13 @@ class MatchService:
     @staticmethod
     def _event(minute: int, team: str, etype: str, description: str = "") -> Dict[str, Any]:
         return {
+            "type": "event",  # Add type field
             "minute": minute,
             "event": {
                 "team": team,
                 "type": etype,
-                "description": description
+                "description": description,
+                "commentary": ""  # Will be filled in later
             },
             "score": {"home": 0, "away": 0}  # Will be updated in _generate_timeline
         }

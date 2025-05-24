@@ -1,3 +1,5 @@
+import { TeamTactic } from "@/types/team";
+
 export type MatchEventType = "goal" | "yellow_card" | "red_card" | "injury" | "substitution" | "own-goal" | "half-time" | "full-time";
 
 export interface MatchEvent {
@@ -8,7 +10,6 @@ export interface MatchEvent {
   description: string;
 }
 
-export type TeamTactic = "Balanced" | "Offensive" | "Defensive" | "Counter-Attacking" | "Aggressive" | "Possession-Based";
 
 export interface Team {
   id: string;

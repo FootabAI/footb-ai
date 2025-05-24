@@ -2,7 +2,7 @@ import React, { useState, KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import Tag from "./ui/Tag";
+import Tag from "./ui/tag";
 
 
 interface TagInputProps extends React.InputHTMLAttributes<HTMLInputElement> {

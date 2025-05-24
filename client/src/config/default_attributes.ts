@@ -19,4 +19,5 @@ export const DEFAULT_TEAM_STATS: TeamStats = {
   goalsScored: 0,
   goalsConceded: 0,
   cleanSheets: 0,
+  form: [],
 };

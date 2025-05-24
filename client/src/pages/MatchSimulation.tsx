@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MatchEvent, TeamTactic, Formation, MatchStats } from "@/types";
-import { MatchEventType } from "@/types/game";
+import { MatchEventType } from "@/types/match";
+import { MatchUpdate, MatchEventUpdate, MinuteUpdate } from "@/types/match-simulation";
 import TeamLogo from "@/components/TeamLogo";
 import {
   Play,
@@ -34,6 +35,7 @@ import Event from "@/components/Event";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { formations } from "@/config/formations";
+import { TacticSelect } from "@/components/TacticSelect";
 // import { v4 as uuidv4 } from "uuid";
 
 interface ServerEvent {
@@ -43,31 +45,6 @@ interface ServerEvent {
   commentary: string;
   audio_url?: string;
 }
-
-interface MinuteUpdate {
-  type: "minute_update";
-  minute: number;
-  stats?: {
-    home: MatchStats;
-    away: MatchStats;
-  };
-}
-
-interface MatchEventUpdate {
-  type: "event";
-  minute: number;
-  event: ServerEvent;
-  score: {
-    home: number;
-    away: number;
-  };
-  stats?: {
-    home: MatchStats;
-    away: MatchStats;
-  };
-}
-
-type MatchUpdate = MinuteUpdate | MatchEventUpdate;
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -165,7 +142,7 @@ const MatchSimulation = () => {
         if (!event) continue;
 
         // Handle minute updates
-        if ('type' in event && event.type === "minute_update") {
+        if (event.type === "minute_update") {
           setMinute(event.minute);
           if (event.stats) {
             updateMatchStats(event.stats.home, event.stats.away);
@@ -173,53 +150,56 @@ const MatchSimulation = () => {
           continue;
         }
 
-        // Handle half-time
-        if (event.event.type === "half-time") {
-          console.log("\n=== HALF TIME ===");
-          setIsHalfTime(true);
-        }
+        // Handle match events
+        if (event.type === "event") {
+          // Handle half-time
+          if (event.event.type === "half-time") {
+            console.log("\n=== HALF TIME ===");
+            setIsHalfTime(true);
+          }
 
-        // Handle full-time
-        if (event.event.type === "full-time") {
-          console.log("\n=== FULL TIME ===");
-          console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
+          // Handle full-time
+          if (event.event.type === "full-time") {
+            console.log("\n=== FULL TIME ===");
+            console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
 
-          setIsFullTime(true);
-          completeMatch(
-            event.score.home > event.score.away
-              ? team.id
-              : currentMatch.awayTeam.id
-          );
-        }
+            setIsFullTime(true);
+            completeMatch(
+              event.score.home > event.score.away
+                ? team.id
+                : currentMatch.awayTeam.id
+            );
+          }
 
-        // Log event
-        console.log(`[${event.minute}'] ${event.event.description}`);
+          // Log event
+          console.log(`[${event.minute}'] ${event.event.description}`);
 
-        // Add event to state
-        const newEvent: MatchEvent = {
-          id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          type: event.event.type,
-          team: event.event.team,
-          description: event.event.description,
-          commentary: event.event.commentary,
-          audio_url: event.event.audio_url,
-          minute: event.minute,
-        };
+          // Add event to state
+          const newEvent: MatchEvent = {
+            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: event.event.type,
+            team: event.event.team,
+            description: event.event.description,
+            commentary: event.event.commentary,
+            audio_url: event.event.audio_url,
+            minute: event.minute,
+          };
 
-        setMatchEvents((prev) => [...prev, newEvent]);
-        addMatchEvent(newEvent);
+          setMatchEvents((prev) => [...prev, newEvent]);
+          addMatchEvent(newEvent);
 
-        // Update stats if available
-        if (event.stats) {
-          updateMatchStats(event.stats.home, event.stats.away);
-        }
+          // Update stats if available
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
 
-        // Play audio commentary if available and wait for it to finish
-        if (event.event.audio_url) {
-          await playAudioCommentary(event.event.audio_url);
-        } else {
-          // If no audio, still add a small delay between events
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Play audio commentary if available and wait for it to finish
+          if (event.event.audio_url) {
+            await playAudioCommentary(event.event.audio_url);
+          } else {
+            // If no audio, still add a small delay between events
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       }
     } catch (error) {
@@ -268,7 +248,7 @@ const MatchSimulation = () => {
         if (!event) continue;
 
         // Handle minute updates
-        if ('type' in event && event.type === "minute_update") {
+        if (event.type === "minute_update") {
           setMinute(event.minute);
           if (event.stats) {
             updateMatchStats(event.stats.home, event.stats.away);
@@ -498,26 +478,13 @@ const MatchSimulation = () => {
                       <label className="text-sm text-gray-400">
                         Change Team Tactic
                       </label>
-                      <Select
+                      <TacticSelect
                         value={changeTactic || currentMatch.homeTeam.tactic}
-                        onValueChange={(value) => setChangeTactic(value as TeamTactic)}
-                      >
-                        <SelectTrigger className="bg-footbai-header border-footbai-hover">
-                          <SelectValue placeholder="Select tactic" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-footbai-container border-footbai-hover">
-                          <SelectItem value="Balanced">Balanced</SelectItem>
-                          <SelectItem value="Offensive">Offensive</SelectItem>
-                          <SelectItem value="Defensive">Defensive</SelectItem>
-                          <SelectItem value="Counter-Attacking">
-                            Counter-Attacking
-                          </SelectItem>
-                          <SelectItem value="Aggressive">Aggressive</SelectItem>
-                          <SelectItem value="Possession-Based">
-                            Possession-Based
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                        onValueChange={(value) => {
+                          setChangeTactic(value);
+                          console.log("Tactic changed to:", value);
+                        }}
+                      />
                     </div>
 
                     <div className="space-y-2">

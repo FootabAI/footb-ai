@@ -19,7 +19,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   themeTags: [],
   colorTags: [],
   attributes: DEFAULT_ATTRIBUTES,
-  tactic: "Balanced",
+  tactic: "Tiki-Taka",
   pointsLeft: TOTAL_POINTS,
   isLoading: false,
   error: null,
@@ -163,7 +163,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       themeTags: [],
       colorTags: [],
       attributes: DEFAULT_ATTRIBUTES,
-      tactic: "Balanced",
+      tactic: "Tiki-Taka",
       pointsLeft: TOTAL_POINTS,
       teamStats: DEFAULT_TEAM_STATS,
     });

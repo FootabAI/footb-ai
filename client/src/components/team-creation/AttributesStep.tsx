@@ -6,6 +6,7 @@ import TeamAttributesForm from '@/components/TeamAttributesForm';
 import { TeamAttributes, TeamTactic } from '@/types';
 import { useTeamStore } from '@/stores/useTeamStore';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
+import { TacticSelect } from "@/components/TacticSelect";
 
 interface AttributesStepProps {
   attributes: TeamAttributes;
@@ -48,21 +49,11 @@ export const AttributesStep = ({
       
       <div className="space-y-2 mt-8">
         <Label htmlFor="tactic">Team Tactic</Label>
-        <Select value={tactic} onValueChange={onTacticChange}>
-          <SelectTrigger id="tactic" className="bg-footbai-header border-footbai-hover focus:ring-footbai-accent">
-            <div className="flex items-center gap-2">
-              {tactic && tacticIcons[tactic as keyof typeof tacticIcons]}
-              <SelectValue />
-            </div>
-          </SelectTrigger>
-          <SelectContent className="bg-footbai-container border-footbai-hover">
-            {Object.keys(tacticIcons).map((tacticName) => (
-              <SelectItem key={tacticName} value={tacticName} className="flex items-center gap-2">
-                <span>{tacticName}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <TacticSelect
+          value={tactic}
+          onValueChange={onTacticChange}
+          className="bg-footbai-header border-footbai-hover focus:ring-footbai-accent"
+        />
       </div>
     </div>
   );

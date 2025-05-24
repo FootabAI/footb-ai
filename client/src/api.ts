@@ -1,4 +1,5 @@
 import { Formation, Match, Team, TeamTactic } from "./types";
+import { MatchEventUpdate, MatchSimulationResponse } from './types/match-simulation';
 
 export const API_URL = "http://127.0.0.1:8000";
 
@@ -8,49 +9,6 @@ const ensureAbsoluteUrl = (url: string | undefined) => {
   if (url.startsWith('http')) return url;
   return `${API_URL}${url}`;
 };
-
-// Types for match simulation
-export interface MatchEvent {
-  minute: number;
-  event: {
-    type: string;
-    team: string;
-    description: string;
-    commentary?: string;
-    audio_url?: string;
-  };
-  score: {
-    home: number;
-    away: number;
-  };
-  stats?: {
-    home: {
-      possession: number;
-      shots: number;
-      shotsOnTarget: number;
-      passes: number;
-      passAccuracy: number;
-      fouls?: number;
-      yellowCards?: number;
-      redCards?: number;
-    };
-    away: {
-      possession: number;
-      shots: number;
-      shotsOnTarget: number;
-      passes: number;
-      passAccuracy: number;
-      fouls?: number;
-      yellowCards?: number;
-      redCards?: number;
-    };
-  };
-}
-
-export interface MatchSimulationResponse {
-  match_id: string;
-  events: AsyncIterable<MatchEvent>;
-}
 
 export const create_club_logo = async (themes: string[], colors: string[]) => {
   const response = await fetch(`${API_URL}/create_club_logo`, {

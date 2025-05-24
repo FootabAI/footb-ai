@@ -87,6 +87,18 @@ async def simulate_match(request: Request):
         print(f"LLM Commentary: {'ON' if USE_LLM else 'OFF'}")
         print(f"TTS: {'ON' if USE_TTS else 'OFF'}")
 
+
+        # ! NEW FUNCTION 
+        # TODO: ARGS: 
+            # * home_team_attributes=user_team_data["attributes"],
+            # * away_team_attributes=opponent_team_data["attributes"],
+            # * home_team_tactic=user_team_data["tactic"],
+            # * away_team_tactic=opponent_team_data["tactic"],
+        # ! Load JSON file
+          # ! Use team attributes to calculate match stats 
+          # ! Pass into match service
+
+
         # Initialize MatchService with the teams and their attributes
         match_service = MatchService(
             home_team=user_team_data["name"],
@@ -101,6 +113,7 @@ async def simulate_match(request: Request):
             away_team_formation=opponent_team_data["formation"],
             home_team_stats=user_team_data["teamStats"],
             away_team_stats=opponent_team_data["teamStats"]
+            # TODO: Add NEW FUNCTION here...
         )
         
         # Store the match service instance
