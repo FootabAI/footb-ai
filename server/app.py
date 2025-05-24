@@ -6,8 +6,10 @@ import uvicorn
 import base64
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
+from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from services.logo_service import LogoService
 from services.match_service import MatchService
+from services.player_name_service import PlayerNameService, build_local_llm
 
 # Load environment variables
 load_dotenv()
@@ -26,6 +28,7 @@ app.add_middleware(
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
 match_service = MatchService()
+player_name_service = PlayerNameService(llm=build_local_llm())
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
@@ -48,6 +51,25 @@ async def create_club_logo(request: LogoGenerationRequest):
             success=True
         )
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate_player_names", response_model=PlayerGenerationResponse)
+async def generate_player_names(request: PlayerGenerationRequest):
+    """
+    Produce an XI of fresh, realistic-sounding footballer names.
+    """
+    try:
+        squad, names_only = player_name_service.generate_team(
+            nationality   = request.nationality,
+            theme         = request.theme,
+            with_positions= request.with_positions,
+        )
+        return PlayerGenerationResponse(
+            squad   = squad,
+            names   = names_only,
+            success = True,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
