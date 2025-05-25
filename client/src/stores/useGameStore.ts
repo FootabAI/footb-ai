@@ -15,7 +15,8 @@ type GameState = {
   setCurrentMatch: (match: Match | null) => void;
   setupMatch: (opponent: Team) => void;
   updateMatchStats: (homeStats: Partial<MatchStats>, awayStats: Partial<MatchStats>) => void;
-  addMatchEvent: (event: Omit<MatchEvent, 'id'>) => void;
+  addMatchEvent: (event: Omit<MatchEvent, 'id'> & { score?: { home: number; away: number } }) => void;
+  updateMatchScore: (homeScore: number, awayScore: number) => void;
   completeMatch: (winnerId: string) => Promise<void>;
   resetMatch: () => void;
   simulateMatch: () => void;
@@ -33,6 +34,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   setUserTeam: (team) => set({ userTeam: team }),
   setCurrentMatch: (match) => set({ currentMatch: match }),
   setSelectedFormation: (formation) => set({ selectedFormation: formation }),
+
+  updateMatchScore: (homeScore, awayScore) => {
+    set((state) => {
+      if (!state.currentMatch) return state;
+
+      return {
+        currentMatch: {
+          ...state.currentMatch,
+          homeScore,
+          awayScore,
+        },
+      };
+    });
+  },
 
   setupMatch: (opponent) => {
     const userTeam = useTeamStore.getState().team;
@@ -101,6 +116,19 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...event,
         id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       };
+
+      // If the event includes a score update, update the match score
+      if (event.score) {
+        const { home, away } = event.score;
+        return {
+          currentMatch: {
+            ...state.currentMatch,
+            homeScore: home,
+            awayScore: away,
+            events: [...state.currentMatch.events, newEvent],
+          },
+        };
+      }
 
       return {
         currentMatch: {

@@ -82,52 +82,92 @@ class TacticalFitCalculator:
         
         # Calculate average attribute score
         total_score = 0
-        for attr, weight in required_attrs.items():
+        total_weight = 0
+        
+        for attr, target_value in required_attrs.items():
             team_value = team_attributes.get(attr, 50)  # Default to 50 if attribute missing
-            total_score += (team_value / 100) * weight
+            # Calculate how close the team's value is to the target value
+            score = 1 - abs(team_value - target_value) / 100
+            total_score += score
+            total_weight += 1
         
         # Normalize to 0-1 range
-        return total_score / sum(required_attrs.values())
+        return total_score / total_weight if total_weight > 0 else 0.0
 
     def _get_required_attributes(self, tactic: str) -> Dict[str, float]:
         """Get required attributes and their weights for each tactic."""
         # Convert tactic to lowercase for case-insensitive matching
         tactic = tactic.lower()
         
+        # Target values from task.txt
         tactics = {
             "tiki-taka": {
-                "passing": 0.4,    # 90/100
-                "dribbling": 0.3,  # 75/100
-                "pace": 0.3        # 60/100
+                "passing": 90,    # Target value
+                "dribbling": 75,  # Target value
+                "pace": 60        # Target value
             },
             "gegenpressing": {
-                "pace": 0.35,      # 85/100
-                "defending": 0.35, # 80/100
-                "physicality": 0.3 # 80/100
+                "pace": 85,       # Target value
+                "defending": 80,  # Target value
+                "physicality": 80 # Target value
             },
             "catenaccio": {
-                "defending": 0.45, # 95/100
-                "physicality": 0.3, # 70/100
-                "pace": 0.25      # 55/100
+                "defending": 95,  # Target value
+                "physicality": 70, # Target value
+                "pace": 55        # Target value
             },
             "total-football": {
-                "passing": 0.33,   # 80/100
-                "dribbling": 0.33, # 80/100
-                "pace": 0.34       # 80/100
+                "passing": 80,    # Target value
+                "dribbling": 80,  # Target value
+                "pace": 80        # Target value
             },
             "park-the-bus": {
-                "defending": 0.4,  # 90/100
-                "physicality": 0.35, # 80/100
-                "passing": 0.25    # 45/100
+                "defending": 90,  # Target value
+                "physicality": 80, # Target value
+                "passing": 45     # Target value
             },
             "direct-play": {
-                "physicality": 0.35, # 85/100
-                "shooting": 0.35,  # 75/100
-                "pace": 0.3        # 70/100
+                "physicality": 85, # Target value
+                "shooting": 75,   # Target value
+                "pace": 70        # Target value
             }
         }
         
         return tactics.get(tactic, {})
+
+    def _calculate_team_effects(self, tfs: float) -> Dict[str, float]:
+        """Calculate effects for a team based on their tactical fit score."""
+        effects = {
+            "positive_effect": 0.0,  # Effect on own team
+            "negative_effect": 0.0,  # Effect on opponent
+            "penalty": 0.0           # Negative penalty on own team
+        }
+        
+        if tfs >= 0.80:
+            # TFS ≥ 0.80: Positive effect on own team - 100% of max effect
+            # Effect on opponent - 100% negative effect
+            # Negative penalty on own team - 0% penalty
+            effects["positive_effect"] = 1.0
+            effects["negative_effect"] = 1.0
+            effects["penalty"] = 0.0
+        elif 0.50 <= tfs < 0.79:
+            # TFS 0.50-0.79: Linear scaling: E=(TFS-0.5)/0.3
+            scale = (tfs - 0.5) / 0.3
+            effects["positive_effect"] = scale
+            effects["negative_effect"] = scale
+            effects["penalty"] = 0.0
+        elif 0.40 <= tfs < 0.49:
+            # TFS 0.40-0.49: Linear penalty: S=(0.5-TFS)/0.1
+            effects["positive_effect"] = 0.0
+            effects["negative_effect"] = 0.0
+            effects["penalty"] = (0.5 - tfs) / 0.1
+        else:  # tfs < 0.40
+            # TFS < 0.40: Max penalty (100%)
+            effects["positive_effect"] = 0.0
+            effects["negative_effect"] = 0.0
+            effects["penalty"] = 1.0
+            
+        return effects
 
     def calculate_match_effects(
         self,
@@ -185,37 +225,8 @@ class TacticalFitCalculator:
         home_base_prob = (home_effects["shots"] / 90) * home_shot_conv
         away_base_prob = (away_effects["shots"] / 90) * away_shot_conv
         
-        # Apply tactical effects
-        home_effects["goal_probability"] = home_base_prob * (1 + home_effects["positive_effect"]) * (1 + away_effects["penalty"])
-        away_effects["goal_probability"] = away_base_prob * (1 + away_effects["positive_effect"]) * (1 - home_effects["penalty"])
+        # Apply tactical effects - fixed the formula
+        home_effects["goal_probability"] = home_base_prob * (1 + home_effects["positive_effect"]) * (1 - home_effects["penalty"])
+        away_effects["goal_probability"] = away_base_prob * (1 + away_effects["positive_effect"]) * (1 - away_effects["penalty"])
         
-        return home_effects, away_effects
-
-    def _calculate_team_effects(self, tfs: float) -> Dict[str, float]:
-        """Calculate effects for a team based on their tactical fit score."""
-        effects = {
-            "positive_effect": 0.0,  # Effect on own team
-            "negative_effect": 0.0,  # Effect on opponent
-            "penalty": 0.0           # Negative penalty on own team
-        }
-        
-        if tfs >= 0.80:
-            effects["positive_effect"] = 1.0
-            effects["negative_effect"] = 1.0
-            effects["penalty"] = 0.0
-        elif 0.50 <= tfs < 0.79:
-            # Linear scaling
-            scale = (tfs - 0.5) / 0.3
-            effects["positive_effect"] = scale
-            effects["negative_effect"] = scale
-            effects["penalty"] = 0.0
-        elif 0.40 <= tfs < 0.49:
-            effects["positive_effect"] = 0.0
-            effects["negative_effect"] = 0.0
-            effects["penalty"] = (0.5 - tfs) / 0.1
-        else:  # tfs < 0.40
-            effects["positive_effect"] = 0.0
-            effects["negative_effect"] = 0.0
-            effects["penalty"] = 1.0
-            
-        return effects 
+        return home_effects, away_effects 

@@ -6,6 +6,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Shield,
+  Target,
+  ArrowUpDown,
+  ArrowUpFromLine,
+  ArrowRightLeft,
+  Bus,
+} from "lucide-react";
 
 interface TacticSelectProps {
   value: TeamTactic;
@@ -13,20 +21,44 @@ interface TacticSelectProps {
   className?: string;
 }
 
-export const TacticSelect = ({ value, onValueChange, className }: TacticSelectProps) => {
+const tacticIcons = {
+  "Tiki-Taka": <ArrowRightLeft className="h-4 w-4" />,
+  "Park-The-Bus": <Bus className="h-4 w-4" />,
+  "Direct-Play": <ArrowUpFromLine className="h-4 w-4" />,
+  "Total-Football": <ArrowUpDown className="h-4 w-4" />,
+  Catenaccio: <Shield className="h-4 w-4" />,
+  Gegenpressing: <Target className="h-4 w-4" />,
+};
+
+export const TacticSelect = ({
+  value,
+  onValueChange,
+  className,
+}: TacticSelectProps) => {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={className || "w-[180px] bg-footbai-container border-footbai-hover"}>
-        <SelectValue placeholder="Select tactic" />
+      <SelectTrigger
+        className={
+          className || "w-[180px] bg-footbai-container border-footbai-hover"
+        }
+      >
+        <SelectValue>
+          <div className="flex items-center gap-2">
+            {tacticIcons[value]}
+            <span>{value}</span>
+          </div>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent className="bg-footbai-container border-footbai-hover">
-        <SelectItem value="Tiki-Taka">Tiki-Taka</SelectItem>
-        <SelectItem value="Park-The-Bus">Park The Bus</SelectItem>
-        <SelectItem value="Direct-Play">Direct Play</SelectItem>
-        <SelectItem value="Total-Football">Total Football</SelectItem>
-        <SelectItem value="Catenaccio">Catenaccio</SelectItem>
-        <SelectItem value="Gegenpressing">Gegenpressing</SelectItem>
+        {Object.entries(tacticIcons).map(([tactic, icon]) => (
+          <SelectItem key={tactic} value={tactic}>
+            <div className="flex items-center gap-2">
+              {icon}
+              <span>{tactic}</span>
+            </div>
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
-}; 
+};

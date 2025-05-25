@@ -24,12 +24,21 @@ class SimpleTacticalMatch:
         home_tactic: str,
         away_tactic: str,
         *,
-        seed: int = None
+        seed: int = None,
+        match_length: int = 60,  # Total match length in seconds
+        time_scale: float = 1  # Time scaling factor (1.0 = real-time)
     ):
         self.home_team = home_team
         self.away_team = away_team
         self.home_tactic = home_tactic
         self.away_tactic = away_tactic
+        self.home_attributes = home_attributes
+        self.away_attributes = away_attributes
+        
+        # Match timing settings
+        self.match_length = match_length
+        self.time_scale = time_scale
+        self.half_length = match_length // 2  # Each half is exactly half of total length
         
         # Calculate tactical fit scores and effects
         calculator = TacticalFitCalculator()
@@ -39,69 +48,138 @@ class SimpleTacticalMatch:
             self.home_tfs, self.away_tfs, home_tactic, away_tactic
         )
         
+        # Print match setup information
+        print("\n=== Match Setup ===")
+        print(f"Home Team: {home_team}")
+        print(f"Away Team: {away_team}")
+        print(f"Match Length: {match_length} seconds")
+        print(f"Half Length: {self.half_length} seconds")
+        print(f"Time Scale: {time_scale}x")
+        print(f"\nHome Team Attributes:")
+        for attr, value in home_attributes.items():
+            print(f"- {attr}: {value}")
+        print(f"\nAway Team Attributes:")
+        for attr, value in away_attributes.items():
+            print(f"- {attr}: {value}")
+        print(f"\nTactics:")
+        print(f"- Home: {home_tactic}")
+        print(f"- Away: {away_tactic}")
+        print(f"\nTactical Fit Scores:")
+        print(f"- Home TFS: {self.home_tfs:.2f}")
+        print(f"- Away TFS: {self.away_tfs:.2f}")
+        print(f"\nMatch Effects:")
+        print("Home Team Effects:")
+        for effect, value in self.home_effects.items():
+            print(f"- {effect}: {value:.2f}")
+        print("\nAway Team Effects:")
+        for effect, value in self.away_effects.items():
+            print(f"- {effect}: {value:.2f}")
+        print("==================\n")
+        
         # Initialize RNG
         self._rng = random.Random(seed)
         
         # Match state
         self._current_score = {"home": 0, "away": 0}
         self._events = []
+        self._first_half_events = []
+        self._second_half_events = []
 
-    async def stream_match(self) -> AsyncGenerator[str, None]:
-        """Stream the match events."""
-        # Generate all events
-        self._generate_match_events()
+    def update_tactic(self, team: str, new_tactic: str) -> Dict[str, Any]:
+        """Update tactic for a team and recalculate effects."""
+        if team == "home":
+            self.home_tactic = new_tactic
+            self.home_tfs = TacticalFitCalculator().calculate_tactical_fit(self.home_attributes, new_tactic)
+        else:
+            self.away_tactic = new_tactic
+            self.away_tfs = TacticalFitCalculator().calculate_tactical_fit(self.away_attributes, new_tactic)
         
-        # Stream events with minute updates
+        # Recalculate match effects
+        calculator = TacticalFitCalculator()
+        self.home_effects, self.away_effects = calculator.calculate_match_effects(
+            self.home_tfs, self.away_tfs, self.home_tactic, self.away_tactic
+        )
+
+        # Return updated effects for printing
+        return {
+            "home_tfs": self.home_tfs,
+            "away_tfs": self.away_tfs,
+            "home_effects": self.home_effects,
+            "away_effects": self.away_effects
+        }
+
+    def _scale_minute(self, real_minute: int) -> int:
+        """Scale a real match minute to the custom match length."""
+        # Convert real minute (1-45) to simulation minutes
+        # For a 2-minute match (120 seconds), each half should be 1 minute (60 seconds)
+        # So 45 real minutes should map to 45 simulation minutes
+        return real_minute
+
+    def _generate_first_half_events(self) -> None:
+        """Generate events for the first half."""
+        events = []
+        
+        # Generate events for first half (1-45 minutes)
+        for minute in range(1, 46):
+            # Check for goals based on pre-calculated probabilities
+            if self._rng.random() < self.home_effects["goal_probability"]:
+                events.append(self._create_event(minute, "home", "goal"))
+            if self._rng.random() < self.away_effects["goal_probability"]:
+                events.append(self._create_event(minute, "away", "goal"))
+        
+        # Add half-time marker at minute 45
+        events.append(self._create_event(45, "info", "half-time"))
+        
+        # Sort events by minute
+        events.sort(key=lambda e: e["minute"])
+        self._first_half_events = events
+
+    def _generate_second_half_events(self) -> None:
+        """Generate events for the second half."""
+        events = []
+        
+        # Generate events for second half (46-90 minutes)
+        for minute in range(46, 91):
+            # Check for goals based on pre-calculated probabilities
+            if self._rng.random() < self.home_effects["goal_probability"]:
+                events.append(self._create_event(minute, "home", "goal"))
+            if self._rng.random() < self.away_effects["goal_probability"]:
+                events.append(self._create_event(minute, "away", "goal"))
+        
+        # Add full-time marker at minute 90
+        events.append(self._create_event(90, "info", "full-time"))
+        
+        # Sort events by minute
+        events.sort(key=lambda e: e["minute"])
+        self._second_half_events = events
+
+    async def stream_first_half(self) -> AsyncGenerator[str, None]:
+        """Stream the first half events."""
+        # Generate first half events if not already generated
+        if not self._first_half_events:
+            self._generate_first_half_events()
+        
+        # Print match setup information
+        setup_info = {
+            "type": "match_setup",
+            "home_team": self.home_team,
+            "away_team": self.away_team,
+            "home_tactic": self.home_tactic,
+            "away_tactic": self.away_tactic,
+            "home_tfs": self.home_tfs,
+            "away_tfs": self.away_tfs,
+            "home_effects": self.home_effects,
+            "away_effects": self.away_effects,
+            "match_length": self.match_length,
+            "time_scale": self.time_scale
+        }
+        yield json.dumps(setup_info) + "\n"
+        
+        # Stream first half events
         current_minute = 0
         current_score = {"home": 0, "away": 0}
         
-        # Print match setup information with better formatting
-        print("\n" + "="*60)
-        print(f"MATCH SETUP".center(60))
-        print("="*60)
-        print(f"{self.home_team} ({self.home_tactic}) vs {self.away_team} ({self.away_tactic})".center(60))
-        
-        print("\n" + "-"*60)
-        print(f"TACTICAL FIT SCORES".center(60))
-        print("-"*60)
-        print(f"{self.home_team}: {self.home_tfs:.2f}".center(60))
-        print(f"{self.away_team}: {self.away_tfs:.2f}".center(60))
-        
-        print("\n" + "-"*60)
-        print(f"MATCH EFFECTS".center(60))
-        print("-"*60)
-        
-        # Home team effects
-        print(f"\n{self.home_team}:")
-        print("  Tactical Effects:")
-        print(f"    Positive Effect: {self.home_effects['positive_effect']:.2f}")
-        print(f"    Negative Effect: {self.home_effects['negative_effect']:.2f}")
-        print(f"    Penalty: {self.home_effects['penalty']:.2f}")
-        print("  Statistics:")
-        print(f"    Shots: {self.home_effects['shots']:.1f}")
-        print(f"    Shots on Target: {self.home_effects['target']:.1f}")
-        print(f"    Corners: {self.home_effects['corners']:.1f}")
-        print(f"    Fouls: {self.home_effects['fouls']:.1f}")
-        print(f"  Goal Probability per Minute: {self.home_effects['goal_probability']:.3f}")
-        
-        # Away team effects
-        print(f"\n{self.away_team}:")
-        print("  Tactical Effects:")
-        print(f"    Positive Effect: {self.away_effects['positive_effect']:.2f}")
-        print(f"    Negative Effect: {self.away_effects['negative_effect']:.2f}")
-        print(f"    Penalty: {self.away_effects['penalty']:.2f}")
-        print("  Statistics:")
-        print(f"    Shots: {self.away_effects['shots']:.1f}")
-        print(f"    Shots on Target: {self.away_effects['target']:.1f}")
-        print(f"    Corners: {self.away_effects['corners']:.1f}")
-        print(f"    Fouls: {self.away_effects['fouls']:.1f}")
-        print(f"  Goal Probability per Minute: {self.away_effects['goal_probability']:.3f}")
-        
-        print("\n" + "="*60)
-        print(f"MATCH EVENTS".center(60))
-        print("="*60)
-        
-        for ev in self._events:
+        for ev in self._first_half_events:
             # Stream minutes up to the next event
             while current_minute < ev["minute"]:
                 current_minute += 1
@@ -111,47 +189,68 @@ class SimpleTacticalMatch:
                     "score": current_score.copy()
                 }
                 yield json.dumps(minute_update) + "\n"
-                await asyncio.sleep(0.5)
+                # Scale the sleep time based on time_scale
+                # For a 2-minute match, each half is 1 minute, so each minute should take 1/45 of that time
+                await asyncio.sleep((self.half_length / 45) / self.time_scale)
             
             # Update score if it's a goal
             if ev["event"]["type"] == "goal":
                 team = ev["event"]["team"]
                 current_score[team] += 1
+                self._current_score[team] += 1
             
             # Stream the actual event
             ev["score"] = current_score.copy()
             yield json.dumps(ev) + "\n"
-            await asyncio.sleep(1.0)
 
-    def _generate_match_events(self) -> None:
-        """Generate all match events based on tactical effects."""
-        events = []
+    async def stream_second_half(self) -> AsyncGenerator[str, None]:
+        """Stream the second half events."""
+        # Generate second half events if not already generated
+        if not self._second_half_events:
+            self._generate_second_half_events()
         
-        # Generate events for each minute using pre-calculated probabilities
-        for minute in range(1, 91):
-            # Check for goals based on pre-calculated probabilities
-            if self._rng.random() < self.home_effects["goal_probability"]:
-                events.append(self._create_event(minute, "home", "goal"))
-            if self._rng.random() < self.away_effects["goal_probability"]:
-                events.append(self._create_event(minute, "away", "goal"))
+        # Stream second half events
+        current_minute = 45
+        current_score = self._current_score.copy()
         
-        # Add match markers
-        events.extend([
-            self._create_event(45, "info", "half-time"),
-            self._create_event(90, "info", "full-time")
-        ])
-        
-        # Sort events by minute
-        events.sort(key=lambda e: e["minute"])
-        
-        # Update scores
-        for ev in events:
+        for ev in self._second_half_events:
+            # Stream minutes up to the next event
+            while current_minute < ev["minute"]:
+                current_minute += 1
+                minute_update = {
+                    "type": "minute_update",
+                    "minute": current_minute,
+                    "score": current_score.copy()
+                }
+                yield json.dumps(minute_update) + "\n"
+                # Scale the sleep time based on time_scale
+                # For a 2-minute match, each half is 1 minute, so each minute should take 1/45 of that time
+                await asyncio.sleep((self.half_length / 45) / self.time_scale)
+            
+            # Update score if it's a goal
             if ev["event"]["type"] == "goal":
                 team = ev["event"]["team"]
+                current_score[team] += 1
                 self._current_score[team] += 1
-            ev["score"] = self._current_score.copy()
-        
-        self._events = events
+            
+            # Stream the actual event
+            ev["score"] = current_score.copy()
+            yield json.dumps(ev) + "\n"
+
+    async def _print_match_setup(self) -> AsyncGenerator[str, None]:
+        """Print match setup information."""
+        setup_info = {
+            "type": "match_setup",
+            "home_team": self.home_team,
+            "away_team": self.away_team,
+            "home_tactic": self.home_tactic,
+            "away_tactic": self.away_tactic,
+            "home_tfs": self.home_tfs,
+            "away_tfs": self.away_tfs,
+            "home_effects": self.home_effects,
+            "away_effects": self.away_effects
+        }
+        yield json.dumps(setup_info) + "\n"
 
     def _create_event(self, minute: int, team: str, event_type: str) -> Dict[str, Any]:
         """Create an event dictionary."""
@@ -176,24 +275,11 @@ class SimpleTacticalMatch:
             "full-time": "Full-time whistle blown."
         }
         
-        return descriptions.get(event_type, "") 
+        return descriptions.get(event_type, "")
       
       
 if __name__ == "__main__":
-    # Test Case 1: High TFS (≥ 0.80) for home team
-    # print("\nTest Case 1: High TFS (≥ 0.80) for home team")
-    # match1 = SimpleTacticalMatch(
-    #     home_team="Barcelona",
-    #     away_team="Chelsea",
-    #     home_attributes={"passing": 90, "dribbling": 75, "pace": 60},  # Perfect for Tiki-Taka
-    #     away_attributes={"defending": 90, "physicality": 80, "passing": 45},  # Perfect for Park-the-Bus
-    #     home_tactic="tiki-taka",
-    #     away_tactic="park-the-bus"
-    # )
-    
-
-    # Test Case 2: Medium TFS (0.50-0.79) for both teams
-    # print("\nTest Case 2: Medium TFS (0.50-0.79) for both teams")
+ 
     match2 = SimpleTacticalMatch(
         home_team="Arsenal",
         away_team="Liverpool",
@@ -203,22 +289,11 @@ if __name__ == "__main__":
         away_tactic="gegenpressing"
     )
 
-    # Test Case 3: Low TFS (< 0.40) for away team
-    # print("\nTest Case 3: Low TFS (< 0.40) for away team")
-    # match3 = SimpleTacticalMatch(
-    #     home_team="Manchester City",
-    #     away_team="Burnley",
-    #     home_attributes={"passing": 85, "dribbling": 80, "pace": 80},  # Good for Total Football
-    #     away_attributes={"physicality": 40, "shooting": 35, "pace": 30},  # Poor for Direct Play
-    #     home_tactic="total-football",
-    #     away_tactic="direct-play"
-    # )
-
-    # Run all test cases
+  
     async def run_all_matches():
         for i, match in enumerate([match2], 1):
             
-            async for event in match.stream_match():
+            async for event in match.stream_first_half():
                 event_data = json.loads(event)
                 if event_data["type"] == "minute_update":
                     print(f"Minute {event_data['minute']}: {event_data['score']['home']}-{event_data['score']['away']}")

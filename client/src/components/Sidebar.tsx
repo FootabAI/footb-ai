@@ -13,7 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import logo from "@/assets/Logo-2.png";
+import logo from "@/assets/logo.png";
 interface SidebarProps {
   isCollapsed?: boolean;
   onToggle?: () => void;

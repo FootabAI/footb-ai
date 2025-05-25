@@ -28,7 +28,9 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
 export const startMatchSimulation = async (
   matchId: string,
   userTeam: Team,
-  opponentTeam: Team
+  opponentTeam: Team,
+  half: "first" | "second" = "first",
+  newTactic?: TeamTactic
 ): Promise<MatchSimulationResponse> => {
   const response = await fetch(`${API_URL}/api/simulate-match`, {
     method: "POST",
@@ -41,16 +43,14 @@ export const startMatchSimulation = async (
         name: userTeam.name,
         attributes: userTeam.attributes,
         tactic: userTeam.tactic,
-        formation: userTeam.formation,
-        teamStats: userTeam.teamStats
       },
       opponent_team: {
         name: opponentTeam.name,
         attributes: opponentTeam.attributes,
         tactic: opponentTeam.tactic,
-        formation: opponentTeam.formation,
-        teamStats: opponentTeam.teamStats
-      }
+      },
+      half,
+      ...(newTactic && { new_tactic: newTactic })
     }),
   });
   console.log(response);
@@ -99,87 +99,87 @@ export const startMatchSimulation = async (
   };
 };
 
-export const changeTeamTactics = async (
-  matchId: string,
-  tactic: TeamTactic,
-  formation: Formation
-): Promise<void> => {
-  console.log("Changing tactics:", { matchId, tactic, formation });
+// export const changeTeamTactics = async (
+//   matchId: string,
+//   tactic: TeamTactic,
+//   formation: Formation
+// ): Promise<void> => {
+//   console.log("Changing tactics:", { matchId, tactic, formation });
   
-  const response = await fetch(`${API_URL}/api/change-team-tactic`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      match_id: matchId,
-      tactic,
-      formation,
-    }),
-  });
+//   const response = await fetch(`${API_URL}/api/change-team-tactic`, {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify({
+//       match_id: matchId,
+//       tactic,
+//       formation,
+//     }),
+//   });
   
-  const data = await response.json();
-  console.log("Tactics change response:", data);
+//   const data = await response.json();
+//   console.log("Tactics change response:", data);
 
-  if (!response.ok) {
-    throw new Error('Failed to change team tactics');
-  }
-};
+//   if (!response.ok) {
+//     throw new Error('Failed to change team tactics');
+//   }
+// };
 
-export const continueMatch = async (
-  matchId: string
-): Promise<MatchSimulationResponse> => {
-  const response = await fetch(`${API_URL}/api/continue-match`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      match_id: matchId,
-    }),
-  });
-  console.log(response);
-  if (!response.ok) {
-    throw new Error('Failed to continue match');
-  }
+// export const continueMatch = async (
+//   matchId: string
+// ): Promise<MatchSimulationResponse> => {
+//   const response = await fetch(`${API_URL}/api/continue-match`, {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify({
+//       match_id: matchId,
+//     }),
+//   });
+//   console.log(response);
+//   if (!response.ok) {
+//     throw new Error('Failed to continue match');
+//   }
 
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('Failed to get response reader');
-  }
+//   const reader = response.body?.getReader();
+//   if (!reader) {
+//     throw new Error('Failed to get response reader');
+//   }
 
-  return {
-    match_id: matchId,
-    events: {
-      [Symbol.asyncIterator]() {
-        return {
-          async next() {
-            const { done, value } = await reader.read();
-            if (done) {
-              return { done: true, value: undefined };
-            }
+//   return {
+//     match_id: matchId,
+//     events: {
+//       [Symbol.asyncIterator]() {
+//         return {
+//           async next() {
+//             const { done, value } = await reader.read();
+//             if (done) {
+//               return { done: true, value: undefined };
+//             }
 
-            const text = new TextDecoder().decode(value);
-            const events = text.split('\n').filter(Boolean);
+//             const text = new TextDecoder().decode(value);
+//             const events = text.split('\n').filter(Boolean);
             
-            if (events.length === 0) {
-              return { done: false, value: null };
-            }
+//             if (events.length === 0) {
+//               return { done: false, value: null };
+//             }
 
-            try {
-              const event = JSON.parse(events[0]);
-              // Ensure audio URL is absolute
-              if (event.event?.audio_url) {
-                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
-              }
-              return { done: false, value: event };
-            } catch (e) {
-              console.error('Error parsing event:', e);
-              return { done: false, value: null };
-            }
-          }
-        };
-      }
-    }
-  };
-};
+//             try {
+//               const event = JSON.parse(events[0]);
+//               // Ensure audio URL is absolute
+//               if (event.event?.audio_url) {
+//                 event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
+//               }
+//               return { done: false, value: event };
+//             } catch (e) {
+//               console.error('Error parsing event:', e);
+//               return { done: false, value: null };
+//             }
+//           }
+//         };
+//       }
+//     }
+//   };
+// };

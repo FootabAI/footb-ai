@@ -75,12 +75,12 @@ const botTeamsData: Omit<Team, 'id'>[] = [
       }
     },
     attributes: {
-      passing: 34,
-      shooting: 55,
+      passing: 99,
+      shooting: 99,
       pace: 47,
-      dribbling: 20,
-      defending: 65,
-      physicality: 30,
+      dribbling: 99,
+      defending: 99,
+      physicality: 99,
     },
     tactic: 'Gegenpressing',
     points: 0,

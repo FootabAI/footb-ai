@@ -69,7 +69,7 @@ export const SummaryStep = ({
               <h3 className="text-white/70 font-medium mb-3">Team Formation</h3>
               <p className="text-sm text-gray-400 font-bold">{formation}</p>
             </div>
-            <FormationDisplay formation={formation} size="small" />
+            <FormationDisplay formation={formation} isOnboarding={true} size="small" />
           </div>
         </div>
         

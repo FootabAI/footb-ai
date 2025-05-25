@@ -1,4 +1,4 @@
-import { Shield, Sword, ShieldHalf, ArrowRight, Flame, Target } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,14 +17,7 @@ interface AttributesStepProps {
   pointsLeft: number;
 }
 
-const tacticIcons = {
-  'Balanced': <ShieldHalf className="h-4 w-4" />,
-  'Offensive': <Sword className="h-4 w-4" />,
-  'Defensive': <Shield className="h-4 w-4" />,
-  'Counter-Attacking': <ArrowRight className="h-4 w-4" />,
-  'Aggressive': <Flame className="h-4 w-4" />,
-  'Possession-Based': <Target className="h-4 w-4" />,
-};
+
 
 export const AttributesStep = ({
   attributes,
@@ -37,7 +30,7 @@ export const AttributesStep = ({
   const { mainColor } = useOnboardingStore();
   return (
     <div className="space-y-4 animate-fade-in">
-      <h2 className="text-lg font-semibold">Team Attributes {mainColor}</h2>
+      <h2 className="text-lg font-semibold">Team Attributes</h2>
       
       <TeamAttributesForm
         mainColor={mainColor}
