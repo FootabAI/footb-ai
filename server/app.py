@@ -82,7 +82,6 @@ async def generate_player_names(request: PlayerGenerationRequest):
     try:
         squad, names_only = player_name_service.generate_team(
             nationality   = request.nationality,
-            theme         = request.theme,
             with_positions= request.with_positions,
         )
         return PlayerGenerationResponse(
