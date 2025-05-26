@@ -1,0 +1,104 @@
+{
+  "tiki-taka": {
+    "requirements": { "passing": 85, "dribbling": 75 },
+    "own_effects": {
+      "shots": 0.32,
+      "target": 0.4,
+      "goals": 0.4,
+      "yellow": -0.2,
+      "red": -0.8
+    },
+    "opponent_effects": {
+      "shots": -0.4,
+      "target": -0.48,
+      "goals": -0.32,
+      "yellow": -0.2,
+      "red": -0.4
+    }
+  },
+  "gegenpressing": {
+    "requirements": { "pace": 85, "physicality": 75 },
+    "own_effects": {
+      "shots": 0.6,
+      "target": 0.72,
+      "goals": 0.48,
+      "yellow": 0.4,
+      "red": 0.4
+    },
+    "opponent_effects": {
+      "shots": -0.6,
+      "target": -0.6,
+      "goals": -0.48,
+      "yellow": 0.4,
+      "red": 0.2
+    }
+  },
+  "catenaccio": {
+    "requirements": { "defending": 75, "physicality": 85 },
+    "own_effects": {
+      "shots": -0.4,
+      "target": -0.4,
+      "goals": 0.12,
+      "yellow": -0.2,
+      "red": 0.0
+    },
+    "opponent_effects": {
+      "shots": -0.2,
+      "target": -0.2,
+      "goals": -0.08,
+      "yellow": -0.2,
+      "red": 0.0
+    }
+  },
+  "total-football": {
+    "requirements": { "dribbling": 85, "pace": 75 },
+    "own_effects": {
+      "shots": 0.48,
+      "target": 0.48,
+      "goals": 0.44,
+      "yellow": 0.0,
+      "red": 0.0
+    },
+    "opponent_effects": {
+      "shots": -0.4,
+      "target": -0.4,
+      "goals": -0.4,
+      "yellow": 0.0,
+      "red": 0.0
+    }
+  },
+  "park-the-bus": {
+    "requirements": { "defending": 85, "physicality": 75 },
+    "own_effects": {
+      "shots": -0.48,
+      "target": -0.4,
+      "goals": 0.08,
+      "yellow": -0.4,
+      "red": -0.4
+    },
+    "opponent_effects": {
+      "shots": -0.2,
+      "target": -0.2,
+      "goals": 0.0,
+      "yellow": -0.2,
+      "red": -0.2
+    }
+  },
+  "direct-play": {
+    "requirements": { "physicality": 75, "shooting": 85 },
+    "own_effects": {
+      "shots": 0.8,
+      "target": 0.6,
+      "goals": 0.36,
+      "yellow": 0.2,
+      "red": 0.0
+    },
+    "opponent_effects": {
+      "shots": -0.08,
+      "target": -0.08,
+      "goals": -0.2,
+      "yellow": 0.2,
+      "red": 0.0
+    }
+  }
+}
