@@ -10,6 +10,15 @@ const ensureAbsoluteUrl = (url: string | undefined) => {
   return `${API_URL}${url}`;
 };
 
+type PlayerGenerationResponse = {
+  squad: Array<{
+    name: string;
+    position: string;
+  }>;
+  names: string[];
+  success: boolean;
+};
+
 export const create_club_logo = async (themes: string[], colors: string[]) => {
   const response = await fetch(`${API_URL}/create_club_logo`, {
     method: "POST",
@@ -22,6 +31,20 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
     }),
   });
   console.log(response);
+  return response.json();
+};
+
+export const generatePlayerNames = async (nationality: string, withPositions: boolean): Promise<PlayerGenerationResponse> => {
+  const response = await fetch(`${API_URL}/api/generate_player_names`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      nationality,
+      withPositions,
+    }),
+  });
   return response.json();
 };
 

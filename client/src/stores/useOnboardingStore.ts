@@ -6,6 +6,7 @@ import { Team, Player} from "@/types";
 import { useTeamStore } from "./useTeamStore";
 import { DEFAULT_ATTRIBUTES, TOTAL_POINTS, DEFAULT_TEAM_STATS } from "@/config/default_attributes";
 import { OnboardingState } from "@/types/onboarding";
+import { generatePlayerNames } from "@/api";
 
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
@@ -27,6 +28,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   teamId: "",
   mainColor: "#62df6e",
   teamStats: DEFAULT_TEAM_STATS,
+  nationality: "",
   // Actions
   setTeamName: (name) => set({ teamName: name }),
   setLogoType: (type) => set({ logoType: type }),
@@ -42,8 +44,6 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   setThemeTags: (tags) => set({ themeTags: tags }),
   setColorTags: (tags) => set({ colorTags: tags }),
   setTeamId: (id) => set({ teamId: id }),
-  generateRandomPlayers: (teamId: string, teamName: string) =>
-    generateRandomPlayers(teamId, teamName),
   setTactic: (tactic) => set({ tactic }),
   setMainColor: (color) => {
     set({
@@ -51,7 +51,14 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       backgroundColor: color, // Also update backgroundColor when main color changes
     });
   },
-
+  setNationality: (nationality) => set({ nationality }),
+  generateRandomPlayers: (teamId: string, teamName: string) =>
+    generateRandomPlayers(teamId, teamName),
+  generatePlayers: async (nationality: string, withPositions: boolean) => {
+    const response = await generatePlayerNames(nationality, withPositions);
+    console.log("Players from store: ", response);
+    return response;
+  },
   handleAttributeChange: (attr, newValue) => {
     const { attributes, pointsLeft } = get();
     const oldValue = attributes[attr];
@@ -104,6 +111,16 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
       const finalName = logoType === "manual" ? teamName : customizedName;
 
+      // Generate players using the API
+      const playerResponse = await generatePlayerNames(finalName, true);
+      const newPlayers = playerResponse.squad.map((player, index) => ({
+        id: `player-${teamId}-${index}`,
+        name: player.name,
+        position: player.position,
+        rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
+        teamId,
+      }));
+
       const newTeam: Team & { userId: string } = {
         id: teamId,
         name: finalName,
@@ -127,13 +144,10 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         formation,
         teamStats: teamStats || DEFAULT_TEAM_STATS,
         points: pointsLeft,
-        players: [],
+        players: newPlayers,
         userId: user.uid,
         isBot: false,
       };
-
-      const newPlayers = generateRandomPlayers(teamId, finalName);
-      newTeam.players = newPlayers;
 
       // Store team in Firestore
       const teamsCollection = collection(db, "teams");
@@ -166,9 +180,12 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       tactic: "Tiki-Taka",
       pointsLeft: TOTAL_POINTS,
       teamStats: DEFAULT_TEAM_STATS,
+      nationality: "",
     });
   },
 }));
+
+
 
 // Helper function to generate random players
 const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
