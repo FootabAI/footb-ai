@@ -2,15 +2,16 @@ import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
-
+import random
+from collections import defaultdict
 
 PLAYER_TACTIC = "tiki-taka"
 OPPONENT_TACTIC = "gegenpressing"
 
-PLAYER_ATTRS = {"passing": 10, "dribbling": 10, "shooting": 10, 
-                "defending": 10, "pace": 10, "physicality": 10}
-OPPONENT_ATTRS = {"passing": 120, "dribbling": 120, "shooting": 120,
-                  "defending": 120, "pace": 120, "physicality": 120}
+PLAYER_ATTRS = {"passing": 100, "dribbling": 100, "shooting": 100, 
+                "defending": 100, "pace": 100, "physicality": 100}
+OPPONENT_ATTRS = {"passing": 100, "dribbling": 100, "shooting": 100,
+                  "defending": 100, "pace": 100, "physicality": 100}
 
 json_path = Path(__file__).parent / "match_statistics.json"
 tactics_path = Path(__file__).parent / "tactics.json"
@@ -107,3 +108,23 @@ def simulate_match():
 result = simulate_match()
 print("\n=== KAMPRESULTAT ===")
 print(result)
+
+# 1. Initialiser dictionary med tomme lister
+event_dict = defaultdict(list)
+for i in range(1, 46):
+    event_dict[i] = []
+
+# 2. Lag liste med alle individuelle events
+events = []
+for event_type in result.index:
+    for team in result.columns:
+        count = int(result.loc[event_type, team])
+        events.extend([f"{event_type}_{team}"] * count)
+
+# 3. Fordel alle events tilfeldig på keys 1–45 (tillater flere per key)
+for event in events:
+    random_minute = random.randint(1, 45)
+    event_dict[random_minute].append(event)
+
+# Resultatet: dictionary der hver key har 0 eller flere events
+print(dict(event_dict))
