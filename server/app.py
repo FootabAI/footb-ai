@@ -101,16 +101,16 @@ async def simulate_match(request: Request):
             updated_effects = match.update_tactic("home", data["new_tactic"])
             
             print("\nUpdated Tactical Fit Scores:")
-            print(f"Home TFS: {updated_effects['home_tfs']:.2f}")
-            print(f"Away TFS: {updated_effects['away_tfs']:.2f}")
+            print(f"Home TFS: {updated_effects['home_tfs']:.4f}")
+            print(f"Away TFS: {updated_effects['away_tfs']:.4f}")
             
             print("\nUpdated Match Effects:")
             print("Home Team Effects:")
             for effect, value in updated_effects['home_effects'].items():
-                print(f"- {effect}: {value:.2f}")
+                print(f"- {effect}: {value:.4f}")
             print("\nAway Team Effects:")
             for effect, value in updated_effects['away_effects'].items():
-                print(f"- {effect}: {value:.2f}")
+                print(f"- {effect}: {value:.4f}")
             
             print("\nTactical change applied successfully")
             print("==================\n")

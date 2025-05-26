@@ -25,7 +25,7 @@ class SimpleTacticalMatch:
         away_tactic: str,
         *,
         seed: int = None,
-        match_length: int = 60,  # Total match length in seconds
+        match_length: int = 120,  # Total match length in seconds
         time_scale: float = 1  # Time scaling factor (1.0 = real-time)
     ):
         self.home_team = home_team
@@ -115,20 +115,45 @@ class SimpleTacticalMatch:
         # So 45 real minutes should map to 45 simulation minutes
         return real_minute
 
+    def _generate_events_for_minute(self, minute: int, is_last_minute: bool = False) -> list:
+        """Generate all possible events for a given minute."""
+        events = []
+        
+        # Check for goals
+        if self._rng.random() < self.home_effects["goal_probability"]:
+            events.append(self._create_event(minute, "home", "goal"))
+        if self._rng.random() < self.away_effects["goal_probability"]:
+            events.append(self._create_event(minute, "away", "goal"))
+        
+        # Check for yellow cards
+        if self._rng.random() < self.home_effects["yellow_card_probability"]:
+            events.append(self._create_event(minute, "home", "yellow_card"))
+        if self._rng.random() < self.away_effects["yellow_card_probability"]:
+            events.append(self._create_event(minute, "away", "yellow_card"))
+        
+        # Check for red cards
+        if self._rng.random() < self.home_effects["red_card_probability"]:
+            events.append(self._create_event(minute, "home", "red_card"))
+        if self._rng.random() < self.away_effects["red_card_probability"]:
+            events.append(self._create_event(minute, "away", "red_card"))
+            
+        # Add half-time or full-time event if this is the last minute
+        if is_last_minute:
+            if minute == 45:
+                events.append(self._create_event(minute, "info", "half-time"))
+            elif minute == 90:
+                events.append(self._create_event(minute, "info", "full-time"))
+            
+        return events
+
     def _generate_first_half_events(self) -> None:
         """Generate events for the first half."""
         events = []
         
         # Generate events for first half (1-45 minutes)
         for minute in range(1, 46):
-            # Check for goals based on pre-calculated probabilities
-            if self._rng.random() < self.home_effects["goal_probability"]:
-                events.append(self._create_event(minute, "home", "goal"))
-            if self._rng.random() < self.away_effects["goal_probability"]:
-                events.append(self._create_event(minute, "away", "goal"))
-        
-        # Add half-time marker at minute 45
-        events.append(self._create_event(45, "info", "half-time"))
+            # Pass is_last_minute=True for minute 45
+            events.extend(self._generate_events_for_minute(minute, minute == 45))
         
         # Sort events by minute
         events.sort(key=lambda e: e["minute"])
@@ -140,14 +165,8 @@ class SimpleTacticalMatch:
         
         # Generate events for second half (46-90 minutes)
         for minute in range(46, 91):
-            # Check for goals based on pre-calculated probabilities
-            if self._rng.random() < self.home_effects["goal_probability"]:
-                events.append(self._create_event(minute, "home", "goal"))
-            if self._rng.random() < self.away_effects["goal_probability"]:
-                events.append(self._create_event(minute, "away", "goal"))
-        
-        # Add full-time marker at minute 90
-        events.append(self._create_event(90, "info", "full-time"))
+            # Pass is_last_minute=True for minute 90
+            events.extend(self._generate_events_for_minute(minute, minute == 90))
         
         # Sort events by minute
         events.sort(key=lambda e: e["minute"])
@@ -260,7 +279,7 @@ class SimpleTacticalMatch:
             "event": {
                 "team": team,
                 "type": event_type,
-                "description": self._get_event_description(team, event_type)
+                "event_description": self._get_event_description(team, event_type)
             },
             "score": self._current_score.copy()
         }
@@ -272,14 +291,15 @@ class SimpleTacticalMatch:
         descriptions = {
             "goal": f"GOAL! {team_name} have scored!",
             "half-time": "Half-time whistle blown.",
-            "full-time": "Full-time whistle blown."
+            "full-time": "Full-time whistle blown.",
+            "yellow_card": f"Yellow card shown to {team_name} player!",
+            "red_card": f"RED CARD! {team_name} player has been sent off!"
         }
         
         return descriptions.get(event_type, "")
       
       
 if __name__ == "__main__":
- 
     match2 = SimpleTacticalMatch(
         home_team="Arsenal",
         away_team="Liverpool",
@@ -289,18 +309,28 @@ if __name__ == "__main__":
         away_tactic="gegenpressing"
     )
 
-  
     async def run_all_matches():
         for i, match in enumerate([match2], 1):
-            
             async for event in match.stream_first_half():
                 event_data = json.loads(event)
                 if event_data["type"] == "minute_update":
                     print(f"Minute {event_data['minute']}: {event_data['score']['home']}-{event_data['score']['away']}")
-                else:  # event
+                elif event_data["type"] == "event":
+                    print(f"Minute {event_data['minute']}: {event_data['event']['description']}")
+                elif event_data["type"] == "match_setup":
+                    print("\nMatch Setup:")
+                    print(f"Home: {event_data['home_team']} ({event_data['home_tactic']})")
+                    print(f"Away: {event_data['away_team']} ({event_data['away_tactic']})")
+                    print(f"Home TFS: {event_data['home_tfs']:.2f}")
+                    print(f"Away TFS: {event_data['away_tfs']:.2f}\n")
+                    
+                    
+            async for event in match.stream_second_half():
+                event_data = json.loads(event)
+                if event_data["type"] == "minute_update":
+                    print(f"Minute {event_data['minute']}: {event_data['score']['home']}-{event_data['score']['away']}")
+                elif event_data["type"] == "event":
                     print(f"Minute {event_data['minute']}: {event_data['event']['description']}")
             
-            
-
     # Run the async function
     asyncio.run(run_all_matches())

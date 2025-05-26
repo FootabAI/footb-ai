@@ -30,35 +30,51 @@ class TacticalFitCalculator:
                 "HomeFouls": {"mean": 12.62, "std": 4.48},
                 "AwayFouls": {"mean": 13.08, "std": 4.55},
                 "HomeCorners": {"mean": 5.67, "std": 2.94},
-                "AwayCorners": {"mean": 4.62, "std": 2.62}
+                "AwayCorners": {"mean": 4.62, "std": 2.62},
+                "HomeYellow": {"mean": 1.2, "std": 0.5},
+                "AwayYellow": {"mean": 1.0, "std": 0.4},
+                "HomeRed": {"mean": 0.1, "std": 0.05},
+                "AwayRed": {"mean": 0.05, "std": 0.02}
             }
 
     def _load_tactical_effects(self):
         """Load tactical effects from task.txt specifications."""
         self.tactical_effects = {
             "tiki-taka": {
-                "home": {"shots": 0.08, "target": 0.10, "corners": 0.12, "fouls": -0.05},
-                "away": {"shots": -0.10, "target": -0.12, "corners": -0.10, "fouls": -0.05}
+                "home": {"shots": 0.08, "target": 0.10, "corners": 0.12, "fouls": -0.05, "ft": 0.10},
+                "away": {"shots": -0.10, "target": -0.12, "corners": -0.10, "fouls": -0.05, "ft": 0.10},
+                "yellow": 0.02,
+                "red": 0.01
             },
             "gegenpressing": {
-                "home": {"shots": 0.15, "target": 0.18, "corners": 0.05, "fouls": 0.10},
-                "away": {"shots": -0.15, "target": -0.15, "corners": -0.08, "fouls": 0.10}
+                "home": {"shots": 0.15, "target": 0.18, "corners": 0.05, "fouls": 0.10, "ft": 0.10},
+                "away": {"shots": -0.15, "target": -0.15, "corners": -0.08, "fouls": 0.10, "ft": 0.10},
+                "yellow": 0.01,
+                "red": 0.005
             },
             "catenaccio": {
-                "home": {"shots": -0.10, "target": -0.10, "corners": -0.15, "fouls": -0.10},
-                "away": {"shots": -0.05, "target": -0.05, "corners": -0.10, "fouls": -0.02}
+                "home": {"shots": -0.10, "target": -0.10, "corners": -0.15, "fouls": -0.10, "ft": 0.05},
+                "away": {"shots": -0.05, "target": -0.05, "corners": -0.10, "fouls": -0.02, "ft": 0.05},
+                "yellow": 0.01,
+                "red": 0.005
             },
             "total-football": {
-                "home": {"shots": 0.12, "target": 0.12, "corners": 0.10, "fouls": 0.0},
-                "away": {"shots": -0.10, "target": -0.10, "corners": -0.05, "fouls": 0.0}
+                "home": {"shots": 0.12, "target": 0.12, "corners": 0.10, "fouls": 0.0, "ft": 0.10},
+                "away": {"shots": -0.10, "target": -0.10, "corners": -0.05, "fouls": 0.0, "ft": 0.10},
+                "yellow": 0.01,
+                "red": 0.005
             },
             "park-the-bus": {
-                "home": {"shots": -0.12, "target": -0.10, "corners": -0.10, "fouls": -0.15},
-                "away": {"shots": -0.05, "target": -0.05, "corners": -0.05, "fouls": -0.10}
+                "home": {"shots": -0.12, "target": -0.10, "corners": -0.10, "fouls": -0.15, "ft": 0.05},
+                "away": {"shots": -0.05, "target": -0.05, "corners": -0.05, "fouls": -0.10, "ft": 0.05},
+                "yellow": 0.01,
+                "red": 0.005
             },
             "direct-play": {
-                "home": {"shots": 0.20, "target": 0.15, "corners": 0.08, "fouls": 0.05},
-                "away": {"shots": -0.02, "target": -0.02, "corners": -0.05, "fouls": 0.05}
+                "home": {"shots": 0.20, "target": 0.15, "corners": 0.08, "fouls": 0.05, "ft": 0.10},
+                "away": {"shots": -0.02, "target": -0.02, "corners": -0.05, "fouls": 0.05, "ft": 0.10},
+                "yellow": 0.01,
+                "red": 0.005
             }
         }
 
@@ -204,7 +220,9 @@ class TacticalFitCalculator:
             "shots": self.stats["HomeShots"]["mean"] * (1 + home_tactical.get("shots", 0)),
             "target": self.stats["HomeTarget"]["mean"] * (1 + home_tactical.get("target", 0)),
             "corners": self.stats["HomeCorners"]["mean"] * (1 + home_tactical.get("corners", 0)),
-            "fouls": self.stats["HomeFouls"]["mean"] * (1 + home_tactical.get("fouls", 0))
+            "fouls": self.stats["HomeFouls"]["mean"] * (1 + home_tactical.get("fouls", 0)),
+            "yellow_cards": self.stats["HomeYellow"]["mean"] * (1 + home_tactical.get("yellow", 0)),
+            "red_cards": self.stats["HomeRed"]["mean"] * (1 + home_tactical.get("red", 0))
         }
         
         away_effects = {
@@ -214,19 +232,42 @@ class TacticalFitCalculator:
             "shots": self.stats["AwayShots"]["mean"] * (1 + away_tactical.get("shots", 0)),
             "target": self.stats["AwayTarget"]["mean"] * (1 + away_tactical.get("target", 0)),
             "corners": self.stats["AwayCorners"]["mean"] * (1 + away_tactical.get("corners", 0)),
-            "fouls": self.stats["AwayFouls"]["mean"] * (1 + away_tactical.get("fouls", 0))
+            "fouls": self.stats["AwayFouls"]["mean"] * (1 + away_tactical.get("fouls", 0)),
+            "yellow_cards": self.stats["AwayYellow"]["mean"] * (1 + away_tactical.get("yellow", 0)),
+            "red_cards": self.stats["AwayRed"]["mean"] * (1 + away_tactical.get("red", 0))
         }
         
         # Calculate goal probabilities
-        home_shot_conv = home_effects["target"] / home_effects["shots"]
-        away_shot_conv = away_effects["target"] / away_effects["shots"]
+        # Base probabilities from match statistics
+        base_home_goals = self.stats["FTHome"]["mean"]  # Average goals per match for home team
+        base_away_goals = self.stats["FTAway"]["mean"]  # Average goals per match for away team
         
-        # Base probability is shots per game / 90 minutes * conversion rate
-        home_base_prob = (home_effects["shots"] / 90) * home_shot_conv
-        away_base_prob = (away_effects["shots"] / 90) * away_shot_conv
+        # Convert to per-minute probabilities (90 minutes)
+        base_home_goal_prob = base_home_goals / 90
+        base_away_goal_prob = base_away_goals / 90
         
-        # Apply tactical effects - fixed the formula
-        home_effects["goal_probability"] = home_base_prob * (1 + home_effects["positive_effect"]) * (1 - home_effects["penalty"])
-        away_effects["goal_probability"] = away_base_prob * (1 + away_effects["positive_effect"]) * (1 - away_effects["penalty"])
+        # Apply tactical effects and TFS scaling
+        home_effects["goal_probability"] = round(
+            base_home_goal_prob * 
+            (1 + home_effects["positive_effect"]) * 
+            (1 - home_effects["penalty"]) * 
+            (1 + home_tactical.get("ft", 0)),  # Add tactical effect on goals
+            6
+        )
+        
+        away_effects["goal_probability"] = round(
+            base_away_goal_prob * 
+            (1 + away_effects["positive_effect"]) * 
+            (1 - away_effects["penalty"]) * 
+            (1 + away_tactical.get("ft", 0)),  # Add tactical effect on goals
+            6
+        )
+        
+        # Calculate card probabilities
+        home_effects["yellow_card_probability"] = round(home_effects["yellow_cards"] / 90, 6)
+        home_effects["red_card_probability"] = round(home_effects["red_cards"] / 90, 6)
+        
+        away_effects["yellow_card_probability"] = round(away_effects["yellow_cards"] / 90, 6)
+        away_effects["red_card_probability"] = round(away_effects["red_cards"] / 90, 6)
         
         return home_effects, away_effects 
