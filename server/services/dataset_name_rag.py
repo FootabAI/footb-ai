@@ -1,6 +1,5 @@
 """
-Lightweight backend that turns fifa_players.csv
-into first-name / last-name lookup tables per nationality.
+In-memory backend that groups FIFA player names by nationality.
 """
 from __future__ import annotations
 import pandas as pd, pathlib, random
@@ -9,6 +8,13 @@ from typing import Dict, List, Tuple
 
 _DATA_PATH = pathlib.Path(__file__).with_suffix("").parent / "../fifa_players.csv"
 
+# adjective → country mapping (extend as needed)
+_ADJ_TO_COUNTRY = {
+    "Norwegian": "Norway",    "Swedish": "Sweden",      "Danish": "Denmark",
+    "English": "England",     "Scottish": "Scotland",   "Welsh": "Wales",
+    "Dutch": "Netherlands",   "French": "France",       "German": "Germany",
+    "Spanish": "Spain",       "Portuguese": "Portugal", "Italian": "Italy",
+}
 
 class NamePartsBackend:
     """Keeps {nat: [firsts]}, {nat: [lasts]} in memory."""
@@ -26,18 +32,20 @@ class NamePartsBackend:
                 self.first_by_nat[nat].append(toks[0])
                 self.last_by_nat[nat].append(toks[-1])
 
-    # ─── retrieval ───────────────────────────────────────────
+    # ─── retrieval ────────────────────────────────────────────
     def random_name_parts(
         self, nationality: str, k_first: int = 30, k_last: int = 30
     ) -> Tuple[List[str], List[str]]:
-        firsts = random.sample(
-            self.first_by_nat.get(nationality, []) or self._any_firsts(),
-            k=min(k_first, len(self.first_by_nat.get(nationality, [])) or k_first)
-        )
-        lasts = random.sample(
-            self.last_by_nat.get(nationality, []) or self._any_lasts(),
-            k=min(k_last, len(self.last_by_nat.get(nationality, [])) or k_last)
-        )
+
+        nat = _ADJ_TO_COUNTRY.get(nationality, nationality)
+
+        first_pool = self.first_by_nat.get(nat, [])
+        last_pool  = self.last_by_nat.get(nat, [])
+
+        firsts = random.sample(first_pool or self._any_firsts(),
+                               k=min(k_first, len(first_pool) or k_first))
+        lasts  = random.sample(last_pool  or self._any_lasts(),
+                               k=min(k_last,  len(last_pool)  or k_last))
         return firsts, lasts
 
     # fallbacks
