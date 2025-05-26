@@ -3,7 +3,6 @@ import { useGameStore } from "@/stores/useGameStore";
 import { useTeamStore } from "@/stores/useTeamStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -13,20 +12,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MatchEvent, TeamTactic } from "@/types";
+import { MatchEvent, TeamTactic, Formation, MatchStats } from "@/types";
+import { MatchEventType } from "@/types/match";
+import { MatchUpdate, MatchEventUpdate, MinuteUpdate } from "@/types/match-simulation";
 import TeamLogo from "@/components/TeamLogo";
 import {
   Play,
-  Pause,
-  Clock,
   Flag,
   AlertCircle,
-  Goal,
-  ArrowUpRight,
+  Timer,
+  Target,
+  Cone,
+  Bell,
+  CreditCard,
+  Ban,
+  Crosshair,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useRef } from "react";
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
+import { startMatchSimulation, continueMatch, changeTeamTactics } from "@/api";
+import Event from "@/components/Event";
+import { FormationDisplay } from "@/components/team-creation/FormationSelector";
+import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
+import { formations } from "@/config/formations";
+import { TacticSelect } from "@/components/TacticSelect";
+// import { v4 as uuidv4 } from "uuid";
+
+interface ServerEvent {
+  type: MatchEventType;
+  team: string;
+  description: string;
+  commentary: string;
+  audio_url?: string;
+}
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -39,51 +57,34 @@ const MatchSimulation = () => {
   } = useGameStore();
   const { team } = useTeamStore();
 
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isWarmingUp, setIsWarmingUp] = useState(true);
   const [minute, setMinute] = useState(0);
   const [isHalfTime, setIsHalfTime] = useState(false);
   const [isFullTime, setIsFullTime] = useState(false);
   const [changeTactic, setChangeTactic] = useState<TeamTactic | null>(null);
-  const [simulationIndex, setSimulationIndex] = useState(0);
+  const [changeFormation, setChangeFormation] = useState<Formation | null>(null);
   const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
+  const [matchId] = useState(
+    () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  );
+  const [warmingUpMessage, setWarmingUpMessage] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs for scrolling
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const eventsEndRef = useRef<HTMLDivElement>(null);
 
-  // Simulation variables
-  const totalMinutes = 90;
-  const halfTime = 45;
-  const simulationSpeed = 300; // milliseconds per minute
-
-  // Hard-coded simulation events
-  const hardCodedEvents = [
-    { minute: 1, type: 'goal', teamId: 'system', description: 'The match has started!' },
-    { minute: 5, type: 'goal', teamId: 'home', description: 'GOAL! J. Smith scores for the home team!' },
-    { minute: 12, type: 'card', teamId: 'away', description: 'Yellow Card: A. Johnson is booked for a foul.' },
-    { minute: 18, type: 'substitution', teamId: 'home', description: 'Substitution: T. Williams comes on for R. Brown.' },
-    { minute: 24, type: 'injury', teamId: 'away', description: 'Injury Concern: M. Garcia is down and receiving treatment.' },
-    { minute: 32, type: 'goal', teamId: 'away', description: 'GOAL! P. Martinez scores for the away team!' },
-    { minute: 45, type: 'goal', teamId: 'system', description: 'Half Time! The players head to the dressing room.' },
-    { minute: 46, type: 'goal', teamId: 'system', description: 'Second half begins!' },
-    { minute: 52, type: 'goal', teamId: 'home', description: 'GOAL! C. Wilson scores for the home team!' },
-    { minute: 61, type: 'card', teamId: 'home', description: 'Yellow Card: D. Thomas is booked for a late challenge.' },
-    { minute: 68, type: 'goal', teamId: 'away', description: 'GOAL! F. Rodriguez scores for the away team!' },
-    { minute: 75, type: 'substitution', teamId: 'away', description: 'Substitution: L. Taylor comes on for K. Anderson.' },
-    { minute: 84, type: 'goal', teamId: 'home', description: 'GOAL! S. Jackson scores for the home team!' },
-    { minute: 90, type: 'goal', teamId: 'system', description: 'Full Time! The match has ended.' },
-  ];
-
-  // Stats update points
-  const statsUpdates = [
-    { minute: 5, home: { possession: 55, shots: 1, shotsOnTarget: 1, passes: 20, passAccuracy: 85 }, away: { possession: 45, shots: 0, shotsOnTarget: 0, passes: 12, passAccuracy: 78 } },
-    { minute: 15, home: { possession: 52, shots: 2, shotsOnTarget: 1, passes: 45, passAccuracy: 82 }, away: { possession: 48, shots: 1, shotsOnTarget: 0, passes: 35, passAccuracy: 75 } },
-    { minute: 30, home: { possession: 48, shots: 3, shotsOnTarget: 2, passes: 78, passAccuracy: 81 }, away: { possession: 52, shots: 3, shotsOnTarget: 1, passes: 80, passAccuracy: 79 } },
-    { minute: 45, home: { possession: 50, shots: 4, shotsOnTarget: 2, passes: 120, passAccuracy: 83, fouls: 2, yellowCards: 0 }, away: { possession: 50, shots: 5, shotsOnTarget: 2, passes: 110, passAccuracy: 77, fouls: 3, yellowCards: 1 } },
-    { minute: 60, home: { possession: 53, shots: 6, shotsOnTarget: 3, passes: 180, passAccuracy: 80, fouls: 3, yellowCards: 1 }, away: { possession: 47, shots: 7, shotsOnTarget: 3, passes: 165, passAccuracy: 76, fouls: 4, yellowCards: 1 } },
-    { minute: 75, home: { possession: 51, shots: 8, shotsOnTarget: 4, passes: 230, passAccuracy: 79, fouls: 5, yellowCards: 1 }, away: { possession: 49, shots: 8, shotsOnTarget: 3, passes: 215, passAccuracy: 78, fouls: 5, yellowCards: 1 } },
-    { minute: 90, home: { possession: 50, shots: 10, shotsOnTarget: 5, passes: 280, passAccuracy: 81, fouls: 6, yellowCards: 1 }, away: { possession: 50, shots: 9, shotsOnTarget: 4, passes: 270, passAccuracy: 77, fouls: 7, yellowCards: 2 } },
+  const warmingUpMessages = [
+    "Players are warming up on the pitch...",
+    "Referee checking the match ball...",
+    "Ground staff preparing the field...",
+    "Medical team setting up on the sidelines...",
+    "Broadcast team testing equipment...",
+    "Fans finding their seats...",
+    "Captains meeting with the referee...",
+    "Substitutes warming up on the sidelines...",
+    "VAR system being checked...",
   ];
 
   useEffect(() => {
@@ -94,42 +95,10 @@ const MatchSimulation = () => {
     }
   }, [currentMatch, team, navigate]);
 
-  if (!currentMatch || !team) {
-    return null; // Return early if no match or team
-  }
-
-  // Get the home and away teams
-  const { homeTeam, awayTeam, homeScore, awayScore, events } = currentMatch;
-
   useEffect(() => {
     // Start simulation after a short delay
     const timer = setTimeout(() => {
-      setIsPlaying(true);
-
-      // Add match start event
-      const startEvent = {
-        id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'goal' as const,
-        minute: 0,
-        teamId: 'system',
-        description: 'The match has started!',
-      };
-
-      setMatchEvents([startEvent]);
-
-      // Also add to the context
-      addMatchEvent({
-        type: 'goal',
-        minute: 0,
-        teamId: 'system',
-        description: 'The match has started!',
-      });
-
-      // Update initial stats
-      updateMatchStats(
-        { possession: 50, passes: 0, passAccuracy: 80 },
-        { possession: 50, passes: 0, passAccuracy: 75 }
-      );
+      startMatch();
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -140,169 +109,225 @@ const MatchSimulation = () => {
     if (!matchEvents || matchEvents.length === 0) return;
 
     const scrollToBottom = () => {
-      // Direct access to the viewport element using its ref
       if (viewportRef.current) {
         viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
       }
     };
 
-    // We need to do this after rendering is complete
     const timeoutId = setTimeout(scrollToBottom, 50);
     return () => clearTimeout(timeoutId);
   }, [matchEvents]);
 
   useEffect(() => {
-    let simulationInterval: ReturnType<typeof setInterval>;
+    if (!isWarmingUp) return;
 
-    if (isPlaying && !isFullTime) {
-      simulationInterval = setInterval(() => {
-        setMinute(prev => {
-          const newMinute = prev + 1;
+    const interval = setInterval(() => {
+      setWarmingUpMessage((prev) => (prev + 1) % warmingUpMessages.length);
+    }, 2000);
 
-          // Check for half time
-          if (newMinute === halfTime && !isHalfTime) {
-            setIsPlaying(false);
-            setIsHalfTime(true);
+    return () => clearInterval(interval);
+  }, [isWarmingUp]);
 
-            return newMinute;
+  const startMatch = async () => {
+    try {
+      console.log("\n=== Starting match simulation ===");
+      const { events } = await startMatchSimulation(
+        matchId,
+        team,
+        currentMatch.awayTeam
+      );
+      setIsWarmingUp(false);
+
+      for await (const event of events) {
+        if (!event) continue;
+
+        // Handle minute updates
+        if (event.type === "minute_update") {
+          setMinute(event.minute);
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
           }
-
-          // Check for full time
-          if (newMinute >= totalMinutes) {
-            setIsPlaying(false);
-            setIsFullTime(true);
-
-            // Determine the winner based on score
-            if (homeScore > awayScore) {
-              completeMatch(homeTeam.id);
-            } else if (awayScore > homeScore) {
-              completeMatch(awayTeam.id);
-            } else {
-              // It's a draw, give it to home team for MVP simplicity
-              completeMatch(homeTeam.id);
-            }
-
-            // Navigate to summary after a delay
-            setTimeout(() => {
-              navigate('/summary');
-            }, 5000);
-
-            return totalMinutes;
-          }
-
-          // Process hard-coded events for this minute
-          processHardCodedEvents(newMinute);
-
-          // Update stats for this minute
-          updateHardCodedStats(newMinute);
-
-          return newMinute;
-        });
-      }, simulationSpeed);
-    }
-
-    return () => {
-      if (simulationInterval) clearInterval(simulationInterval);
-    };
-  }, [isPlaying, isFullTime, isHalfTime]);
-
-  // Process hard-coded events for the current minute
-  const processHardCodedEvents = (currentMinute: number) => {
-    const eventsForThisMinute = hardCodedEvents.filter(event => event.minute === currentMinute);
-
-    if (eventsForThisMinute.length > 0) {
-      const newEvents = eventsForThisMinute.map(event => {
-        let teamId: string;
-
-        // Determine which team ID to use based on 'home' or 'away'
-        if (event.teamId === 'home') {
-          teamId = homeTeam.id;
-        } else if (event.teamId === 'away') {
-          teamId = awayTeam.id;
-        } else {
-          teamId = event.teamId;
+          continue;
         }
 
-        // Create the event object with a unique ID
-        const newEvent = {
-          id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          type: event.type as any,
-          minute: currentMinute,
-          teamId: teamId,
-          description: event.description,
-        };
+        // Handle match events
+        if (event.type === "event") {
+          // Handle half-time
+          if (event.event.type === "half-time") {
+            console.log("\n=== HALF TIME ===");
+            setIsHalfTime(true);
+          }
 
-        // Also add to the context
-        addMatchEvent({
-          type: event.type as any,
-          minute: currentMinute,
-          teamId: teamId,
-          description: event.description,
-        });
+          // Handle full-time
+          if (event.event.type === "full-time") {
+            console.log("\n=== FULL TIME ===");
+            console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
 
-        return newEvent;
-      });
+            setIsFullTime(true);
+            completeMatch(
+              event.score.home > event.score.away
+                ? team.id
+                : currentMatch.awayTeam.id
+            );
+          }
 
-      // Update the local state with the new events
-      setMatchEvents(prev => [...prev, ...newEvents]);
-    }
-  };
+          // Log event
+          console.log(`[${event.minute}'] ${event.event.description}`);
 
-  // Update stats based on hard-coded data
-  const updateHardCodedStats = (currentMinute: number) => {
-    // Find the closest stats update point that's less than or equal to the current minute
-    const relevantUpdate = [...statsUpdates]
-      .reverse()
-      .find(update => update.minute <= currentMinute);
+          // Add event to state
+          const newEvent: MatchEvent = {
+            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: event.event.type,
+            team: event.event.team,
+            description: event.event.description,
+            commentary: event.event.commentary,
+            audio_url: event.event.audio_url,
+            minute: event.minute,
+          };
 
-    if (relevantUpdate) {
-      updateMatchStats(relevantUpdate.home, relevantUpdate.away);
-    }
-  };
+          setMatchEvents((prev) => [...prev, newEvent]);
+          addMatchEvent(newEvent);
 
-  const handleContinue = () => {
-    setIsHalfTime(false);
+          // Update stats if available
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
 
-    // Apply tactic change if selected
-    if (changeTactic) {
-      // In MVP, just show a message
+          // Play audio commentary if available and wait for it to finish
+          if (event.event.audio_url) {
+            await playAudioCommentary(event.event.audio_url);
+          } else {
+            // If no audio, still add a small delay between events
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in match simulation:", error);
       toast({
-        title: "Tactic Changed",
-        description: `Your team is now using the ${changeTactic} tactic.`,
+        title: "Error",
+        description: "Failed to simulate match. Please try again.",
+        variant: "destructive",
       });
-      setChangeTactic(null);
     }
+  };
 
-    setTimeout(() => setIsPlaying(true), 500);
+  const handleContinue = async () => {
+    try {
+      // If tactic or formation was changed, send it to the server
+      if (changeTactic || changeFormation) {
+        console.log("\n=== Changing tactics ===");
+        console.log(`Tactic: ${changeTactic || currentMatch.homeTeam.tactic}`);
+        console.log(`Formation: ${changeFormation || currentMatch.homeTeam.formation}`);
+        
+        // Send the changes to the server
+        await changeTeamTactics(
+          matchId,
+          changeTactic || currentMatch.homeTeam.tactic,
+          changeFormation || currentMatch.homeTeam.formation
+        );
+
+        toast({
+          title: "Tactics Changed",
+          description: `Your team is now using ${
+            changeFormation ? `the ${changeFormation} formation` : ""
+          }${changeFormation && changeTactic ? " with " : ""}${
+            changeTactic ? `the ${changeTactic} tactic` : ""
+          }.`,
+        });
+        setChangeTactic(null);
+        setChangeFormation(null);
+      }
+
+      console.log("\n=== Starting second half ===");
+      // Continue the match
+      const { events } = await continueMatch(matchId);
+      setIsHalfTime(false);
+
+      for await (const event of events) {
+        if (!event) continue;
+
+        // Handle minute updates
+        if (event.type === "minute_update") {
+          setMinute(event.minute);
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
+          continue;
+        }
+
+        // Handle full-time
+        if ('event' in event && event.event.type === "full-time") {
+          console.log("\n=== FULL TIME ===");
+          console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
+
+          setIsFullTime(true);
+          completeMatch(
+            event.score.home > event.score.away
+              ? team.id
+              : currentMatch.awayTeam.id
+          );
+        }
+
+        // Log event
+        if ('event' in event) {
+          console.log(`[${event.minute}'] ${event.event.description}`);
+
+          // Update minute
+          setMinute(event.minute);
+
+          // Add event to state
+          const newEvent: MatchEvent = {
+            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: event.event.type,
+            team: event.event.team,
+            description: event.event.description,
+            commentary: event.event.commentary,
+            audio_url: event.event.audio_url || "",
+            minute: event.minute,
+          };
+
+          setMatchEvents((prev) => [...prev, newEvent]);
+          addMatchEvent(newEvent);
+
+          // Update stats if available
+          if (event.stats) {
+            updateMatchStats(event.stats.home, event.stats.away);
+          }
+
+          // Play audio commentary if available and wait for it to finish
+          if (event.event.audio_url) {
+            await playAudioCommentary(event.event.audio_url);
+          } else {
+            // If no audio, still add a small delay between events
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error continuing match:", error);
+      toast({
+        title: "Error",
+        description: "Failed to continue match. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleForfeit = () => {
-    // End the match with a forfeit
-    const forfeitEvent = {
+    const forfeitEvent: MatchEvent = {
       id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: "goal" as const,
-      minute: minute,
-      teamId: "system",
-      description: `${homeTeam.name} has forfeited the match.`,
+      type: "goal",
+      team: "system",
+      description: `${team.name} has forfeited the match.`,
+      commentary: `${team.name} has forfeited the match.`,
+      minute: null,
     };
 
     setMatchEvents((prev) => [...prev, forfeitEvent]);
-
-    // Also add to the context
-    addMatchEvent({
-      type: "goal",
-      minute: minute,
-      teamId: "system",
-      description: `${homeTeam.name} has forfeited the match.`,
-    });
-
-    // Give the win to the away team
-    completeMatch(awayTeam.id);
-
-    // Navigate to summary after a delay
-    setTimeout(() => {
-      navigate("/summary");
-    }, 2000);
+    addMatchEvent(forfeitEvent);
+    completeMatch(currentMatch.awayTeam.id);
+    setTimeout(() => navigate("/summary"), 2000);
   };
 
   const formatMatchTime = (minutes: number) => {
@@ -313,221 +338,187 @@ const MatchSimulation = () => {
     return `${minutes}'`;
   };
 
-  const getEventIcon = (event: MatchEvent) => {
-    switch (event.type) {
-      case "goal":
-        return <Goal className="w-5 h-5 text-green-500" />;
-      case "card":
-        return <div className="w-4 h-5 bg-yellow-500 rounded-sm" />;
-      case "injury":
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
-      case "substitution":
-        return <ArrowUpRight className="w-5 h-5 text-blue-500" />;
-      case "own-goal":
-        return <Goal className="w-5 h-5 text-purple-500" />;
-      default:
-        return <Clock className="w-5 h-5 text-gray-400" />;
-    }
+  // Function to play audio commentary
+  const playAudioCommentary = (audioUrl: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (!audioUrl) {
+        resolve();
+        return;
+      }
+      
+      console.log("Playing audio from URL:", audioUrl);
+      
+      // Create a new audio element for each event
+      const audio = new Audio();
+      
+      // Add event listeners
+      audio.addEventListener('error', (e) => {
+        console.error("Error playing audio:", e);
+        console.error("Audio URL:", audioUrl);
+        console.error("Audio error code:", audio.error?.code);
+        console.error("Audio error message:", audio.error?.message);
+        resolve(); // Resolve on error to continue with next event
+      });
+
+      audio.addEventListener('ended', () => {
+        console.log("Audio finished playing");
+        resolve(); // Resolve when audio finishes playing
+      });
+
+      audio.addEventListener('canplaythrough', () => {
+        console.log("Audio can play through, starting playback");
+        audio.play().catch(error => {
+          console.error("Error playing audio:", error);
+          resolve(); // Resolve on error to continue with next event
+        });
+      });
+
+      // Set the source and start loading
+      audio.src = audioUrl;
+    });
   };
 
-  const getEventBorderColor = (event: MatchEvent) => {
-    if (event.teamId === "system") {
-      return "border-gray-700";
-    }
-
-    const isUserTeam = event.teamId === team.id;
-
-    switch (event.type) {
-      case "goal":
-        return isUserTeam ? "border-green-500" : "border-red-500";
-      case "card":
-        return "border-yellow-500";
-      case "injury":
-        return "border-red-500";
-      case "substitution":
-        return "border-blue-500";
-      case "own-goal":
-        return "border-purple-500";
-      default:
-        return "border-gray-700";
-    }
-  };
-
-  const getEventBgColor = (event: MatchEvent) => {
-    if (event.teamId === "system") {
-      return "bg-footbai-header";
-    }
-
-    switch (event.type) {
-      case "goal":
-        return "bg-green-500/20";
-      case "card":
-        return "bg-yellow-500/20";
-      case "injury":
-        return "bg-red-500/20";
-      case "substitution":
-        return "bg-blue-500/20";
-      case "own-goal":
-        return "bg-purple-500/20";
-      default:
-        return "bg-footbai-header";
-    }
-  };
-
-  const getEventTextColor = (event: MatchEvent) => {
-    if (event.teamId === "system") {
-      return "text-gray-300";
-    }
-    switch (event.type) {
-      case "goal":
-        return "text-green-400";
-      case "card":
-        return "text-yellow-400";
-      case "injury":
-        return "text-red-400";
-      case "substitution":
-        return "text-blue-400";
-      case "own-goal":
-        return "text-purple-400";
-      default:
-        return "text-white";
-    }
-  };
+  // Clean up audio elements when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
+  }, []);
 
   return (
     <div className="animate-fade-in">
-      {/* <header className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Match Simulation</h1>
-        <div className="flex items-center">
-          <Clock size={16} className="mr-2 text-gray-400" />
-          <span className="text-gray-400">
-            {isFullTime ? "Full Time" : isHalfTime ? "Half Time" : `Match Time: ${formatMatchTime(minute)}`}
-          </span>
-        </div>
-      </header> */}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card className="mb-6 bg-footbai-container border-footbai-header">
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                  <TeamLogo logo={homeTeam.logo} size="lg" />
+                  <TeamLogo logo={currentMatch.homeTeam.logo} size="md" />
                   <div className="text-center">
-                    <h3 className="text-lg font-bold">{homeTeam.name}</h3>
-                    <p className="text-xs text-gray-400">{homeTeam.tactic}</p>
+                    <h3 className="text-lg font-bold">
+                      {currentMatch.homeTeam.name}
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      {currentMatch.homeTeam.tactic}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center bg-footbai-header px-6 py-3 rounded-lg">
-                  <div className="text-center mr-4">
-                    <div className="text-3xl font-bold">{homeScore}</div>
-                    <div className="text-xs text-gray-400">HOME</div>
+                {/* SCORE */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="text-2xl font-bold">
+                      {currentMatch.homeScore}
+                    </div>
+                    <div className="text-xl font-bold">-</div>
+                    <div className="text-2xl font-bold">
+                      {currentMatch.awayScore}
+                    </div>
                   </div>
-                  <div className="text-xl font-bold px-2">-</div>
-                  <div className="text-center ml-4">
-                    <div className="text-3xl font-bold">{awayScore}</div>
-                    <div className="text-xs text-gray-400">AWAY</div>
+                  <div className="text-sm text-gray-400 flex items-center border-footbai-header rounded px-2 py-1">
+                    {isFullTime ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <div>Full Time</div>
+                      </div>
+                    ) : isHalfTime ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                        <div>Half Time</div>
+                      </div>
+                    ) : isWarmingUp ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <div>Players Warming Up</div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div>{formatMatchTime(minute)}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-4 mt-4 md:mt-0">
                   <div className="text-center">
-                    <h3 className="text-lg font-bold">{awayTeam.name}</h3>
-                    <p className="text-xs text-gray-400">{awayTeam.tactic}</p>
+                    <h3 className="text-lg font-bold">
+                      {currentMatch.awayTeam.name}
+                    </h3>
+                    <p className="text-xs text-gray-400">
+                      {currentMatch.awayTeam.tactic}
+                    </p>
                   </div>
-                  <TeamLogo logo={awayTeam.logo} size="lg" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mb-6 bg-footbai-container border-footbai-header">
-            <CardContent className="p-4">
-              <div className="mb-1 flex justify-between text-xs">
-                <span>Kick Off</span>
-                <span>Half Time</span>
-                <span>Full Time</span>
-              </div>
-              <Progress
-                value={(minute / totalMinutes) * 100}
-                className="h-2 bg-footbai-header"
-              />
-              <div className="mt-4 flex justify-between items-center">
-                <div className="text-sm">{formatMatchTime(minute)}</div>
-                <div className="space-x-2">
-                  {!isFullTime &&
-                    (isPlaying ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsPlaying(false)}
-                        className="bg-footbai-header hover:bg-footbai-hover"
-                      >
-                        <Pause size={16} className="mr-2" />
-                        Pause
-                      </Button>
-                    ) : (
-                      !isHalfTime && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsPlaying(true)}
-                          className="bg-footbai-header hover:bg-footbai-hover"
-                        >
-                          <Play size={16} className="mr-2" />
-                          Resume
-                        </Button>
-                      )
-                    ))}
+                  <TeamLogo logo={currentMatch.awayTeam.logo} size="md" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {isHalfTime && (
-            <Card className="mb-6 bg-footbai-container border-footbai-header border-yellow-500/50">
+            <Card className="mb-6 bg-footbai-container border-footbai-header border-yellow-500/50 h-[calc(100vh-12rem)] flex flex-col">
               <CardHeader className="bg-yellow-500/10 pb-3">
                 <CardTitle className="text-yellow-500 flex items-center">
                   <AlertCircle size={18} className="mr-2" />
                   Half Time
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4">
-                <p className="text-gray-300 mb-4">
+              <CardContent className="p-4 flex-1 flex flex-col">
+                <p className="text-gray-300 mb-6">
                   It's half-time! You can make tactical changes before the
                   second half begins.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <label className="text-sm text-gray-400">
-                      Change Team Tactic
-                    </label>
-                    <Select
-                      value={changeTactic || homeTeam.tactic}
-                      onValueChange={(value) =>
-                        setChangeTactic(value as TeamTactic)
-                      }
-                    >
-                      <SelectTrigger className="bg-footbai-header border-footbai-hover">
-                        <SelectValue placeholder="Select tactic" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-footbai-container border-footbai-hover">
-                        <SelectItem value="Balanced">Balanced</SelectItem>
-                        <SelectItem value="Offensive">Offensive</SelectItem>
-                        <SelectItem value="Defensive">Defensive</SelectItem>
-                        <SelectItem value="Counter-Attacking">
-                          Counter-Attacking
-                        </SelectItem>
-                        <SelectItem value="Aggressive">Aggressive</SelectItem>
-                        <SelectItem value="Possession-Based">
-                          Possession-Based
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+
+                <div className="flex-1">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-400">
+                        Change Team Tactic
+                      </label>
+                      <TacticSelect
+                        value={changeTactic || currentMatch.homeTeam.tactic}
+                        onValueChange={(value) => {
+                          setChangeTactic(value);
+                          console.log("Tactic changed to:", value);
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-400">
+                        Change Formation
+                      </label>
+                      <div>
+                        <Tabs
+                          value={changeFormation || currentMatch.homeTeam.formation}
+                          onValueChange={(value) => {
+                            console.log("Formation changed to:", value);
+                            setChangeFormation(value as Formation);
+                          }}
+                          className="mb-4"
+                        >
+                          <TabsList className="grid w-full grid-cols-5">
+                            {formations.map((formation) => (
+                              <TabsTrigger key={formation} value={formation}>
+                                {formation}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                        </Tabs>
+                        <FormationDisplay
+                          formation={changeFormation || currentMatch.homeTeam.formation}
+                          size="small"
+                          isOnboarding={false}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex justify-between">
+
+                <div className="flex justify-between mt-6">
                   <Button
                     variant="outline"
                     className="bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20"
@@ -548,53 +539,58 @@ const MatchSimulation = () => {
             </Card>
           )}
 
-          <Card className="bg-footbai-container border-footbai-header">
-            <CardHeader className="bg-footbai-header pb-5">
-              <CardTitle>Match Events</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea
-                className="h-[300px]"
-                ref={scrollAreaRef}
-                viewportRef={viewportRef}
-              >
-                <div className="p-4">
-                  {(!matchEvents || matchEvents.length === 0) && (
-                    <div className="text-center py-6 text-gray-400">
-                      Match events will appear here once the simulation begins.
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    {matchEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className={`p-3 rounded-lg ${getEventBgColor(
-                          event
-                        )} border-l-4 ${getEventBorderColor(
-                          event
-                        )} animate-fade-in`}
-                      >
-                        <div className="flex items-start">
-                          <div className="bg-footbai-container px-2 py-1 rounded mr-3 text-xs font-medium">
-                            {formatMatchTime(event.minute)}
-                          </div>
-                          <div className="flex-1 flex items-start">
-                            <span className="mt-0.5 mr-2">
-                              {getEventIcon(event)}
-                            </span>
-                            <p className={getEventTextColor(event)}>
-                              {event.description}
-                            </p>
-                          </div>
+          {!isHalfTime && (
+            <Card className="bg-footbai-container border-footbai-header h-[calc(100vh-12rem)] flex flex-col">
+              <CardHeader className="bg-footbai-container pb-5">
+                <CardTitle>Match Events</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex-1 overflow-hidden">
+                <ScrollArea
+                  className="h-full"
+                  ref={scrollAreaRef}
+                  viewportRef={viewportRef}
+                >
+                  <div className="h-[calc(70vh-16rem)] p-4 flex flex-col">
+                    {isWarmingUp || !matchEvents || matchEvents.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full animate-pulse"></div>
+                          <div>{warmingUpMessages[warmingUpMessage]}</div>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="relative">
+                        <div className="space-y-2">
+                          {matchEvents.map((event) => (
+                            <Event
+                              key={event.id}
+                              event={event}
+                              formatMatchTime={formatMatchTime}
+                              userTeamId={team.id}
+                            />
+                          ))}
+                        </div>
+                        {isFullTime && (
+                          <div className="sticky bottom-0 left-0 right-0 bg-footbai-container/30 backdrop-blur-md border-t border-footbai-header py-6">
+                            <div className="text-center space-y-4">
+                             
+                              <Button
+                                className="bg-footbai-accent hover:bg-footbai-accent/80 text-black"
+                                onClick={() => navigate("/summary")}
+                              >
+                                View Match Summary
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div ref={eventsEndRef} />
                   </div>
-                  <div ref={eventsEndRef} />
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="lg:col-span-1">
@@ -604,23 +600,36 @@ const MatchSimulation = () => {
             </CardHeader>
             <CardContent className="p-4">
               <div className="flex justify-between mb-4">
-                <span className="font-semibold">{homeTeam.name}</span>
-                <span className="font-semibold">{awayTeam.name}</span>
+                <span className="font-semibold">
+                  {currentMatch.homeTeam.name}
+                </span>
+                <span className="font-semibold">
+                  {currentMatch.awayTeam.name}
+                </span>
               </div>
               <div className="mb-6">
                 <div className="flex justify-between text-sm mb-1">
                   <span>{Math.round(currentMatch.homeStats.possession)}%</span>
-                  <span className="text-gray-400">Possession</span>
+                  <span className="text-gray-400 flex items-center gap-1">
+                    <Timer size={16} />
+                    Possession
+                  </span>
                   <span>{Math.round(currentMatch.awayStats.possession)}%</span>
                 </div>
                 <div className="flex h-2 rounded overflow-hidden">
                   <div
-                    className="bg-blue-500"
-                    style={{ width: `${currentMatch.homeStats.possession}%` }}
+                    style={{
+                      width: `${currentMatch.homeStats.possession}%`,
+                      backgroundColor:
+                        currentMatch.homeTeam.logo.data.mainColor,
+                    }}
                   ></div>
                   <div
-                    className="bg-red-500"
-                    style={{ width: `${currentMatch.awayStats.possession}%` }}
+                    style={{
+                      width: `${currentMatch.awayStats.possession}%`,
+                      backgroundColor:
+                        currentMatch.awayTeam.logo.data.mainColor,
+                    }}
                   ></div>
                 </div>
               </div>
@@ -630,7 +639,10 @@ const MatchSimulation = () => {
                   <div className="text-xl font-semibold">
                     {currentMatch.homeStats.shots || 0}
                   </div>
-                  <div className="text-sm text-gray-400">Shots</div>
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <Crosshair size={16} />
+                    Shots
+                  </div>
                   <div className="text-xl font-semibold">
                     {currentMatch.awayStats.shots || 0}
                   </div>
@@ -639,32 +651,12 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.shotsOnTarget || 0}
                   </div>
-                  <div className="text-xs text-gray-400">On Target</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <Target size={16} />
+                    On Target
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.shotsOnTarget || 0}
-                  </div>
-                </div>
-              </div>
-
-              <Separator className="my-4 bg-footbai-header" />
-
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-xl font-semibold">
-                    {currentMatch.homeStats.passes || 0}
-                  </div>
-                  <div className="text-sm text-gray-400">Passes</div>
-                  <div className="text-xl font-semibold">
-                    {currentMatch.awayStats.passes || 0}
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm">
-                    {Math.round(currentMatch.homeStats.passAccuracy || 0)}%
-                  </div>
-                  <div className="text-xs text-gray-400">Accuracy</div>
-                  <div className="text-sm">
-                    {Math.round(currentMatch.awayStats.passAccuracy || 0)}%
                   </div>
                 </div>
               </div>
@@ -676,7 +668,10 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.fouls || 0}
                   </div>
-                  <div className="text-xs text-gray-400">Fouls</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <Ban size={16} />
+                    Fouls
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.fouls || 0}
                   </div>
@@ -685,7 +680,10 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.yellowCards || 0}
                   </div>
-                  <div className="text-xs text-gray-400">Yellow Cards</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <div className="w-3 h-4 bg-yellow-500 rounded-sm" />
+                    Yellow Cards
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.yellowCards || 0}
                   </div>
@@ -694,7 +692,10 @@ const MatchSimulation = () => {
                   <div className="text-sm">
                     {currentMatch.homeStats.redCards || 0}
                   </div>
-                  <div className="text-xs text-gray-400">Red Cards</div>
+                  <div className="text-xs text-gray-400 flex items-center gap-1">
+                    <div className="w-3 h-4 bg-red-500 rounded-sm" />
+                    Red Cards
+                  </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.redCards || 0}
                   </div>
@@ -703,16 +704,18 @@ const MatchSimulation = () => {
 
               <Separator className="my-4 bg-footbai-header" />
 
-              <div className="text-sm">
-                <div className="flex justify-between mb-2">
-                  <span className="font-semibold">{homeTeam.name}</span>
-                  <span className="text-gray-400">Tactic</span>
-                  <span className="font-semibold">{awayTeam.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{homeTeam.tactic}</span>
-                  <span className="text-transparent">-</span>
-                  <span>{awayTeam.tactic}</span>
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xl font-semibold">
+                    {currentMatch.homeStats.corners || 0}
+                  </div>
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <Flag size={16} />
+                    Corners
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {currentMatch.awayStats.corners || 0}
+                  </div>
                 </div>
               </div>
             </CardContent>

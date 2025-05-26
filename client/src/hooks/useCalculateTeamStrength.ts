@@ -1,6 +1,8 @@
 import { TeamAttributes } from "@/types";
 
-export const useCalculateTeamStrength = (attributes: TeamAttributes) => {
+export const useCalculateTeamStrength = (attributes?: TeamAttributes) => {
+  if (!attributes) return 0;
+  
   const {
     passing,
     shooting,

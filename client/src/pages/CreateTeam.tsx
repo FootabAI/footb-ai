@@ -12,6 +12,7 @@ import { AttributesStep } from "@/components/team-creation/AttributesStep";
 import { SummaryStep } from "@/components/team-creation/SummaryStep";
 import { PlayersStep } from "@/components/team-creation/PlayersStep";
 import { toast } from "@/components/ui/use-toast";
+import { DEFAULT_TEAM_STATS } from "@/config/default_attributes";
 
 const STEPS = ["logo", "attributes", "players", "summary"] as const;
 type Step = typeof STEPS[number];
@@ -57,16 +58,21 @@ const CreateTeam = () => {
   const handleCreateTeam = async () => {
     try {
       if (logoType === "manual") {
-        await createTeam({
-          initials,
-          backgroundColor,
-        });
+        await createTeam(
+          { initials, backgroundColor },
+          DEFAULT_TEAM_STATS,
+          attributes,
+          tactic,
+          formation
+        );
       } else {
-        await createTeam({
-          image: generatedLogo,
-          theme: "",
-          backgroundColor: "#62df6e",
-        });
+        await createTeam(
+          { image: generatedLogo, theme: "", backgroundColor: "#62df6e" },
+          DEFAULT_TEAM_STATS,
+          attributes,
+          tactic,
+          formation
+        );
       }
       navigate("/dashboard");
     } catch (error) {

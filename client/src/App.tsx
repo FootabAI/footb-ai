@@ -18,17 +18,30 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Loader from "./components/Loader";
 import { useTeamStore } from "./stores/useTeamStore";
+import { useBotTeamStore } from "./stores/useBotTeamStore";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { isLoading, isLoggedIn } = useUserStore();
+  const { user, isLoading: isLoadingUser } = useUserStore();
   const { team, isLoading: isTeamLoading } = useTeamStore();
+  const { fetchBotTeams } = useBotTeamStore();
 
-  console.log('App loading states:', { isLoading, isTeamLoading, isLoggedIn });
+  useEffect(() => {
+    if (user) {
+      fetchBotTeams();
+    }
+  }, [user, fetchBotTeams]);
 
-  if (isLoading || isTeamLoading) {
-    return <Loader />;
+  console.log('App loading states:', { isLoadingUser, isTeamLoading });
+
+  if (isLoadingUser || isTeamLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
@@ -38,7 +51,7 @@ const AppContent = () => {
         <Route
           path="/"
           element={
-            isLoggedIn ? (
+            user ? (
               <Navigate to="/dashboard" replace />
             ) : (
               <Navigate to="/login" replace />
