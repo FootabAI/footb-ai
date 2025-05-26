@@ -13,12 +13,9 @@ from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from services.logo_service import LogoService
 from services.match_service import MatchService
-<<<<<<< HEAD
 from services.player_name_service import PlayerNameService, build_local_llm
-=======
 from services.tts_service import TTSService
 
->>>>>>> main
 
 # Load environment variables
 load_dotenv()
@@ -43,10 +40,6 @@ app.mount("/audio", StaticFiles(directory="temp_audio"), name="audio")
 
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
-<<<<<<< HEAD
-match_service = MatchService()
-player_name_service = PlayerNameService(llm=build_local_llm())
-=======
 tts_service = TTSService()
 
 # Global settings
@@ -55,7 +48,7 @@ USE_TTS = False  # Central control for TTS
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
->>>>>>> main
+player_name_service = PlayerNameService(llm=build_local_llm())
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
