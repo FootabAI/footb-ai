@@ -1,16 +1,10 @@
-"""
-Offline football-name generator (instruction-tuned, no OpenAI).
-"""
-
 from __future__ import annotations
 import re, random, torch
 from typing import List, Optional, Dict, Tuple
 
-# ─────────────────────────────────────────────────────────────
-# 1.  HuggingFace → LangChain wrapper
-# ─────────────────────────────────────────────────────────────
+# ─── 1. HF → LangChain wrapper ────────────────────────────────────────────
 def build_local_llm(
-    model_name: str = "microsoft/phi-2",   # 2.7 B, 2 GB VRAM in fp16
+    model_name: str = "microsoft/phi-2",
     temperature: float = 0.7,
     max_new_tokens: int = 90,
 ):
@@ -33,9 +27,7 @@ def build_local_llm(
     return HuggingFacePipeline(pipeline=gen_pipe, model_kwargs={})
 
 
-# ─────────────────────────────────────────────────────────────
-# 2.  PlayerNameService
-# ─────────────────────────────────────────────────────────────
+# ─── 2. PlayerNameService ────────────────────────────────────────────────
 from langchain_core.language_models import BaseLanguageModel
 from langchain.prompts import PromptTemplate
 
@@ -52,32 +44,29 @@ class PlayerNameService:
     def __init__(self, llm: BaseLanguageModel | None = None, temperature: float = 0.7):
         self.llm = llm or build_local_llm(temperature=temperature)
 
-    # ─── core generator ───────────────────────────────────────
+    # ─── core generator ────────────────────────────────────────────
     def generate_player_names(
         self,
         nationality: Optional[str] = None,
-        theme: Optional[str] = None,
         with_positions: bool = True,
     ) -> List[Dict[str, str]]:
 
-        loc_line   = f"Nationality/style: {nationality}" if nationality else ""
-        theme_line = f"Theme: {theme}"                   if theme       else ""
+        loc_line = f"Nationality/style: {nationality}" if nationality else ""
 
         prompt = PromptTemplate(
             template=f"""
-You are a creative sports name generator.
+You are a creative sports-name generator.
 
 ### Task
 Generate **11 DISTINCT** football player names as a **comma-separated list**.
 
 {loc_line}
-{theme_line}
 
 ### Must-follow rules
 1. Each entry = first name + space + last name.
 2. No real-world famous players.
-3. Reflect nationality / theme if provided.
-4. Return only the 11 names, nothing else.
+3. Reflect nationality if provided.
+4. Return **only** the 11 names, nothing else.
 
 ### Your output
 """,
@@ -86,7 +75,7 @@ Generate **11 DISTINCT** football player names as a **comma-separated list**.
 
         raw = (prompt | self.llm).invoke({}).strip()
 
-        # ── regex-extract exactly 11 names ─────────────────────
+        # ── regex-extract exactly 11 names ───────────────────────
         names = self._NAME_RE.findall(raw)
         if len(names) < 11:
             filler_first = ["Ole", "Bjørn", "Sverre", "Knut", "Eirik"]
@@ -102,10 +91,9 @@ Generate **11 DISTINCT** football player names as a **comma-separated list**.
     def generate_team(
         self,
         nationality: Optional[str] = None,
-        theme: Optional[str] = None,
         with_positions: bool = True,
     ) -> Tuple[List[Dict[str, str]], List[str]]:
-        squad = self.generate_player_names(nationality, theme, with_positions)
+        squad = self.generate_player_names(nationality, with_positions)
         return squad, [p["name"] for p in squad]
 
     # helper
@@ -116,9 +104,7 @@ Generate **11 DISTINCT** football player names as a **comma-separated list**.
         ]
 
 
-# ─────────────────────────────────────────────────────────────
-# 3.  Quick self-test
-# ─────────────────────────────────────────────────────────────
+# ─── 3. Self-test ────────────────────────────────────────────────────────
 if __name__ == "__main__":
     svc = PlayerNameService()
-    print(svc.generate_team(nationality="Norwegian", theme="Viking legends")[0])
+    print(svc.generate_team(nationality="Norwegian")[0])
