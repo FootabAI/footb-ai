@@ -1,12 +1,10 @@
 """
-services/player_name_service.py
-────────────────────────────────────────────────────────────────
-Offline football–name generator (instruction-tuned, no OpenAI).
+Offline football-name generator (instruction-tuned, no OpenAI).
 """
 
 from __future__ import annotations
 import re, random, torch
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Tuple
 
 # ─────────────────────────────────────────────────────────────
 # 1.  HuggingFace → LangChain wrapper
@@ -20,11 +18,7 @@ def build_local_llm(
     from langchain_community.llms import HuggingFacePipeline
 
     tok = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype="auto",
-    )
-    # put whole model on single device (GPU if available)
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto")
     model.to("cuda" if torch.cuda.is_available() else "cpu")
 
     gen_pipe = pipeline(
@@ -55,11 +49,7 @@ class PlayerNameService:
     ]
     _NAME_RE = re.compile(r"\b[A-Z][a-zA-ZÀ-ÖØ-öø-ÿ'-]+ [A-Z][a-zA-ZÀ-ÖØ-öø-ÿ'-]+\b")
 
-    def __init__(
-        self,
-        llm: BaseLanguageModel | None = None,
-        temperature: float = 0.7,
-    ):
+    def __init__(self, llm: BaseLanguageModel | None = None, temperature: float = 0.7):
         self.llm = llm or build_local_llm(temperature=temperature)
 
     # ─── core generator ───────────────────────────────────────
@@ -102,17 +92,11 @@ Generate **11 DISTINCT** football player names as a **comma-separated list**.
             filler_first = ["Ole", "Bjørn", "Sverre", "Knut", "Eirik"]
             filler_last  = ["Haugstad", "Eiriksson", "Solberg", "Lund", "Halvorsen"]
             while len(names) < 11:
-                names.append(
-                    f"{random.choice(filler_first)} {random.choice(filler_last)}"
-                )
+                names.append(f"{random.choice(filler_first)} {random.choice(filler_last)}")
         names = names[:11]
 
-        if with_positions:
-            return [
-                {"name": n, "position": pos}
-                for n, pos in zip(names, self.DEFAULT_POSITIONS)
-            ]
-        return [{"name": n} for n in names]
+        return self._attach_positions(names) if with_positions else \
+               [{"name": n} for n in names]
 
     # convenience
     def generate_team(
@@ -121,12 +105,15 @@ Generate **11 DISTINCT** football player names as a **comma-separated list**.
         theme: Optional[str] = None,
         with_positions: bool = True,
     ) -> Tuple[List[Dict[str, str]], List[str]]:
-        squad = self.generate_player_names(
-            nationality=nationality,
-            theme=theme,
-            with_positions=with_positions,
-        )
+        squad = self.generate_player_names(nationality, theme, with_positions)
         return squad, [p["name"] for p in squad]
+
+    # helper
+    def _attach_positions(self, names: List[str]) -> List[Dict[str, str]]:
+        return [
+            {"name": n, "position": pos}
+            for n, pos in zip(names, self.DEFAULT_POSITIONS)
+        ]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -134,9 +121,4 @@ Generate **11 DISTINCT** football player names as a **comma-separated list**.
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     svc = PlayerNameService()
-    print(
-        svc.generate_team(
-            nationality="Norwegian",
-            theme="Viking legends"
-        )[0]
-    )
+    print(svc.generate_team(nationality="Norwegian", theme="Viking legends")[0])
