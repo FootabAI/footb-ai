@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { db, auth, storage } from "@/firebaseConfig";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Team, Player} from "@/types";
 import { useTeamStore } from "./useTeamStore";
@@ -29,6 +29,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   mainColor: "#62df6e",
   teamStats: DEFAULT_TEAM_STATS,
   nationality: "",
+  players: [],
   // Actions
   setTeamName: (name) => set({ teamName: name }),
   setLogoType: (type) => set({ logoType: type }),
@@ -52,6 +53,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     });
   },
   setNationality: (nationality) => set({ nationality }),
+  setPlayers: (players) => set({ players }),
   generateRandomPlayers: (teamId: string, teamName: string) =>
     generateRandomPlayers(teamId, teamName),
   generatePlayers: async (nationality: string, withPositions: boolean) => {
@@ -77,7 +79,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     });
   },
 
-  createTeam: async (logoData) => {
+  createTeam: async (logoData, teamStats, attributes, tactic, formation) => {
     set({ isLoading: true, error: null, success: null });
     try {
       const {
@@ -85,20 +87,18 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         logoType,
         initials,
         backgroundColor,
-        formation,
         customizedName,
-        attributes,
-        tactic,
         pointsLeft,
         mainColor,
-        teamStats,
+        players,
+        teamId,
       } = get();
 
       const user = auth.currentUser;
       if (!user) throw new Error("User not authenticated");
 
       const teamStore = useTeamStore.getState();
-      const teamId = `team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      if (!teamId) throw new Error("Team ID not found");
 
       let logoUrl = "";
       if (logoType === "ai" && logoData.image) {
@@ -111,17 +111,22 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
       const finalName = logoType === "manual" ? teamName : customizedName;
 
-      // Generate players using the API
-      const playerResponse = await generatePlayerNames(finalName, true);
-      const newPlayers = playerResponse.squad.map((player, index) => ({
-        id: `player-${teamId}-${index}`,
-        name: player.name,
-        position: player.position,
-        rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
-        teamId,
-      }));
+      // Get existing team data to preserve player images
+      const teamRef = doc(db, "teams", teamId);
+      const existingTeam = await getDoc(teamRef);
+      const existingPlayers = existingTeam.exists() ? existingTeam.data().players : [];
 
-      const newTeam: Team & { userId: string } = {
+      // Merge existing player data with new player data
+      const playersWithUrls = players.map(player => {
+        const existingPlayer = existingPlayers.find(p => p.id === player.id);
+        return {
+          ...player,
+          imageUrl: existingPlayer?.imageUrl || player.imageUrl,
+          image_base64: existingPlayer?.image_base64 || player.image_base64,
+        };
+      });
+
+      const updatedTeam: Team & { userId: string } = {
         id: teamId,
         name: finalName,
         logo: {
@@ -144,18 +149,16 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         formation,
         teamStats: teamStats || DEFAULT_TEAM_STATS,
         points: pointsLeft,
-        players: newPlayers,
+        players: playersWithUrls,
         userId: user.uid,
         isBot: false,
       };
 
-      // Store team in Firestore
-      const teamsCollection = collection(db, "teams");
-      const docRef = await addDoc(teamsCollection, newTeam);
-      newTeam.id = docRef.id;
+      // Update existing team in Firestore
+      await updateDoc(teamRef, updatedTeam);
 
-      // Update TeamStore with the new team
-      teamStore.setTeam(newTeam);
+      // Update TeamStore with the updated team
+      teamStore.setTeam(updatedTeam);
       set({ success: "Team created successfully!" });
     } catch (err) {
       console.error("Error creating team:", err);
@@ -237,5 +240,6 @@ const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
     position: pos,
     rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
     teamId,
+    image_base64: null,
   }));
 };

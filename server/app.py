@@ -8,6 +8,9 @@ import base64
 from typing import Dict, Optional
 import json
 from pathlib import Path
+import io
+import random
+import torch
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
@@ -307,14 +310,65 @@ async def generate_player_images(request: Request):
         if not team_data:
             raise HTTPException(status_code=400, detail="Missing team_data")
         
-        # Generate images
-        results = player_image_service.generate_team_images(team_data)
+        async def image_generator():
+            for player in team_data:
+                try:
+                    # Generate single player image
+                    attributes = player_image_service._generate_attributes()
+                    positive_prompt, negative_prompt = player_image_service._create_prompt(attributes, 1)
+                    
+                    # Generate image
+                    result = player_image_service.pipe(
+                        prompt=positive_prompt,
+                        negative_prompt=negative_prompt,
+                        image=player_image_service.pose_image,
+                        num_inference_steps=30,
+                        guidance_scale=6.5,
+                        controlnet_conditioning_scale=1.0,
+                        width=256,
+                        height=256,
+                        generator=torch.Generator("cuda" if player_image_service.use_gpu else "cpu").manual_seed(random.randint(1, 1000000))
+                    )
+                    
+                    image = result.images[0]
+                    
+                    # Remove background and convert to base64
+                    image_no_bg = player_image_service._remove_background_ai(image)
+                    
+                    buffer = io.BytesIO()
+                    image_no_bg.save(buffer, format="PNG")
+                    buffer.seek(0)
+                    image_b64 = base64.b64encode(buffer.getvalue()).decode()
+                    
+                    result = {
+                        "name": player["name"],
+                        "position": player["position"],
+                        "image_base64": image_b64,
+                        "attributes": attributes
+                    }
+                    
+                    # Ensure proper SSE format
+                    yield f"data: {json.dumps(result)}\n\n"
+                    
+                except Exception as e:
+                    print(f"Failed to generate player image: {e}")
+                    error_result = {
+                        "error": str(e),
+                        "name": player["name"],
+                        "position": player["position"]
+                    }
+                    yield f"data: {json.dumps(error_result)}\n\n"
+                    continue
         
-        return {
-            "success": True,
-            "players": results,
-            "total_generated": len(results)
-        }
+        return StreamingResponse(
+            image_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            }
+        )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

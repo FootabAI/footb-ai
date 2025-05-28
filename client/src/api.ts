@@ -207,11 +207,64 @@ export const continueMatch = async (
   };
 };
 
+type PlayerImageData = {
+  name: string;
+  position: string;
+  image_base64: string;
+  imageUrl?: string;
+  error?: string;
+};
+
 export const generatePlayerImages = async (teamData: {name: string, position: string}[], nationality: string) => {
   const response = await fetch(`${API_URL}/api/generate_player_images`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ team_data: teamData, nationality: nationality }),
   });
-  return response.json();
+
+  if (!response.ok) {
+    throw new Error('Failed to generate player images');
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Failed to get response reader');
+  }
+
+  let buffer = '';
+  return {
+    players: {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            const { done, value } = await reader.read();
+            if (done) {
+              return { done: true, value: undefined };
+            }
+
+            buffer += new TextDecoder().decode(value);
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || ''; // Keep the last incomplete chunk in the buffer
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6)) as PlayerImageData;
+                  if (data.error) {
+                    console.error('Error from server:', data.error);
+                    continue;
+                  }
+                  return { done: false, value: data };
+                } catch (e) {
+                  console.error('Error parsing event:', e, 'Line:', line);
+                  continue;
+                }
+              }
+            }
+            return { done: false, value: null };
+          }
+        };
+      }
+    }
+  };
 };
