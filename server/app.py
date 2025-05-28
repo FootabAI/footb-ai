@@ -15,6 +15,7 @@ from services.logo_service import LogoService
 from services.match_service import MatchService
 from services.player_name_service import PlayerNameService, build_local_llm
 from services.tts_service import TTSService
+from services.player_image_service import PlayerImageService
 
 
 # Load environment variables
@@ -38,17 +39,20 @@ temp_audio_dir.mkdir(exist_ok=True)
 # Mount the temp_audio directory to serve audio files
 app.mount("/audio", StaticFiles(directory="temp_audio"), name="audio")
 
-# Initialize services
-logo_service = LogoService(reference_images_dir="images")
-tts_service = TTSService()
 
 # Global settings
 USE_LLM = False  # Central control for LLM commentary
 USE_TTS = False  # Central control for TTS
 
+# Initialize services
+logo_service = LogoService(reference_images_dir="images")
+player_image_service = PlayerImageService()
+tts_service = TTSService()
+player_name_service = PlayerNameService(llm=build_local_llm())
+
+
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
-player_name_service = PlayerNameService(llm=build_local_llm())
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
@@ -290,6 +294,31 @@ async def change_team_tactic(request: Request):
     except Exception as e:
         print(f"Error in change_team_tactic: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Add this single endpoint:
+@app.post("/api/generate_player_images")
+async def generate_player_images(request: Request):
+    """Generate profile images for 11 players"""
+    try:
+        data = await request.json()
+        team_data = data.get("team_data")
+        
+        if not team_data:
+            raise HTTPException(status_code=400, detail="Missing team_data")
+        
+        # Generate images
+        results = player_image_service.generate_team_images(team_data)
+        
+        return {
+            "success": True,
+            "players": results,
+            "total_generated": len(results)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
