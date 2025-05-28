@@ -15,6 +15,7 @@ interface PlayersStepProps {
 export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
   const {
     generatePlayers,
+    generatePlayerImages,
     teamId,
     teamName,
     mainColor,
@@ -41,8 +42,16 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
         teamId,
       }));
 
-      setPlayers(generatedPlayers);
-      onPlayersChange(generatedPlayers);
+      const imageData = await generatePlayerImages(generatedPlayers, nationality);
+
+      const playersWithImages = generatedPlayers.map((player, idx) => ({
+        ...player,
+        image_base64: imageData.players[idx]?.image_base64 || null,
+        attributes: imageData.players[idx]?.attributes || {},
+      }));
+
+      setPlayers(playersWithImages);
+      onPlayersChange(playersWithImages);
     } catch (error) {
       console.error("Error generating players:", error);
     } finally {

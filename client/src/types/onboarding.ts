@@ -49,4 +49,5 @@ export type OnboardingState = {
   resetTeamCreation: () => void;
   generateRandomPlayers: (teamId: string, teamName: string) => Player[];
   generatePlayers: (nationality: string, withPositions: boolean) => Promise<PlayerGenerationResponse>;
+  generatePlayerImages: (teamData: {name: string, position: string}[], nationality: string) => Promise<{players: {name: string, position: string, image_base64: string, attributes: TeamAttributes}[]}>;
 };

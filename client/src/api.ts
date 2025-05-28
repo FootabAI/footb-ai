@@ -1,4 +1,4 @@
-import { Formation, Match, Team, TeamTactic } from "./types";
+import { Formation, Match, Player, Team, TeamTactic } from "./types";
 import { MatchEventUpdate, MatchSimulationResponse } from './types/match-simulation';
 
 export const API_URL = "http://127.0.0.1:8000";
@@ -205,4 +205,13 @@ export const continueMatch = async (
       }
     }
   };
+};
+
+export const generatePlayerImages = async (teamData: {name: string, position: string}[], nationality: string) => {
+  const response = await fetch(`${API_URL}/api/generate_player_images`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ team_data: teamData, nationality: nationality }),
+  });
+  return response.json();
 };

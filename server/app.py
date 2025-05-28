@@ -46,7 +46,7 @@ USE_TTS = False  # Central control for TTS
 
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
-player_image_service = PlayerImageService()
+player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
 tts_service = TTSService()
 player_name_service = PlayerNameService(llm=build_local_llm())
 
@@ -303,7 +303,7 @@ async def generate_player_images(request: Request):
     try:
         data = await request.json()
         team_data = data.get("team_data")
-        
+        nationality = data.get("nationality")
         if not team_data:
             raise HTTPException(status_code=400, detail="Missing team_data")
         

@@ -6,7 +6,7 @@ import { Team, Player} from "@/types";
 import { useTeamStore } from "./useTeamStore";
 import { DEFAULT_ATTRIBUTES, TOTAL_POINTS, DEFAULT_TEAM_STATS } from "@/config/default_attributes";
 import { OnboardingState } from "@/types/onboarding";
-import { generatePlayerNames } from "@/api";
+import { generatePlayerNames, generatePlayerImages } from "@/api";
 
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
@@ -183,9 +183,11 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       nationality: "",
     });
   },
+
+  generatePlayerImages: async (teamData, nationality) => {
+    return await generatePlayerImages(teamData, nationality);
+  },
 }));
-
-
 
 // Helper function to generate random players
 const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {

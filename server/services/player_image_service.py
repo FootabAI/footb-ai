@@ -21,8 +21,6 @@ class PlayerImageService:
         self._setup_pipeline()
         if pose_image_path:
             self.pose_image = self._load_and_validate_pose_image(pose_image_path)
-        else:
-            self.pose_image = self._create_pose_reference()
     
     def _setup_pipeline(self):
         """Setup DreamShaper + ControlNet pipeline"""
