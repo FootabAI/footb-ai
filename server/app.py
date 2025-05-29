@@ -13,7 +13,7 @@ from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from services.logo_service import LogoService
 from services.match_service import MatchService
-from services.player_name_service import PlayerNameService, build_local_llm
+from services.player_name_service import PlayerNameService
 from services.tts_service import TTSService
 
 
@@ -48,7 +48,7 @@ USE_TTS = False  # Central control for TTS
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
-player_name_service = PlayerNameService(llm=build_local_llm())
+player_name_service = PlayerNameService()
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
@@ -77,16 +77,15 @@ async def create_club_logo(request: LogoGenerationRequest):
 @app.post("/generate_player_names", response_model=PlayerGenerationResponse)
 async def generate_player_names(request: PlayerGenerationRequest):
     """
-    Produce an XI of fresh, realistic-sounding footballer names.
+    Produce realistic-sounding footballer names.
     """
     try:
-        squad, names_only = player_name_service.generate_team(
+        player = player_name_service.generate_player(
             nationality   = request.nationality,
-            with_positions= request.with_positions,
+            with_position= request.with_positions,
         )
         return PlayerGenerationResponse(
-            squad   = squad,
-            names   = names_only,
+            player   = player,
             success = True,
         )
     except Exception as e:
