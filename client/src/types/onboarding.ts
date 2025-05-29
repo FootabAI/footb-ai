@@ -2,11 +2,10 @@ import { TeamAttributes, TeamTactic, Formation, Player , TeamStats} from "@/type
 import {  } from "./team";
 
 type PlayerGenerationResponse = {
-  squad: Array<{
+  player: {
     name: string;
-    position: string;
-  }>;
-  names: string[];
+    position?: string;
+  };
   success: boolean;
 };
 

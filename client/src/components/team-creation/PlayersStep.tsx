@@ -23,33 +23,57 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
   } = useOnboardingStore();
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [generatingPlayerIndex, setGeneratingPlayerIndex] = useState<number | null>(null);
+
+  const POSITIONS = [
+    "Goalkeeper",
+    "Right-Back",
+    "Centre-Back",
+    "Centre-Back",
+    "Left-Back",
+    "Central Midfielder",
+    "Central Midfielder",
+    "Attacking Midfielder",
+    "Right Winger",
+    "Left Winger",
+    "Striker"
+  ];
 
   const handleGeneratePlayers = async () => {
     setIsLoading(true);
+    setPlayers([]);
 
     try {
       if (nationality === "") {
         toast.error("Please select a nationality");
         return;
       }
-      const response = await generatePlayers(nationality, true);
-      const generatedPlayers = response.squad.map((player, index) => ({
-        id: `player-${teamId}-${index}`,
-        name: player.name,
-        position: player.position,
-        rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
-        teamId,
-      }));
 
-      setPlayers(generatedPlayers);
+      const generatedPlayers: Player[] = [];
+      
+      for (let i = 0; i < POSITIONS.length; i++) {
+        setGeneratingPlayerIndex(i);
+        const response = await generatePlayers(nationality, true);
+        const player = {
+          id: `player-${teamId}-${i}`,
+          name: response.player.name,
+          position: POSITIONS[i],
+          rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
+          teamId,
+        };
+        generatedPlayers.push(player);
+        setPlayers([...generatedPlayers]);
+      }
+
       onPlayersChange(generatedPlayers);
     } catch (error) {
       console.error("Error generating players:", error);
+      toast.error("Failed to generate players. Please try again.");
     } finally {
       setIsLoading(false);
+      setGeneratingPlayerIndex(null);
     }
   };
-
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -125,36 +149,46 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {players.map((player) => (
-              <Card
-                key={player.id}
-                className="hover:shadow-md transition-shadow"
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{player.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {player.position}
-                      </p>
+            {POSITIONS.map((position, index) => {
+              const player = players[index];
+              const isGenerating = generatingPlayerIndex === index;
+              
+              return (
+                <Card
+                  key={`player-${index}`}
+                  className={`hover:shadow-md transition-shadow ${isGenerating ? 'animate-pulse' : ''}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">
+                          {isGenerating ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Generating...
+                            </div>
+                          ) : (
+                            player?.name || "Loading..."
+                          )}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {position}
+                        </p>
+                      </div>
+                      <div
+                        className="text-xl font-bold"
+                        style={{ color: mainColor }}
+                      >
+                        {player?.rating || "..."}
+                      </div>
                     </div>
-                    <div
-                      className="text-xl font-bold"
-                      style={{ color: mainColor }}
-                    >
-                      {player.rating}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
-
-      {/* {players.length > 0 && !isLoading && (
-        <FormationSelector isOnboarding={true} />
-      )} */}
     </div>
   );
 };

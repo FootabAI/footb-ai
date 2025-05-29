@@ -11,11 +11,10 @@ const ensureAbsoluteUrl = (url: string | undefined) => {
 };
 
 type PlayerGenerationResponse = {
-  squad: Array<{
+  player: {
     name: string;
-    position: string;
-  }>;
-  names: string[];
+    position?: string;
+  };
   success: boolean;
 };
 
