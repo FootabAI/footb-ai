@@ -16,14 +16,17 @@ class MatchEngineService:
         
         with open(json_path, "r") as f:
             self.raw_stats = json.load(f)
+        
         with open(tactics_path, "r") as f:
             self.tactics_data = json.load(f)
     
     def tactical_fit(self, attributes, requirements):
         """Calculate how well team attributes fit tactical requirements"""
+        
         fits = [min(attributes.get(attr, 0) / req, 1.0) 
                 for attr, req in requirements.items()]
-        return np.mean(fits)
+        fit_score = np.mean(fits)
+        return fit_score
     
     def get_tactical_multiplier(self, fit_score):
         """Convert tactical fit to performance multiplier"""
@@ -70,6 +73,7 @@ class MatchEngineService:
         accuracy = base_accuracy * (1 + total_target_effect)
         target = min(shots, int(max(0, shots * max(0.1, accuracy))))
         
+        
         # Calculate goals
         own_goal_bonus = own_effects["goals"] * own_multiplier
         opp_goal_penalty = opp_impact["goals"] * opp_multiplier
@@ -83,6 +87,7 @@ class MatchEngineService:
                                            self.raw_stats[f"{prefix}Yellow"]["std"])))
         red = max(0, int(np.random.normal(self.raw_stats[f"{prefix}Red"]["mean"], 
                                         self.raw_stats[f"{prefix}Red"]["std"])))
+        
         
         return {
             "shots": shots, 
@@ -124,7 +129,7 @@ class MatchEngineService:
     async def call_llm_for_commentary(self, event_dict):
         """
         Future function to call LLM API for commentary generation.
-        For now, loads pre-made JSON file.
+        For now, generates simple events.
         """
         # TODO: Implement actual LLM API call with this prompt:
         """
@@ -142,16 +147,10 @@ class MatchEngineService:
         [Full prompt would go here]
         """
         
-        # For testing: load pre-made JSON file
-        try:
-            first_half_path = self.base_path / "first_half.json"
-            with open(first_half_path, "r") as f:
-                events_json = json.load(f)
-            print(f"Loaded {len(events_json)} events from first_half.json")
-            return events_json
-        except FileNotFoundError:
-            print("first_half.json not found, generating simple events")
-            return self.generate_simple_events(event_dict)
+        # Generate simple events from the event dictionary
+        events_json = self.generate_simple_events(event_dict)
+        print(f"Generated {len(events_json)} events")
+        return events_json
     
     def generate_simple_events(self, event_dict):
         """Generate simple event descriptions without LLM"""
@@ -204,6 +203,21 @@ class MatchEngineService:
                 "score": current_score.copy()
             }
             events_json.append(minute_update)
+            
+            # Add half-time event at minute 45
+            if minute == 45:
+                half_time_event = {
+                    "type": "event",
+                    "minute": 45,
+                    "event": {
+                        "team": "system",
+                        "type": "half-time",
+                        "event_description": "Half-time whistle!",
+                        "audio_url": "Commentary for half-time"
+                    },
+                    "score": current_score.copy()
+                }
+                events_json.append(half_time_event)
         
         return events_json
 

@@ -36,17 +36,23 @@ export interface MatchEvent {
 /**
  * Represents the statistics for a team during a match
  */
-export type MatchStats = {
-  possession: number;
-  shots: number;
-  shotsOnTarget: number;
-  passes: number;
-  passAccuracy: number;
-  fouls: number;
-  yellowCards: number;
-  redCards: number;
-  corners: number;
-};
+export interface MatchStats {
+  goalsScored: number;
+  goalsConceded: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  cleanSheets: number;
+  totalMatches: number;
+  form: string[];
+  possession?: number;
+  shots?: number;
+  shotsOnTarget?: number;
+  corners?: number;
+  fouls?: number;
+  yellowCards?: number;
+  redCards?: number;
+}
 
 /**
  * Represents a complete match between two teams

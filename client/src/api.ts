@@ -121,6 +121,80 @@ export const startMatchSimulation = async (
   };
 };
 
+export const startMatchSimulationNew = async (
+  matchId: string,
+  userTeam: Team,
+  opponentTeam: Team
+): Promise<MatchSimulationResponse> => {
+  const response = await fetch(`${API_URL}/api/simulate-match-new`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      match_id: matchId,
+      user_team: {
+        name: userTeam.name,
+        attributes: userTeam.attributes,
+        tactic: userTeam.tactic.toLowerCase(),
+        formation: userTeam.formation,
+        teamStats: userTeam.teamStats
+      },
+      opponent_team: {
+        name: opponentTeam.name,
+        attributes: opponentTeam.attributes,
+        tactic: opponentTeam.tactic.toLowerCase(),
+        formation: opponentTeam.formation,
+        teamStats: opponentTeam.teamStats
+      }
+    }),
+  });
+  console.log(response);
+  if (!response.ok) {
+    throw new Error('Failed to start match');
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Failed to get response reader');
+  }
+
+  return {
+    match_id: matchId,
+    events: {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            const { done, value } = await reader.read();
+            if (done) {
+              return { done: true, value: undefined };
+            }
+
+            const text = new TextDecoder().decode(value);
+            const events = text.split('\n').filter(Boolean);
+            
+            if (events.length === 0) {
+              return { done: false, value: null };
+            }
+
+            try {
+              const event = JSON.parse(events[0]);
+              // Ensure audio URL is absolute
+              if (event.event?.audio_url) {
+                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
+              }
+              return { done: false, value: event };
+            } catch (e) {
+              console.error('Error parsing event:', e);
+              return { done: false, value: null };
+            }
+          }
+        };
+      }
+    }
+  };
+};
+
 export const changeTeamTactics = async (
   matchId: string,
   tactic: TeamTactic,

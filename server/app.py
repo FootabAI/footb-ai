@@ -8,6 +8,7 @@ import base64
 from typing import Dict, Optional
 import json
 from pathlib import Path
+import asyncio
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
@@ -175,6 +176,95 @@ async def simulate_match(request: Request):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/simulate-match-new")
+async def simulate_match_new(request: Request):
+    """Stream a simulated match with events using the new match engine."""
+    try:
+        data = await request.json()
+        user_team_data = data.get("user_team")
+        opponent_team_data = data.get("opponent_team")
+        match_id = data.get("match_id")
+
+        if not user_team_data or not opponent_team_data or not match_id:
+            raise HTTPException(status_code=400, detail="Missing team data or match ID")
+
+        print(f"\n=== Starting match with new engine: {user_team_data['name']} vs {opponent_team_data['name']} ===")
+        print(f"User team data: {json.dumps(user_team_data, indent=2)}")
+        print(f"Opponent team data: {json.dumps(opponent_team_data, indent=2)}")
+
+        # Initialize match engine
+        from services.match_engine import MatchEngineService
+        match_engine = MatchEngineService()
+
+        try:
+            # Generate events for first half
+            event_dict = match_engine.simulate_half(
+                home_attrs=user_team_data["attributes"],
+                home_tactic=user_team_data["tactic"],
+                away_attrs=opponent_team_data["attributes"],
+                away_tactic=opponent_team_data["tactic"]
+            )
+            print(f"Generated event dict: {json.dumps(event_dict, indent=2)}")
+
+            # Get commentary for events
+            events_json = await match_engine.call_llm_for_commentary(event_dict)
+            print(f"Generated events JSON: {json.dumps(events_json[:2], indent=2)}")  # Print first 2 events
+
+            # Sort events by minute
+            events_json.sort(key=lambda x: x["minute"])
+
+        except Exception as e:
+            print(f"Error in match simulation: {str(e)}")
+            print(f"Error type: {type(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            raise
+
+        async def event_generator():
+            try:
+                # Sort events by minute to ensure chronological order
+                events_json.sort(key=lambda x: x["minute"])
+                
+                for event in events_json:
+                    if event:  # Only yield non-empty events
+                        # Add TTS audio URL if TTS is enabled
+                        if USE_TTS:
+                            if ("event" in event and 
+                                "commentary" in event["event"] and 
+                                event["event"]["commentary"] is not None):
+                                audio_url = await tts_service.generate_audio(
+                                    event["event"]["commentary"],
+                                    event["event"]["type"]
+                                )
+                                if audio_url:
+                                    event["event"]["audio_url"] = audio_url
+                        yield json.dumps(event) + "\n"
+                        # Add a small delay between events for better readability
+                        await asyncio.sleep(0.5)
+            except Exception as e:
+                print(f"Error in event generator: {e}")
+                yield json.dumps({"error": str(e)}) + "\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="application/x-ndjson",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+                "Content-Type": "application/x-ndjson",
+                "Transfer-Encoding": "chunked"
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error in simulate-match-new: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/continue-match")
