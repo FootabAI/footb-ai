@@ -37,7 +37,7 @@ export const AttributesStep = ({
   const { mainColor } = useOnboardingStore();
   return (
     <div className="space-y-4 animate-fade-in">
-      <h2 className="text-lg font-semibold">Team Attributes {mainColor}</h2>
+      <h2 className="text-lg font-semibold">Team Attributes</h2>
       
       <TeamAttributesForm
         mainColor={mainColor}

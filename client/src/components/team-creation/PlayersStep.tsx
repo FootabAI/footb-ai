@@ -32,7 +32,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
     teamStats,
   } = useOnboardingStore();
 
-  const { isGenerating, progress, startGeneration, stopGeneration } = useBackgroundImageStore();
+  const { isGenerating, progress, startGeneration, stopGeneration, playerImages } = useBackgroundImageStore();
   const [isLoading, setIsLoading] = useState(false);
   const [realTimeUpdates, setRealTimeUpdates] = useState(false);
 
@@ -155,11 +155,11 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
   ]);
 
   const getPlayerImageSrc = (player: Player) => {
-    if (player.image_base64) {
-      return `data:image/png;base64,${player.image_base64}`;
-    }
     if (player.imageUrl) {
       return player.imageUrl;
+    }
+    if (playerImages[player.id]) {
+      return `data:image/png;base64,${playerImages[player.id]}`;
     }
     return null;
   };
@@ -261,7 +261,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
                             alt={player.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              console.error('Error loading image for player:', player.name);
+                              console.error('Error loading image for player:', player.name, 'URL:', imageSrc);
                               e.currentTarget.style.display = 'none';
                             }}
                           />
