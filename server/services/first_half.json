@@ -5,8 +5,8 @@
     "event": {
       "team": "away",
       "type": "target",
-      "event_description": "Shot on target away!",
-      "audio_url": "Away side with a shot forcing a save."
+      "event_description": "On target by away team!",
+      "audio_url": "Good attempt by away team, saved again!"
     },
     "score": {
       "home": 0,
@@ -51,8 +51,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -89,8 +89,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -111,8 +111,8 @@
     "event": {
       "team": "home",
       "type": "shot",
-      "event_description": "Shot by home!",
-      "audio_url": "Home side takes a chance from distance."
+      "event_description": "Powerful shot from home side!",
+      "audio_url": "Home team testing the keeper with a strong attempt."
     },
     "score": {
       "home": 0,
@@ -133,8 +133,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -171,8 +171,8 @@
     "event": {
       "team": "away",
       "type": "goal",
-      "event_description": "Goal for away!",
-      "audio_url": "Away finds the net with a clinical finish!"
+      "event_description": "Goal for away team!",
+      "audio_url": "Brilliant strike from the away team, and they take the lead!"
     },
     "score": {
       "home": 0,
@@ -193,8 +193,8 @@
     "event": {
       "team": "away",
       "type": "target",
-      "event_description": "Shot on target away!",
-      "audio_url": "Away side with a shot forcing a save."
+      "event_description": "On target by away team!",
+      "audio_url": "Good attempt by away team, saved again!"
     },
     "score": {
       "home": 0,
@@ -223,8 +223,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -253,8 +253,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -300,7 +300,7 @@
       "team": "home",
       "type": "yellow_card",
       "event_description": "Yellow card for home!",
-      "audio_url": "Home player goes into the referee\u2019s book."
+      "audio_url": "Ref shows a yellow card to a home player."
     },
     "score": {
       "home": 0,
@@ -329,8 +329,8 @@
     "event": {
       "team": "home",
       "type": "shot",
-      "event_description": "Shot by home!",
-      "audio_url": "Home side takes a chance from distance."
+      "event_description": "Powerful shot from home side!",
+      "audio_url": "Home team testing the keeper with a strong attempt."
     },
     "score": {
       "home": 0,
@@ -343,8 +343,8 @@
     "event": {
       "team": "away",
       "type": "target",
-      "event_description": "Shot on target away!",
-      "audio_url": "Away side with a shot forcing a save."
+      "event_description": "On target by away team!",
+      "audio_url": "Good attempt by away team, saved again!"
     },
     "score": {
       "home": 0,
@@ -357,8 +357,8 @@
     "event": {
       "team": "away",
       "type": "goal",
-      "event_description": "Goal for away!",
-      "audio_url": "Away finds the net with a clinical finish!"
+      "event_description": "Goal for away team!",
+      "audio_url": "Brilliant strike from the away team, and they take the lead!"
     },
     "score": {
       "home": 0,
@@ -395,8 +395,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -409,8 +409,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -447,8 +447,8 @@
     "event": {
       "team": "home",
       "type": "target",
-      "event_description": "Shot on target home!",
-      "audio_url": "Home tests the keeper with a solid shot."
+      "event_description": "Shot on target by home!",
+      "audio_url": "That one\u2019s on target, keeper with the save."
     },
     "score": {
       "home": 0,
@@ -462,7 +462,7 @@
       "team": "away",
       "type": "yellow_card",
       "event_description": "Yellow card for away!",
-      "audio_url": "Away player cautioned after a rough challenge."
+      "audio_url": "Away team player goes into the book."
     },
     "score": {
       "home": 0,
@@ -500,7 +500,7 @@
       "team": "away",
       "type": "yellow_card",
       "event_description": "Yellow card for away!",
-      "audio_url": "Away player cautioned after a rough challenge."
+      "audio_url": "Away team player goes into the book."
     },
     "score": {
       "home": 0,
@@ -546,7 +546,7 @@
       "team": "away",
       "type": "yellow_card",
       "event_description": "Yellow card for away!",
-      "audio_url": "Away player cautioned after a rough challenge."
+      "audio_url": "Away team player goes into the book."
     },
     "score": {
       "home": 0,
@@ -567,8 +567,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -589,8 +589,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
@@ -611,8 +611,8 @@
     "event": {
       "team": "away",
       "type": "target",
-      "event_description": "Shot on target away!",
-      "audio_url": "Away side with a shot forcing a save."
+      "event_description": "On target by away team!",
+      "audio_url": "Good attempt by away team, saved again!"
     },
     "score": {
       "home": 0,
@@ -626,7 +626,7 @@
       "team": "home",
       "type": "yellow_card",
       "event_description": "Yellow card for home!",
-      "audio_url": "Home player goes into the referee\u2019s book."
+      "audio_url": "Ref shows a yellow card to a home player."
     },
     "score": {
       "home": 0,
@@ -655,8 +655,8 @@
     "event": {
       "team": "home",
       "type": "shot",
-      "event_description": "Shot by home!",
-      "audio_url": "Home side takes a chance from distance."
+      "event_description": "Powerful shot from home side!",
+      "audio_url": "Home team testing the keeper with a strong attempt."
     },
     "score": {
       "home": 0,
@@ -677,8 +677,8 @@
     "event": {
       "team": "away",
       "type": "target",
-      "event_description": "Shot on target away!",
-      "audio_url": "Away side with a shot forcing a save."
+      "event_description": "On target by away team!",
+      "audio_url": "Good attempt by away team, saved again!"
     },
     "score": {
       "home": 0,
@@ -699,8 +699,8 @@
     "event": {
       "team": "home",
       "type": "shot",
-      "event_description": "Shot by home!",
-      "audio_url": "Home side takes a chance from distance."
+      "event_description": "Powerful shot from home side!",
+      "audio_url": "Home team testing the keeper with a strong attempt."
     },
     "score": {
       "home": 0,
@@ -721,8 +721,8 @@
     "event": {
       "team": "away",
       "type": "shot",
-      "event_description": "Shot by away!",
-      "audio_url": "Away lets fly, but it goes wide."
+      "event_description": "Away team with a shot!",
+      "audio_url": "Another strike from the away side, just wide."
     },
     "score": {
       "home": 0,
