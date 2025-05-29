@@ -1,0 +1,740 @@
+[
+  {
+    "type": "event",
+    "minute": 1,
+    "event": {
+      "team": "away",
+      "type": "target",
+      "event_description": "Shot on target away!",
+      "audio_url": "Away side with a shot forcing a save."
+    },
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 1,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 2,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 3,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 4,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "event",
+    "minute": 5,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 5,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 6,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 7,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "event",
+    "minute": 8,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 8,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "event",
+    "minute": 9,
+    "event": {
+      "team": "home",
+      "type": "shot",
+      "event_description": "Shot by home!",
+      "audio_url": "Home side takes a chance from distance."
+    },
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 9,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "event",
+    "minute": 10,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 10,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 11,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 12,
+    "score": {
+      "home": 0,
+      "away": 0
+    }
+  },
+  {
+    "type": "event",
+    "minute": 13,
+    "event": {
+      "team": "away",
+      "type": "goal",
+      "event_description": "Goal for away!",
+      "audio_url": "Away finds the net with a clinical finish!"
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 13,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 14,
+    "event": {
+      "team": "away",
+      "type": "target",
+      "event_description": "Shot on target away!",
+      "audio_url": "Away side with a shot forcing a save."
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 14,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 15,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 16,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 16,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 17,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 18,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 18,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 19,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 20,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 21,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 22,
+    "event": {
+      "team": "home",
+      "type": "yellow_card",
+      "event_description": "Yellow card for home!",
+      "audio_url": "Home player goes into the referee\u2019s book."
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 22,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 23,
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 24,
+    "event": {
+      "team": "home",
+      "type": "shot",
+      "event_description": "Shot by home!",
+      "audio_url": "Home side takes a chance from distance."
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 24,
+    "event": {
+      "team": "away",
+      "type": "target",
+      "event_description": "Shot on target away!",
+      "audio_url": "Away side with a shot forcing a save."
+    },
+    "score": {
+      "home": 0,
+      "away": 1
+    }
+  },
+  {
+    "type": "event",
+    "minute": 24,
+    "event": {
+      "team": "away",
+      "type": "goal",
+      "event_description": "Goal for away!",
+      "audio_url": "Away finds the net with a clinical finish!"
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 24,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 25,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 26,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 27,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 27,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 27,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 28,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 29,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 30,
+    "event": {
+      "team": "home",
+      "type": "target",
+      "event_description": "Shot on target home!",
+      "audio_url": "Home tests the keeper with a solid shot."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 30,
+    "event": {
+      "team": "away",
+      "type": "yellow_card",
+      "event_description": "Yellow card for away!",
+      "audio_url": "Away player cautioned after a rough challenge."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 30,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 31,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 32,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 33,
+    "event": {
+      "team": "away",
+      "type": "yellow_card",
+      "event_description": "Yellow card for away!",
+      "audio_url": "Away player cautioned after a rough challenge."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 33,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 34,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 35,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 36,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 37,
+    "event": {
+      "team": "away",
+      "type": "yellow_card",
+      "event_description": "Yellow card for away!",
+      "audio_url": "Away player cautioned after a rough challenge."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 37,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 38,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 38,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 39,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 39,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 40,
+    "event": {
+      "team": "away",
+      "type": "target",
+      "event_description": "Shot on target away!",
+      "audio_url": "Away side with a shot forcing a save."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 40,
+    "event": {
+      "team": "home",
+      "type": "yellow_card",
+      "event_description": "Yellow card for home!",
+      "audio_url": "Home player goes into the referee\u2019s book."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 40,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 41,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 42,
+    "event": {
+      "team": "home",
+      "type": "shot",
+      "event_description": "Shot by home!",
+      "audio_url": "Home side takes a chance from distance."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 42,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 43,
+    "event": {
+      "team": "away",
+      "type": "target",
+      "event_description": "Shot on target away!",
+      "audio_url": "Away side with a shot forcing a save."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 43,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 44,
+    "event": {
+      "team": "home",
+      "type": "shot",
+      "event_description": "Shot by home!",
+      "audio_url": "Home side takes a chance from distance."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 44,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "event",
+    "minute": 45,
+    "event": {
+      "team": "away",
+      "type": "shot",
+      "event_description": "Shot by away!",
+      "audio_url": "Away lets fly, but it goes wide."
+    },
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  },
+  {
+    "type": "minute_update",
+    "minute": 45,
+    "score": {
+      "home": 0,
+      "away": 2
+    }
+  }
+]

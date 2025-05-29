@@ -18,6 +18,7 @@ import { useTeamStore } from "@/stores/useTeamStore";
 import { useCalculateTeamStrength } from "@/hooks/useCalculateTeamStrength";
 import { useTeamActions } from "@/hooks/useTeamActions";
 import { TacticSelect } from "@/components/TacticSelect";
+import playerPlaceholder from "@/assets/player-placeholder.png";
 
 const TeamOverview = () => {
   const { team } = useTeamStore();
@@ -27,10 +28,24 @@ const TeamOverview = () => {
   if (!team) return null;
 
   const playersByPosition = {
-    GK: team.players.filter((p) => p.position === "GK"),
-    DEF: team.players.filter((p) => p.position === "DEF"),
-    MID: team.players.filter((p) => p.position === "MID"),
-    ATT: team.players.filter((p) => p.position === "ATT"),
+    GK: team.players.filter((p) => p.position === "Goalkeeper"),
+    DEF: team.players.filter(
+      (p) =>
+        p.position === "Right-Back" ||
+        p.position === "Centre-Back" ||
+        p.position === "Left-Back"
+    ),
+    MID: team.players.filter(
+      (p) =>
+        p.position === "Central Midfielder" ||
+        p.position === "Attacking Midfielder"
+    ),
+    ATT: team.players.filter(
+      (p) =>
+        p.position === "Right Winger" ||
+        p.position === "Left Winger" ||
+        p.position === "Striker"
+    ),
   };
 
   return (
@@ -106,7 +121,11 @@ const TeamOverview = () => {
               >
                 <TabsList className="grid w-full grid-cols-5">
                   {formations.map((formation) => (
-                    <TabsTrigger key={formation} value={formation}>
+                    <TabsTrigger
+                      key={formation}
+                      value={formation}
+                      disabled={true}
+                    >
                       {formation}
                     </TabsTrigger>
                   ))}
@@ -208,12 +227,21 @@ const TeamOverview = () => {
                                 key={player.id}
                                 className="bg-footbai-header p-3 rounded-lg flex justify-between items-center"
                               >
-                                <div>
-                                  <div className="font-medium">
-                                    {player.name}
-                                  </div>
-                                  <div className="text-xs text-gray-400">
-                                    {player.position}
+                                <div className="flex items-center gap-2">
+                                  <img
+                                    className="w-10 h-10 rounded-full object-cover"
+                                    src={playerPlaceholder}
+                                    alt=""
+                                    width={50}
+                                    height={50}
+                                  />
+                                  <div>
+                                    <div className="font-medium">
+                                      {player.name}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      {player.position}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center">

@@ -204,7 +204,7 @@ export const FormationSelector = ({
         >
           <TabsList className="grid w-full grid-cols-5">
             {formations.map((formation) => (
-              <TabsTrigger key={formation} value={formation}>
+              <TabsTrigger key={formation} value={formation} disabled={true}>
                 {formation}
               </TabsTrigger>
             ))}

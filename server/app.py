@@ -74,7 +74,7 @@ async def create_club_logo(request: LogoGenerationRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/generate_player_names", response_model=PlayerGenerationResponse)
+@app.post("/api/generate_player_names", response_model=PlayerGenerationResponse)
 async def generate_player_names(request: PlayerGenerationRequest):
     """
     Produce realistic-sounding footballer names.

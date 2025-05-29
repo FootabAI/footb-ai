@@ -1,6 +1,14 @@
 import { TeamAttributes, TeamTactic, Formation, Player , TeamStats} from "@/types";
 import {  } from "./team";
 
+type PlayerGenerationResponse = {
+  squad: Array<{
+    name: string;
+    position: string;
+  }>;
+  names: string[];
+  success: boolean;
+};
 
 export type OnboardingState = {
   // Team creation state
@@ -21,6 +29,7 @@ export type OnboardingState = {
   teamId: string;
   mainColor: string;
   teamStats: TeamStats | null;
+  nationality: string;
 
   // Actions
   setTeamName: (name: string) => void;
@@ -34,8 +43,10 @@ export type OnboardingState = {
   setColorTags: (tags: string[]) => void;
   setTactic: (tactic: TeamTactic) => void;
   setMainColor: (color: string) => void;
+  setNationality: (nationality: string) => void;
   handleAttributeChange: (attr: keyof TeamAttributes, newValue: number) => void;
   createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }, teamStats: TeamStats, attributes: TeamAttributes, tactic: TeamTactic, formation: Formation) => Promise<void>;
   resetTeamCreation: () => void;
   generateRandomPlayers: (teamId: string, teamName: string) => Player[];
+  generatePlayers: (nationality: string, withPositions: boolean) => Promise<PlayerGenerationResponse>;
 };
