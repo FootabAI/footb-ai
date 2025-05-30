@@ -27,6 +27,7 @@ import {
   CreditCard,
   Ban,
   Crosshair,
+  Trophy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRef, useState, useEffect } from "react";
@@ -136,15 +137,24 @@ const MatchSimulation = () => {
         if (event.type === "minute_update") {
           const minuteUpdate = event as MinuteUpdate;
           setMinute(minuteUpdate.minute);
-          // Update score from minute update
+          
+          // Update score and stats from minute update
           updateMatchStats({
             ...currentMatch.homeStats,
             goalsScored: minuteUpdate.score.home,
-            goalsConceded: minuteUpdate.score.away
+            goalsConceded: minuteUpdate.score.away,
+            shots: minuteUpdate.stats?.home.shots || 0,
+            shotsOnTarget: minuteUpdate.stats?.home.shotsOnTarget || 0,
+            yellowCards: minuteUpdate.stats?.home.yellowCards || 0,
+            redCards: minuteUpdate.stats?.home.redCards || 0
           }, {
             ...currentMatch.awayStats,
             goalsScored: minuteUpdate.score.away,
-            goalsConceded: minuteUpdate.score.home
+            goalsConceded: minuteUpdate.score.home,
+            shots: minuteUpdate.stats?.away.shots || 0,
+            shotsOnTarget: minuteUpdate.stats?.away.shotsOnTarget || 0,
+            yellowCards: minuteUpdate.stats?.away.yellowCards || 0,
+            redCards: minuteUpdate.stats?.away.redCards || 0
           });
           continue;
         }
@@ -177,25 +187,33 @@ const MatchSimulation = () => {
           // Add event to state
           const newEvent: ClientMatchEvent = {
             id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: matchEvent.event.type,
+            type: matchEvent.event.type as MatchEventType,
             team: matchEvent.event.team,
             description: matchEvent.event.event_description,
-            commentary: matchEvent.event.event_description, // Using event_description as commentary
+            commentary: matchEvent.event.event_description,
             minute: matchEvent.minute,
           };
 
           setMatchEvents((prev) => [...prev, newEvent]);
           addMatchEvent(newEvent);
 
-          // Update score from event
+          // Update score and stats from event
           updateMatchStats({
             ...currentMatch.homeStats,
             goalsScored: matchEvent.score.home,
-            goalsConceded: matchEvent.score.away
+            goalsConceded: matchEvent.score.away,
+            shots: matchEvent.stats?.home.shots || 0,
+            shotsOnTarget: matchEvent.stats?.home.shotsOnTarget || 0,
+            yellowCards: matchEvent.stats?.home.yellowCards || 0,
+            redCards: matchEvent.stats?.home.redCards || 0
           }, {
             ...currentMatch.awayStats,
             goalsScored: matchEvent.score.away,
-            goalsConceded: matchEvent.score.home
+            goalsConceded: matchEvent.score.home,
+            shots: matchEvent.stats?.away.shots || 0,
+            shotsOnTarget: matchEvent.stats?.away.shotsOnTarget || 0,
+            yellowCards: matchEvent.stats?.away.yellowCards || 0,
+            redCards: matchEvent.stats?.away.redCards || 0
           });
 
           // Add a small delay between events
@@ -233,8 +251,20 @@ const MatchSimulation = () => {
           away: currentMatch.awayStats.goalsScored
         },
         {
-          home: currentMatch.homeStats,
-          away: currentMatch.awayStats
+          home: {
+            ...currentMatch.homeStats,
+            shots: currentMatch.homeStats.shots || 0,
+            shotsOnTarget: currentMatch.homeStats.shotsOnTarget || 0,
+            yellowCards: currentMatch.homeStats.yellowCards || 0,
+            redCards: currentMatch.homeStats.redCards || 0
+          },
+          away: {
+            ...currentMatch.awayStats,
+            shots: currentMatch.awayStats.shots || 0,
+            shotsOnTarget: currentMatch.awayStats.shotsOnTarget || 0,
+            yellowCards: currentMatch.awayStats.yellowCards || 0,
+            redCards: currentMatch.awayStats.redCards || 0
+          }
         }
       );
 
@@ -259,6 +289,24 @@ const MatchSimulation = () => {
         // Handle minute updates
         if (event.type === "minute_update") {
           setMinute(event.minute);
+          // Update stats from minute update
+          updateMatchStats({
+            ...currentMatch.homeStats,
+            goalsScored: event.score.home,
+            goalsConceded: event.score.away,
+            shots: event.stats?.home.shots || 0,
+            shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
+            yellowCards: event.stats?.home.yellowCards || 0,
+            redCards: event.stats?.home.redCards || 0
+          }, {
+            ...currentMatch.awayStats,
+            goalsScored: event.score.away,
+            goalsConceded: event.score.home,
+            shots: event.stats?.away.shots || 0,
+            shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
+            yellowCards: event.stats?.away.yellowCards || 0,
+            redCards: event.stats?.away.redCards || 0
+          });
           continue;
         }
 
@@ -285,7 +333,7 @@ const MatchSimulation = () => {
           // Add event to state
           const newEvent: ClientMatchEvent = {
             id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: event.event.type,
+            type: event.event.type as MatchEventType,
             team: event.event.team,
             description: event.event.event_description,
             commentary: event.event.event_description,
@@ -294,6 +342,25 @@ const MatchSimulation = () => {
 
           setMatchEvents((prev) => [...prev, newEvent]);
           addMatchEvent(newEvent);
+
+          // Update stats from event
+          updateMatchStats({
+            ...currentMatch.homeStats,
+            goalsScored: event.score.home,
+            goalsConceded: event.score.away,
+            shots: event.stats?.home.shots || 0,
+            shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
+            yellowCards: event.stats?.home.yellowCards || 0,
+            redCards: event.stats?.home.redCards || 0
+          }, {
+            ...currentMatch.awayStats,
+            goalsScored: event.score.away,
+            goalsConceded: event.score.home,
+            shots: event.stats?.away.shots || 0,
+            shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
+            yellowCards: event.stats?.away.yellowCards || 0,
+            redCards: event.stats?.away.redCards || 0
+          });
 
           // Add a small delay between events
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -328,8 +395,6 @@ const MatchSimulation = () => {
   const formatMatchTime = (minutes: number) => {
     if (minutes === 45) return "45' (HT)";
     if (minutes === 90) return "90' (FT)";
-    if (minutes > 45 && minutes < 50) return `45+${minutes - 45}'`;
-    if (minutes > 90) return `90+${minutes - 90}'`;
     return `${minutes}'`;
   };
 
@@ -552,41 +617,36 @@ const MatchSimulation = () => {
                   {currentMatch.awayTeam.name}
                 </span>
               </div>
-              <div className="mb-6">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>{Math.round(currentMatch.homeStats.possession)}%</span>
-                  <span className="text-gray-400 flex items-center gap-1">
-                    <Timer size={16} />
-                    Possession
-                  </span>
-                  <span>{Math.round(currentMatch.awayStats.possession)}%</span>
-                </div>
-                <div className="flex h-2 rounded overflow-hidden">
-                  <div
-                    style={{
-                      width: `${currentMatch.homeStats.possession}%`,
-                      backgroundColor:
-                        currentMatch.homeTeam.logo.data.mainColor,
-                    }}
-                  ></div>
-                  <div
-                    style={{
-                      width: `${currentMatch.awayStats.possession}%`,
-                      backgroundColor:
-                        currentMatch.awayTeam.logo.data.mainColor,
-                    }}
-                  ></div>
+
+              {/* Goals */}
+              <div className="mb-4">
+                <div className="text-sm text-gray-400 mb-2">Goals</div>
+                <div className="flex justify-between items-center">
+                  <div className="text-xl font-semibold">
+                    {currentMatch.homeStats.goalsScored || 0}
+                  </div>
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <Trophy size={16} />
+                    Goals
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {currentMatch.awayStats.goalsScored || 0}
+                  </div>
                 </div>
               </div>
 
+              <Separator className="my-4 bg-footbai-header" />
+
+              {/* Shots */}
               <div className="mb-4">
+                <div className="text-sm text-gray-400 mb-2">Shots</div>
                 <div className="flex justify-between items-center mb-2">
                   <div className="text-xl font-semibold">
                     {currentMatch.homeStats.shots || 0}
                   </div>
                   <div className="text-sm text-gray-400 flex items-center gap-1">
                     <Crosshair size={16} />
-                    Shots
+                    Total
                   </div>
                   <div className="text-xl font-semibold">
                     {currentMatch.awayStats.shots || 0}
@@ -608,58 +668,31 @@ const MatchSimulation = () => {
 
               <Separator className="my-4 bg-footbai-header" />
 
+              {/* Cards */}
               <div>
+                <div className="text-sm text-gray-400 mb-2">Cards</div>
                 <div className="flex justify-between items-center mb-2">
-                  <div className="text-sm">
-                    {currentMatch.homeStats.fouls || 0}
-                  </div>
-                  <div className="text-xs text-gray-400 flex items-center gap-1">
-                    <Ban size={16} />
-                    Fouls
-                  </div>
-                  <div className="text-sm">
-                    {currentMatch.awayStats.fouls || 0}
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
                   <div className="text-sm">
                     {currentMatch.homeStats.yellowCards || 0}
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-1">
                     <div className="w-3 h-4 bg-yellow-500 rounded-sm" />
-                    Yellow Cards
+                    Yellow
                   </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.yellowCards || 0}
                   </div>
                 </div>
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-center">
                   <div className="text-sm">
                     {currentMatch.homeStats.redCards || 0}
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-1">
                     <div className="w-3 h-4 bg-red-500 rounded-sm" />
-                    Red Cards
+                    Red
                   </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.redCards || 0}
-                  </div>
-                </div>
-              </div>
-
-              <Separator className="my-4 bg-footbai-header" />
-
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-xl font-semibold">
-                    {currentMatch.homeStats.corners || 0}
-                  </div>
-                  <div className="text-sm text-gray-400 flex items-center gap-1">
-                    <Flag size={16} />
-                    Corners
-                  </div>
-                  <div className="text-xl font-semibold">
-                    {currentMatch.awayStats.corners || 0}
                   </div>
                 </div>
               </div>

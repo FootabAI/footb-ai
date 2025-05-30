@@ -118,6 +118,7 @@ class MatchEngineService:
         print(f"Away ({away_tactic}): fit={away['fit']}, multiplier={away['multiplier']}")
         
         # Initialize event dictionary with correct minute range
+        # Include 45/90 for hard-coded events but only generate random events up to 44/89
         start_minute = 46 if half == 2 else 1
         end_minute = 90 if half == 2 else 45
         event_dict = defaultdict(list)
@@ -130,9 +131,9 @@ class MatchEngineService:
             events.extend([f"{event_type}_Home"] * home[event_type.lower()])
             events.extend([f"{event_type}_Away"] * away[event_type.lower()])
         
-        # Distribute events randomly across minutes
+        # Distribute events randomly across minutes, excluding 45 and 90
         for event in events:
-            random_minute = random.randint(start_minute, end_minute)
+            random_minute = random.randint(start_minute, end_minute - 1)
             event_dict[random_minute].append(event)
         
         return dict(event_dict)
@@ -173,6 +174,22 @@ class MatchEngineService:
         events_json = []
         current_score = context.get("score", {"home": 0, "away": 0}) if context else {"home": 0, "away": 0}
         
+        # Initialize stats tracking from context or default to 0
+        stats = {
+            "home": {
+                "shots": context.get("stats", {}).get("home", {}).get("shots", 0) if context else 0,
+                "shotsOnTarget": context.get("stats", {}).get("home", {}).get("shotsOnTarget", 0) if context else 0,
+                "yellowCards": context.get("stats", {}).get("home", {}).get("yellowCards", 0) if context else 0,
+                "redCards": context.get("stats", {}).get("home", {}).get("redCards", 0) if context else 0
+            },
+            "away": {
+                "shots": context.get("stats", {}).get("away", {}).get("shots", 0) if context else 0,
+                "shotsOnTarget": context.get("stats", {}).get("away", {}).get("shotsOnTarget", 0) if context else 0,
+                "yellowCards": context.get("stats", {}).get("away", {}).get("yellowCards", 0) if context else 0,
+                "redCards": context.get("stats", {}).get("away", {}).get("redCards", 0) if context else 0
+            }
+        }
+        
         # Event type mapping
         event_mapping = {
             "Shots_Home": {"type": "shot", "team": "home", "desc": "Powerful shot from home side!"},
@@ -193,30 +210,49 @@ class MatchEngineService:
             for event_str in minute_events:
                 if event_str in event_mapping:
                     event_info = event_mapping[event_str]
+                    team = event_info["team"]
+                    
+                    # Update stats based on event type
+                    if event_info["type"] == "shot":
+                        stats[team]["shots"] += 1
+                    elif event_info["type"] == "target":
+                        stats[team]["shotsOnTarget"] += 1
+                    elif event_info["type"] == "yellow_card":
+                        stats[team]["yellowCards"] += 1
+                    elif event_info["type"] == "red_card":
+                        stats[team]["redCards"] += 1
                     
                     # Update score for goals
                     if event_info["type"] == "goal":
-                        current_score[event_info["team"]] += 1
+                        current_score[team] += 1
                     
                     # Create event object
                     event_obj = {
                         "type": "event",
                         "minute": minute,
                         "event": {
-                            "team": event_info["team"],
+                            "team": team,
                             "type": event_info["type"],
                             "event_description": event_info["desc"],
                             "audio_url": f"Commentary for {event_info['desc']}"
                         },
-                        "score": current_score.copy()
+                        "score": current_score.copy(),
+                        "stats": {
+                            "home": stats["home"].copy(),
+                            "away": stats["away"].copy()
+                        }
                     }
                     events_json.append(event_obj)
             
-            # Always add minute update
+            # Always add minute update with current stats
             minute_update = {
                 "type": "minute_update",
                 "minute": minute,
-                "score": current_score.copy()
+                "score": current_score.copy(),
+                "stats": {
+                    "home": stats["home"].copy(),
+                    "away": stats["away"].copy()
+                }
             }
             events_json.append(minute_update)
             
@@ -231,7 +267,11 @@ class MatchEngineService:
                         "event_description": "Half-time whistle!",
                         "audio_url": "Commentary for half-time"
                     },
-                    "score": current_score.copy()
+                    "score": current_score.copy(),
+                    "stats": {
+                        "home": stats["home"].copy(),
+                        "away": stats["away"].copy()
+                    }
                 }
                 events_json.append(half_time_event)
             elif minute == 90:
@@ -244,7 +284,11 @@ class MatchEngineService:
                         "event_description": "Full-time whistle!",
                         "audio_url": "Commentary for full-time"
                     },
-                    "score": current_score.copy()
+                    "score": current_score.copy(),
+                    "stats": {
+                        "home": stats["home"].copy(),
+                        "away": stats["away"].copy()
+                    }
                 }
                 events_json.append(full_time_event)
         

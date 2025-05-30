@@ -12,14 +12,28 @@ export interface ServerEvent {
   type: "event";
   minute: number;
   event: {
-    type: MatchEventType;
     team: string;
+    type: string;
     event_description: string;
     audio_url?: string;
   };
   score: {
     home: number;
     away: number;
+  };
+  stats?: {
+    home: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+    away: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
   };
 }
 
@@ -32,6 +46,20 @@ export interface MinuteUpdate {
   score: {
     home: number;
     away: number;
+  };
+  stats?: {
+    home: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+    away: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
   };
 }
 

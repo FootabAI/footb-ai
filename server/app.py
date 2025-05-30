@@ -308,12 +308,18 @@ async def continue_match(request: Request):
                 away_attrs=data["away_attrs"],
                 away_tactic=away_tactic,
                 half=2,
-                context={"score": current_score}
+                context={
+                    "score": current_score,
+                    "stats": current_stats
+                }
             )
             print(f"Generated event dict for second half: {json.dumps(event_dict, indent=2)}")
 
             # Get commentary for events
-            events_json = match_engine.generate_simple_events(event_dict, context={"score": current_score})
+            events_json = match_engine.generate_simple_events(event_dict, context={
+                "score": current_score,
+                "stats": current_stats
+            })
             print(f"Generated {len(events_json)} events for second half")
 
         except Exception as e:

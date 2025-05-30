@@ -125,33 +125,6 @@ const MatchSummary = () => {
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-6">
-            {/* Possession */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-lg font-semibold">
-                  {formatStat(Math.round(homeStats.possession))}%
-                </div>
-                <div className="text-sm text-gray-400">Possession</div>
-                <div className="text-lg font-semibold">
-                  {formatStat(Math.round(awayStats.possession))}%
-                </div>
-              </div>
-              <div className="flex h-2 rounded overflow-hidden">
-                <div
-                  style={{
-                    width: `${homeStats.possession}%`,
-                    backgroundColor: homeTeam.logo.data.mainColor,
-                  }}
-                ></div>
-                <div
-                  style={{
-                    width: `${awayStats.possession}%`,
-                    backgroundColor: awayTeam.logo.data.mainColor,
-                  }}
-                ></div>
-              </div>
-            </div>
-
             {/* Shots */}
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -224,88 +197,8 @@ const MatchSummary = () => {
 
             <Separator className="bg-footbai-header" />
 
-            {/* Passes */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-lg font-semibold">
-                  {formatStat(homeStats.passes)}
-                </div>
-                <div className="text-sm text-gray-400">Passes</div>
-                <div className="text-lg font-semibold">
-                  {formatStat(awayStats.passes)}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <StatBar
-                  value={formatStat(homeStats.passes)}
-                  maxValue={Math.max(
-                    formatStat(homeStats.passes),
-                    formatStat(awayStats.passes),
-                    1
-                  )}
-                  color={team.logo.data.mainColor || "#62df6e"}
-                  showValue={false}
-                />
-                <StatBar
-                  value={formatStat(awayStats.passes)}
-                  maxValue={Math.max(
-                    formatStat(homeStats.passes),
-                    formatStat(awayStats.passes),
-                    1
-                  )}
-                  color={awayTeam.logo.data.mainColor || "#ff4d4d"}
-                  showValue={false}
-                />
-              </div>
-            </div>
-
-            {/* Pass accuracy */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-lg font-semibold">
-                  {Math.round(formatStat(homeStats.passAccuracy))}%
-                </div>
-                <div className="text-sm text-gray-400">Pass Accuracy</div>
-                <div className="text-lg font-semibold">
-                  {Math.round(formatStat(awayStats.passAccuracy))}%
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <StatBar
-                  value={formatStat(homeStats.passAccuracy)}
-                  maxValue={100}
-                  color={homeTeam.logo.data.mainColor || "#62df6e"}
-                  showValue={false}
-                />
-                <StatBar
-                  value={formatStat(awayStats.passAccuracy)}
-                  maxValue={100}
-                  color={awayTeam.logo.data.mainColor || "#ff4d4d"}
-                  showValue={false}
-                />
-              </div>
-            </div>
-
-            <Separator className="bg-footbai-header" />
-
-            {/* Cards & Fouls */}
+            {/* Cards */}
             <div className="space-y-4">
-              {/* Fouls */}
-              <div className="flex justify-between items-center">
-                <div className="text-xl font-semibold">
-                  {formatStat(homeStats.fouls)}
-                </div>
-                <div className="text-sm text-gray-400 flex items-center gap-1">
-                  <Ban size={16} />
-                  Fouls
-                </div>
-                <div className="text-xl font-semibold">
-                  {formatStat(awayStats.fouls)}
-                </div>
-              </div>
-
-              {/* Cards */}
-
               {/* Yellow Cards */}
               <div className="flex justify-between items-center">
                 <div className="text-xl font-semibold">
