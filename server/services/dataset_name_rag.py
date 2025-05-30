@@ -6,7 +6,7 @@ import pandas as pd, pathlib, random
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
-_DATA_PATH = pathlib.Path(__file__).with_suffix("").parent / "../fifa_players.csv"
+_DATA_PATH = pathlib.Path(__file__).with_suffix("").parent / "../data/fifa_players.csv"
 
 # adjective → country mapping (extend as needed)
 _ADJ_TO_COUNTRY = {

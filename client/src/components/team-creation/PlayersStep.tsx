@@ -34,6 +34,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
 
   const { isGenerating, progress, startGeneration, stopGeneration, playerImages } = useBackgroundImageStore();
   const [isLoading, setIsLoading] = useState(false);
+
   const [realTimeUpdates, setRealTimeUpdates] = useState(false);
 
   // Set up real-time listener for player updates
@@ -68,10 +69,12 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
     };
   }, [stopGeneration]);
 
+
   const handleGeneratePlayers = useCallback(async () => {
     if (isLoading || isGenerating) return;
     
     setIsLoading(true);
+    setPlayers([]);
 
     try {
       if (nationality === "") {
@@ -103,6 +106,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
 
       // Set players immediately
       setPlayers(generatedPlayers);
+
       onPlayersChange(generatedPlayers);
 
       // Step 2: Create/update team document in Firestore
@@ -134,6 +138,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
       toast.error("Failed to generate players. Please try again.");
     } finally {
       setIsLoading(false);
+      setGeneratingPlayerIndex(null);
     }
   }, [
     isLoading, 
@@ -154,6 +159,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
     stopGeneration
   ]);
 
+
   const getPlayerImageSrc = (player: Player) => {
     if (player.imageUrl) {
       return player.imageUrl;
@@ -163,6 +169,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
     }
     return null;
   };
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -243,6 +250,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
             {players.map((player) => {
               const imageSrc = getPlayerImageSrc(player);
               const hasImage = Boolean(imageSrc);
@@ -281,6 +289,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
                         <h4 className="font-medium">{player.name}</h4>
                         <p className="text-sm text-muted-foreground">
                           {player.position}
+
                         </p>
                       </div>
                       <div
@@ -288,12 +297,14 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
                         style={{ color: mainColor }}
                       >
                         {player.rating}
+
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
+
           </div>
           
           {isGenerating && (
@@ -322,6 +333,7 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
             >
               Continue
             </Button>
+
           </div>
         </div>
       )}

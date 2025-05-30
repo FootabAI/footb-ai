@@ -1,110 +1,85 @@
 from __future__ import annotations
-import re, random, torch
-from typing import List, Optional, Dict, Tuple
+from typing import Optional, Dict
 
-# ─── 1. HF → LangChain wrapper ────────────────────────────────────────────
-def build_local_llm(
-    model_name: str = "microsoft/phi-2",
-    temperature: float = 0.7,
-    max_new_tokens: int = 90,
-):
-    from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-    from langchain_community.llms import HuggingFacePipeline
-
-    tok = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto")
-    model.to("cuda" if torch.cuda.is_available() else "cpu")
-
-    gen_pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tok,
-        temperature=temperature,
-        max_new_tokens=max_new_tokens,
-        do_sample=True,
-        pad_token_id=tok.eos_token_id,
-    )
-    return HuggingFacePipeline(pipeline=gen_pipe, model_kwargs={})
-
-
-# ─── 2. PlayerNameService ────────────────────────────────────────────────
-from langchain_core.language_models import BaseLanguageModel
-from langchain.prompts import PromptTemplate
+import torch
+import random
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
 
 
 class PlayerNameService:
     DEFAULT_POSITIONS = [
-        "Goalkeeper",
-        "Right-Back", "Centre-Back", "Centre-Back", "Left-Back",
-        "Central Midfielder", "Central Midfielder", "Attacking Midfielder",
-        "Right Winger", "Left Winger", "Striker",
+        "Goalkeeper", "Right-Back", "Centre-Back", "Left-Back",
+        "Central Midfielder", "Attacking Midfielder",
+        "Right Winger", "Left Winger", "Striker"
     ]
-    _NAME_RE = re.compile(r"\b[A-Z][a-zA-ZÀ-ÖØ-öø-ÿ'-]+ [A-Z][a-zA-ZÀ-ÖØ-öø-ÿ'-]+\b")
 
-    def __init__(self, llm: BaseLanguageModel | None = None, temperature: float = 0.7):
-        self.llm = llm or build_local_llm(temperature=temperature)
-
-    # ─── core generator ────────────────────────────────────────────
-    def generate_player_names(
+    def __init__(
         self,
-        nationality: Optional[str] = None,
-        with_positions: bool = True,
-    ) -> List[Dict[str, str]]:
-
-        loc_line = f"Nationality/style: {nationality}" if nationality else ""
-
-        prompt = PromptTemplate(
-            template=f"""
-You are a creative sports-name generator.
-
-### Task
-Generate **11 DISTINCT** football player names as a **comma-separated list**.
-
-{loc_line}
-
-### Must-follow rules
-1. Each entry = first name + space + last name.
-2. No real-world famous players.
-3. Reflect nationality if provided.
-4. Return **only** the 11 names, nothing else.
-
-### Your output
-""",
-            input_variables=[],
+        model_name: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        adapter_dir: str = "name-lora_tinyllama",
+        temperature: float = 1.0,
+    ) -> None:
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        base_model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16,
+            device_map="auto"
         )
+        model = PeftModel.from_pretrained(base_model, adapter_dir)
+        self.model = model.merge_and_unload()
+        self.temperature = temperature
 
-        raw = (prompt | self.llm).invoke({}).strip()
-
-        # ── regex-extract exactly 11 names ───────────────────────
-        names = self._NAME_RE.findall(raw)
-        if len(names) < 11:
-            filler_first = ["Ole", "Bjørn", "Sverre", "Knut", "Eirik"]
-            filler_last  = ["Haugstad", "Eiriksson", "Solberg", "Lund", "Halvorsen"]
-            while len(names) < 11:
-                names.append(f"{random.choice(filler_first)} {random.choice(filler_last)}")
-        names = names[:11]
-
-        return self._attach_positions(names) if with_positions else \
-               [{"name": n} for n in names]
-
-    # convenience
-    def generate_team(
+    def generate_player(
         self,
-        nationality: Optional[str] = None,
-        with_positions: bool = True,
-    ) -> Tuple[List[Dict[str, str]], List[str]]:
-        squad = self.generate_player_names(nationality, with_positions)
-        return squad, [p["name"] for p in squad]
+        nationality: Optional[str] = "English",
+        with_position: bool = False,
+    ) -> Dict[str, str]:
+        """
+        Generate a single fictional footballer name.
+        Optionally attach a random position.
+        """
 
-    # helper
-    def _attach_positions(self, names: List[str]) -> List[Dict[str, str]]:
-        return [
-            {"name": n, "position": pos}
-            for n, pos in zip(names, self.DEFAULT_POSITIONS)
-        ]
+        prompt = f"""You are a creative football name assistant.
+
+Rules:
+- Generate ONE unique and realistic footballer name.
+- The name can not be a real life footballer
+- The name must sound culturally plausible for a footballer from {nationality}.
+- Use natural first and last name combinations.
+- Output ONLY the name in double quotes, no explanations or code.
+
+Your turn:
+"
+"""
+
+        # Tokenize and generate
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+
+        with torch.no_grad():
+            output = self.model.generate(
+                **inputs,
+                max_new_tokens=10,
+                temperature=self.temperature,
+                top_p=0.95,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+
+        decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
+        name = decoded[len(prompt):].split('"')[0].strip()
+        print(name)
+
+        if with_position:
+            return {
+                "name": name,
+                "position": random.choice(self.DEFAULT_POSITIONS)
+            }
+        else:
+            return {"name": name}
 
 
 # ─── 3. Self-test ────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    svc = PlayerNameService()
-    print(svc.generate_team(nationality="Norwegian")[0])
+    service = PlayerNameService()
+    print(service.generate_player(nationality="Norwegian"))

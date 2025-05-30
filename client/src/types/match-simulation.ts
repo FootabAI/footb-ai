@@ -9,11 +9,32 @@ import { MatchEventType } from './match';
  * Represents an event received from the server during match simulation
  */
 export interface ServerEvent {
-  type: MatchEventType;
-  team: string;
-  description: string;
-  commentary: string;
-  audio_url?: string;
+  type: "event";
+  minute: number;
+  event: {
+    team: string;
+    type: string;
+    event_description: string;
+    audio_url?: string;
+  };
+  score: {
+    home: number;
+    away: number;
+  };
+  stats?: {
+    home: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+    away: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+  };
 }
 
 /**
@@ -22,9 +43,23 @@ export interface ServerEvent {
 export interface MinuteUpdate {
   type: "minute_update";
   minute: number;
+  score: {
+    home: number;
+    away: number;
+  };
   stats?: {
-    home: MatchStats;
-    away: MatchStats;
+    home: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+    away: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
   };
 }
 
@@ -48,12 +83,12 @@ export interface MatchEventUpdate {
 /**
  * Union type for all possible match updates
  */
-export type MatchUpdate = MinuteUpdate | MatchEventUpdate;
+export type MatchUpdate = ServerEvent | MinuteUpdate;
 
 /**
  * Response type for match simulation API
  */
 export interface MatchSimulationResponse {
-  match_id: string;
-  events: AsyncIterable<MatchEventUpdate>;
+  matchId: string;
+  events: AsyncIterableIterator<MatchUpdate>;
 } 

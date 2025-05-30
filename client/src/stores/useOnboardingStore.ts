@@ -20,7 +20,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   themeTags: [],
   colorTags: [],
   attributes: DEFAULT_ATTRIBUTES,
-  tactic: "Tiki-Taka",
+  tactic: "tiki-taka",
   pointsLeft: TOTAL_POINTS,
   isLoading: false,
   error: null,
@@ -92,6 +92,9 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         mainColor,
         players,
         teamId,
+        teamStats,
+        nationality,
+
       } = get();
 
       const user = auth.currentUser;
@@ -111,6 +114,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
       const finalName = logoType === "manual" ? teamName : customizedName;
 
+
       // Get existing team data to preserve player images
       const teamRef = doc(db, "teams", teamId);
       const existingTeam = await getDoc(teamRef);
@@ -127,6 +131,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       });
 
       const updatedTeam: Team & { userId: string } = {
+
         id: teamId,
         name: finalName,
         logo: {
@@ -180,7 +185,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       themeTags: [],
       colorTags: [],
       attributes: DEFAULT_ATTRIBUTES,
-      tactic: "Tiki-Taka",
+      tactic: "tiki-taka",
       pointsLeft: TOTAL_POINTS,
       teamStats: DEFAULT_TEAM_STATS,
       nationality: "",
