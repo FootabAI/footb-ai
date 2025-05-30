@@ -54,13 +54,12 @@ USE_TTS = False  # Central control for TTS
 logo_service = LogoService(reference_images_dir="images")
 player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
 tts_service = TTSService()
-player_name_service = PlayerNameService(llm=build_local_llm())
+player_name_service = PlayerNameService()
 
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
 
-player_name_service = PlayerNameService()
 
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
