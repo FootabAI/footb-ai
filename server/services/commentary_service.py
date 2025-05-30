@@ -7,12 +7,23 @@ from datetime import datetime
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs
+import uuid
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Initialize ElevenLabs client
+elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+
+# Create temp_audio directory if it doesn't exist
+temp_audio_dir = Path("temp_audio")
+temp_audio_dir.mkdir(exist_ok=True)
 
 @dataclass
 class MatchContext:
@@ -36,19 +47,68 @@ class EventContext:
     stats: Dict[str, Dict[str, int]]
 
 class CommentaryService:
-    def __init__(self, window_size: int = 5):
+    def __init__(self, window_size: int = 5, use_llm: bool = True, use_tts: bool = True):
         """Initialize the commentary service with a sliding window.
         
         Args:
             window_size: Number of recent events to keep in context window
+            use_llm: Whether to use LLM for commentary generation
+            use_tts: Whether to use TTS for audio generation
         """
         print("\n=== Initializing CommentaryService ===")
         print(f"Window size: {window_size}")
+        print(f"Use LLM: {use_llm}")
+        print(f"Use TTS: {use_tts}")
         self.window_size = window_size
         self.context_window = deque(maxlen=window_size)
         self.match_context: Optional[MatchContext] = None
         self._commentary_cache = {}  # Cache for generated commentary
+        self._voice_id = "U7dUxWHOyXQdhm6SPVhy"  # Custom commentator voice ID
+        self.use_llm = use_llm
+        self.use_tts = use_tts
         
+    def _generate_audio(self, text: str) -> str:
+        """Generate audio file for commentary using ElevenLabs.
+        
+        Args:
+            text: The commentary text to convert to speech
+            
+        Returns:
+            Path to the generated audio file
+        """
+        try:
+            print(f"\nGenerating audio for: {text}")
+            response = elevenlabs_client.text_to_speech.convert(
+                voice_id=self._voice_id,
+                output_format="mp3_44100_128",  # Changed to a more widely supported format
+                text=text,
+                model_id="eleven_turbo_v2_5",
+                voice_settings=VoiceSettings(
+                    stability=0.05,  # expressiveness
+                    similarity_boost=0.2,  # Lower for more dramatic variation
+                    style=0.99,  # Maximum style for dramatic delivery
+                    use_speaker_boost=True,
+                    speed=1.2  # Maximum allowed speed for excitement
+                ),
+            )
+
+            # Generate a unique file name for the output MP3 file
+            audio_filename = f"{uuid.uuid4()}.mp3"
+            audio_path = temp_audio_dir / audio_filename
+
+            # Writing the audio to a file
+            with open(audio_path, "wb") as f:
+                for chunk in response:
+                    if chunk:
+                        f.write(chunk)
+
+            print(f"Generated audio file: {audio_filename}")
+            return f"/audio/{audio_filename}"  # Return the URL path for the audio file
+            
+        except Exception as e:
+            print(f"Error generating audio: {str(e)}")
+            return None
+
     def set_match_context(self, context: MatchContext):
         """Set the current match context."""
         print("\n=== Setting Match Context ===")
@@ -81,6 +141,16 @@ class CommentaryService:
                 
             print(f"Event at {event['minute']}': {event['event']['type']} for {event['event']['team']}")
             
+            # Only generate audio for significant events
+            event_type = event["event"]["type"]
+            should_generate_audio = event_type in [
+                "goal",  # Goals are always significant
+                "red_card",  # Red cards are always significant
+                "yellow_card",  # Yellow cards are significant
+                "half-time",  # Half time is significant
+                "full-time"  # Full time is significant
+            ]
+            
             event_context = EventContext(
                 event_type=event["event"]["type"],
                 team=event["event"]["team"],
@@ -88,7 +158,7 @@ class CommentaryService:
                 score=event["score"],
                 stats=event["stats"]
             )
-            event_contexts.append((event, event_context))
+            event_contexts.append((event, event_context, should_generate_audio))
             
             # Add to context window
             self.context_window.append(event_context)
@@ -96,12 +166,22 @@ class CommentaryService:
         # Generate commentary for all events in batch
         if event_contexts:
             print("\nGenerating batch commentary...")
-            commentaries = self._generate_batch_commentary([ec for _, ec in event_contexts])
             
-            # Update events with generated commentary
-            for (event, _), (formal, narrative) in zip(event_contexts, commentaries):
+            if self.use_llm:
+                commentaries = self._generate_batch_commentary([ec for _, ec, _ in event_contexts])
+            else:
+                # Use default commentary if LLM is disabled
+                commentaries = [self._get_default_commentary(ec) for _, ec, _ in event_contexts]
+            
+            # Update events with generated commentary and audio
+            for (event, _, should_generate_audio), (formal, narrative) in zip(event_contexts, commentaries):
                 event["event"]["event_description"] = formal
-                event["event"]["audio_url"] = narrative
+                # Only generate audio for significant events if TTS is enabled
+                if should_generate_audio and self.use_tts:
+                    audio_url = self._generate_audio(narrative)
+                    event["event"]["audio_url"] = audio_url
+                else:
+                    event["event"]["audio_url"] = None
                 
         return events
         

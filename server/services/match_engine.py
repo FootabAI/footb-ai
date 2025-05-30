@@ -9,7 +9,7 @@ from .commentary_service import CommentaryService, MatchContext
 from typing import Dict, Any
 
 class MatchEngineService:
-    def __init__(self):
+    def __init__(self, use_llm: bool = True, use_tts: bool = True):
         self.base_path = Path(__file__).parent
         
         # Load existing data files
@@ -22,8 +22,12 @@ class MatchEngineService:
         with open(tactics_path, "r") as f:
             self.tactics_data = json.load(f)
             
-        # Initialize commentary service
-        self.commentary_service = CommentaryService(window_size=5)
+        # Initialize commentary service with LLM and TTS options
+        self.commentary_service = CommentaryService(
+            window_size=5,
+            use_llm=use_llm,
+            use_tts=use_tts
+        )
     
     def set_match_context(self, home_team: str, away_team: str, 
                          home_tactic: str, away_tactic: str):
@@ -415,7 +419,7 @@ class MatchEngineService:
         }
 
 # Global instance for backward compatibility
-match_engine = MatchEngineService()
+match_engine = MatchEngineService(use_llm=True, use_tts=True)
 
 # Test function (for standalone testing)
 def test_simulation():
@@ -425,8 +429,11 @@ def test_simulation():
     OPPONENT_ATTRS = {"passing": 100, "dribbling": 100, "shooting": 100,
                       "defending": 100, "pace": 100, "physicality": 100}
     
+    # Initialize match engine with test settings
+    test_engine = MatchEngineService(use_llm=True, use_tts=True)
+    
     # Generate events
-    event_dict = match_engine.simulate_half(
+    event_dict = test_engine.simulate_half(
         PLAYER_ATTRS, "tiki-taka", 
         OPPONENT_ATTRS, "gegenpressing"
     )
@@ -435,8 +442,7 @@ def test_simulation():
     print(event_dict)
     
     # Test loading JSON file
-    import asyncio
-    events_json = asyncio.run(match_engine.call_llm_for_commentary(event_dict))
+    events_json = asyncio.run(test_engine.call_llm_for_commentary(event_dict))
     print(f"\n=== LOADED {len(events_json)} EVENTS ===")
     print(f"First event: {events_json[0] if events_json else 'None'}")
 

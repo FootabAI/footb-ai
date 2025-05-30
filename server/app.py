@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import uvicorn
@@ -45,9 +45,21 @@ temp_audio_dir.mkdir(exist_ok=True)
 # Mount the temp_audio directory to serve audio files
 app.mount("/audio", StaticFiles(directory="temp_audio"), name="audio")
 
+# Custom route to serve audio files with correct MIME type
+@app.get("/audio/{filename}")
+async def get_audio(filename: str):
+    audio_path = temp_audio_dir / filename
+    if not audio_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(
+        audio_path,
+        media_type="audio/mpeg",
+        filename=filename
+    )
 
 # Global settings
-USE_LLM = False  # Central control for LLM commentary
+USE_LLM = True  # Central control for LLM commentary
+USE_TTS = True   # Central control for TTS audio generation
 
 # Initialize services
 logo_service = LogoService(reference_images_dir="images")
@@ -124,9 +136,9 @@ async def simulate_match_new(request: Request):
         if not all([user_team, opponent_team, match_id]):
             raise HTTPException(status_code=400, detail="Missing required data")
         
-        # Initialize match engine
+        # Initialize match engine with global settings
         from services.match_engine import MatchEngineService
-        match_engine = MatchEngineService()
+        match_engine = MatchEngineService(use_llm=USE_LLM, use_tts=USE_TTS)
         
         # Set match context for commentary
         match_engine.set_match_context(
@@ -241,9 +253,9 @@ async def continue_match(request: Request):
         print(f"Away Tactic: {away_tactic}")
         print(f"Formation: {formation}")
 
-        # Initialize match engine
+        # Initialize match engine with global settings
         from services.match_engine import MatchEngineService
-        match_engine = MatchEngineService()
+        match_engine = MatchEngineService(use_llm=USE_LLM, use_tts=USE_TTS)
 
         # Set match context for commentary
         match_engine.set_match_context(

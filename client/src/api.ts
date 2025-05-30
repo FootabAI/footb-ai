@@ -5,10 +5,14 @@ import { MatchEventUpdate, MatchSimulationResponse, MatchUpdate } from './types/
 export const API_URL = "http://127.0.0.1:8000";
 
 // Helper function to ensure audio URLs are absolute
-const ensureAbsoluteUrl = (url: string | undefined) => {
-  if (!url) return undefined;
+const ensureAbsoluteUrl = (url: string | undefined | null) => {
+  if (url === null || url === undefined) return null;
   if (url.startsWith('http')) return url;
-  return `${API_URL}${url}`;
+  // Handle both /audio/ and audio/ paths
+  if (url.startsWith('/audio/')) {
+    return `${API_URL}${url}`;
+  }
+  return `${API_URL}/audio/${url}`;
 };
 
 // Types
@@ -437,38 +441,50 @@ export const continueMatch = async (
     throw new Error('Failed to get response reader');
   }
 
+  const iterator: MatchEventIterator = {
+    remainingEvents: [],
+    async next(): Promise<IteratorResult<MatchUpdate>> {
+      // If we have remaining events, return the next one
+      if (this.remainingEvents.length > 0) {
+        const event = this.remainingEvents.shift()!;
+        return { done: false, value: event };
+      }
+
+      const { done, value } = await reader.read();
+      if (done) {
+        return { done: true, value: undefined };
+      }
+
+      const text = new TextDecoder().decode(value);
+      const lines = text.split('\n').filter(Boolean);
+      
+      if (lines.length === 0) {
+        return { done: false, value: null };
+      }
+
+      try {
+        // Parse the batch of events
+        const batch = JSON.parse(lines[0]).batch;
+        if (Array.isArray(batch) && batch.length > 0) {
+          // Return the first event from the batch
+          const event = batch[0];
+          // Store remaining events for next iteration
+          this.remainingEvents = batch.slice(1);
+          return { done: false, value: event };
+        }
+        return { done: false, value: null };
+      } catch (e) {
+        console.error('Error parsing event:', e);
+        return { done: false, value: null };
+      }
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    }
+  };
+
   return {
     matchId: matchId,
-    events: {
-      [Symbol.asyncIterator]() {
-        const iterator: AsyncIterableIterator<MatchUpdate> = {
-          async next(): Promise<IteratorResult<MatchUpdate>> {
-            const { done, value } = await reader.read();
-            if (done) {
-              return { done: true, value: undefined };
-            }
-
-            const text = new TextDecoder().decode(value);
-            const events = text.split('\n').filter(Boolean);
-            
-            if (events.length === 0) {
-              return { done: false, value: null };
-            }
-
-            try {
-              const event = JSON.parse(events[0]);
-              return { done: false, value: event };
-            } catch (e) {
-              console.error('Error parsing event:', e);
-              return { done: false, value: null };
-            }
-          },
-          [Symbol.asyncIterator]() {
-            return this;
-          }
-        };
-        return iterator;
-      }
-    } as AsyncIterableIterator<MatchUpdate>
+    events: iterator
   };
 };
