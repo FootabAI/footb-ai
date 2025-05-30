@@ -24,13 +24,32 @@ export type MatchEventType =
  * Represents an event that occurs during a match
  */
 export interface MatchEvent {
-  id: string;
-  type: MatchEventType;
-  team: string;
-  description: string;
+  type: string;
   minute: number;
-  commentary: string;
-  audio_url?: string; // Optional audio URL for TTS commentary
+  event: {
+    team: string;
+    type: string;
+    event_description: string;  // Formal, factual description for UI display
+    audio_url?: string;        // Engaging, human-like text for future TTS use
+  };
+  score: {
+    home: number;
+    away: number;
+  };
+  stats: {
+    home: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+    away: {
+      shots: number;
+      shotsOnTarget: number;
+      yellowCards: number;
+      redCards: number;
+    };
+  };
 }
 
 /**

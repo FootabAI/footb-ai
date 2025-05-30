@@ -205,7 +205,7 @@ const MatchSimulation = () => {
           }
 
           // Log event
-          console.log(`[${matchEvent.minute}'] ${matchEvent.event.event_description}`);
+          console.log(`[${matchEvent.minute}'], event_description: ${matchEvent.event.event_description}, audio_url: ${matchEvent.event.audio_url}`);
 
           // Add event to state
           const newEvent: ClientMatchEvent = {

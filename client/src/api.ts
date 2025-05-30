@@ -206,6 +206,10 @@ export const generatePlayerImages = async (teamData: {name: string, position: st
   };
 };
 
+interface MatchEventIterator extends AsyncIterableIterator<MatchUpdate> {
+  remainingEvents: MatchUpdate[];
+}
+
 export const startMatchSimulation = async (
   matchId: string,
   userTeam: Team,
@@ -321,42 +325,51 @@ export const startMatchSimulationNew = async (
     throw new Error('Failed to get response reader');
   }
 
+  const iterator: MatchEventIterator = {
+    remainingEvents: [],
+    async next(): Promise<IteratorResult<MatchUpdate>> {
+      // If we have remaining events, return the next one
+      if (this.remainingEvents.length > 0) {
+        const event = this.remainingEvents.shift()!;
+        return { done: false, value: event };
+      }
+
+      const { done, value } = await reader.read();
+      if (done) {
+        return { done: true, value: undefined };
+      }
+
+      const text = new TextDecoder().decode(value);
+      const lines = text.split('\n').filter(Boolean);
+      
+      if (lines.length === 0) {
+        return { done: false, value: null };
+      }
+
+      try {
+        // Parse the batch of events
+        const batch = JSON.parse(lines[0]).batch;
+        if (Array.isArray(batch) && batch.length > 0) {
+          // Return the first event from the batch
+          const event = batch[0];
+          // Store remaining events for next iteration
+          this.remainingEvents = batch.slice(1);
+          return { done: false, value: event };
+        }
+        return { done: false, value: null };
+      } catch (e) {
+        console.error('Error parsing event:', e);
+        return { done: false, value: null };
+      }
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    }
+  };
+
   return {
     matchId: matchId,
-    events: {
-      [Symbol.asyncIterator]() {
-        const iterator: AsyncIterableIterator<MatchUpdate> = {
-          async next(): Promise<IteratorResult<MatchUpdate>> {
-            const { done, value } = await reader.read();
-            if (done) {
-              return { done: true, value: undefined };
-            }
-
-            const text = new TextDecoder().decode(value);
-            const events = text.split('\n').filter(Boolean);
-            
-            if (events.length === 0) {
-              return { done: false, value: null };
-            }
-
-            try {
-              const event = JSON.parse(events[0]);
-              if (event.event?.audio_url) {
-                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
-              }
-              return { done: false, value: event };
-            } catch (e) {
-              console.error('Error parsing event:', e);
-              return { done: false, value: null };
-            }
-          },
-          [Symbol.asyncIterator]() {
-            return this;
-          }
-        };
-        return iterator;
-      }
-    } as AsyncIterableIterator<MatchUpdate>
+    events: iterator
   };
 };
 
@@ -403,6 +416,8 @@ export const continueMatch = async (
     },
     body: JSON.stringify({
       match_id: matchId,
+      home_team_name: userTeam.name,
+      away_team_name: opponentTeam.name,
       home_attrs: userTeam.attributes,
       away_attrs: opponentTeam.attributes,
       home_tactic: (tactic || userTeam.tactic).toLowerCase(),
@@ -442,9 +457,6 @@ export const continueMatch = async (
 
             try {
               const event = JSON.parse(events[0]);
-              if (event.event?.audio_url) {
-                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
-              }
               return { done: false, value: event };
             } catch (e) {
               console.error('Error parsing event:', e);
