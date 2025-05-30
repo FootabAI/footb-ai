@@ -36,22 +36,7 @@ import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { formations } from "@/config/formations";
 import { TacticSelect } from "@/components/TacticSelect";
-// import { v4 as uuidv4 } from "uuid";
 
-interface ServerEvent {
-  type: "event" | "minute_update";
-  minute: number;
-  event?: {
-    team: "home" | "away";
-    type: MatchEventType;
-    event_description: string;
-    audio_url?: string;
-  };
-  score: {
-    home: number;
-    away: number;
-  };
-}
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -229,34 +214,43 @@ const MatchSimulation = () => {
 
   const handleContinue = async () => {
     try {
-      // If tactic or formation was changed, send it to the server
-      if (changeTactic || changeFormation) {
-        console.log("\n=== Changing tactics ===");
-        console.log(`Tactic: ${changeTactic || currentMatch.homeTeam.tactic}`);
-        console.log(`Formation: ${changeFormation || currentMatch.homeTeam.formation}`);
-        
-        // Send the changes to the server
-        await changeTeamTactics(
-          matchId,
-          changeTactic || currentMatch.homeTeam.tactic,
-          changeFormation || currentMatch.homeTeam.formation
-        );
+      console.log("\n=== Starting second half ===");
+      const newTactic = changeTactic || currentMatch.homeTeam.tactic;
+      const newFormation = changeFormation || currentMatch.homeTeam.formation;
+      console.log(`Home Tactic: ${newTactic}`);
+      console.log(`Away Tactic: ${currentMatch.awayTeam.tactic}`);
+      console.log(`Formation: ${newFormation}`);
+      
+      // Continue the match with any tactic/formation changes
+      const { events } = await continueMatch(
+        matchId,
+        team,
+        currentMatch.awayTeam,
+        newTactic,
+        newFormation,
+        {
+          home: currentMatch.homeStats.goalsScored,
+          away: currentMatch.awayStats.goalsScored
+        },
+        {
+          home: currentMatch.homeStats,
+          away: currentMatch.awayStats
+        }
+      );
 
+      if (changeTactic || changeFormation) {
         toast({
           title: "Tactics Changed",
           description: `Your team is now using ${
-            changeFormation ? `the ${changeFormation} formation` : ""
-          }${changeFormation && changeTactic ? " with " : ""}${
-            changeTactic ? `the ${changeTactic} tactic` : ""
+            newFormation ? `the ${newFormation} formation` : ""
+          }${newFormation && newTactic ? " with " : ""}${
+            newTactic ? `the ${newTactic} tactic` : ""
           }.`,
         });
         setChangeTactic(null);
         setChangeFormation(null);
       }
 
-      console.log("\n=== Starting second half ===");
-      // Continue the match
-      const { events } = await continueMatch(matchId);
       setIsHalfTime(false);
 
       for await (const event of events) {

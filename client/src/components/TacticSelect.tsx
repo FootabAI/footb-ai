@@ -20,12 +20,12 @@ export const TacticSelect = ({ value, onValueChange, className }: TacticSelectPr
         <SelectValue placeholder="Select tactic" />
       </SelectTrigger>
       <SelectContent className="bg-footbai-container border-footbai-hover">
-        <SelectItem value="Tiki-Taka">Tiki-Taka</SelectItem>
-        <SelectItem value="Park-The-Bus">Park The Bus</SelectItem>
-        <SelectItem value="Direct-Play">Direct Play</SelectItem>
-        <SelectItem value="Total-Football">Total Football</SelectItem>
-        <SelectItem value="Catenaccio">Catenaccio</SelectItem>
-        <SelectItem value="Gegenpressing">Gegenpressing</SelectItem>
+        <SelectItem value="tiki-taka">Tiki-Taka</SelectItem>
+        <SelectItem value="park-the-bus">Park The Bus</SelectItem>
+        <SelectItem value="direct-play">Direct Play</SelectItem>
+        <SelectItem value="total-football">Total Football</SelectItem>
+        <SelectItem value="catenaccio">Catenaccio</SelectItem>
+        <SelectItem value="gegenpressing">Gegenpressing</SelectItem>
       </SelectContent>
     </Select>
   );

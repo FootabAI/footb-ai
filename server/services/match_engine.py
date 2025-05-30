@@ -99,8 +99,17 @@ class MatchEngineService:
             "multiplier": round(own_multiplier, 3)
         }
     
-    def simulate_half(self, home_attrs, home_tactic, away_attrs, away_tactic):
-        """Generate event dictionary for 45 minutes"""
+    def simulate_half(self, home_attrs, home_tactic, away_attrs, away_tactic, half=1, context=None):
+        """Generate event dictionary for a half of the match.
+        
+        Args:
+            home_attrs: Home team attributes
+            home_tactic: Home team tactic
+            away_attrs: Away team attributes
+            away_tactic: Away team tactic
+            half: Which half to simulate (1 or 2)
+            context: Optional dict containing match context (scores, stats) for second half
+        """
         # Simulate both teams
         home = self.simulate_team(home_attrs, home_tactic, away_attrs, away_tactic, is_home=True)
         away = self.simulate_team(away_attrs, away_tactic, home_attrs, home_tactic, is_home=False)
@@ -108,9 +117,11 @@ class MatchEngineService:
         print(f"Home ({home_tactic}): fit={home['fit']}, multiplier={home['multiplier']}")
         print(f"Away ({away_tactic}): fit={away['fit']}, multiplier={away['multiplier']}")
         
-        # Initialize event dictionary
+        # Initialize event dictionary with correct minute range
+        start_minute = 46 if half == 2 else 1
+        end_minute = 90 if half == 2 else 45
         event_dict = defaultdict(list)
-        for i in range(1, 46):
+        for i in range(start_minute, end_minute + 1):
             event_dict[i] = []
         
         # Create events list
@@ -121,7 +132,7 @@ class MatchEngineService:
         
         # Distribute events randomly across minutes
         for event in events:
-            random_minute = random.randint(1, 45)
+            random_minute = random.randint(start_minute, end_minute)
             event_dict[random_minute].append(event)
         
         return dict(event_dict)
@@ -152,10 +163,15 @@ class MatchEngineService:
         print(f"Generated {len(events_json)} events")
         return events_json
     
-    def generate_simple_events(self, event_dict):
-        """Generate simple event descriptions without LLM"""
+    def generate_simple_events(self, event_dict, context=None):
+        """Generate simple event descriptions without LLM.
+        
+        Args:
+            event_dict: Dictionary of events by minute
+            context: Optional dict containing match context (scores, stats) for second half
+        """
         events_json = []
-        current_score = {"home": 0, "away": 0}
+        current_score = context.get("score", {"home": 0, "away": 0}) if context else {"home": 0, "away": 0}
         
         # Event type mapping
         event_mapping = {
@@ -170,7 +186,7 @@ class MatchEngineService:
         }
         
         # Process each minute
-        for minute in range(1, 46):
+        for minute in sorted(event_dict.keys()):
             minute_events = event_dict.get(minute, [])
             
             # Generate events for this minute
@@ -204,7 +220,7 @@ class MatchEngineService:
             }
             events_json.append(minute_update)
             
-            # Add half-time event at minute 45
+            # Add half-time or full-time event
             if minute == 45:
                 half_time_event = {
                     "type": "event",
@@ -218,6 +234,19 @@ class MatchEngineService:
                     "score": current_score.copy()
                 }
                 events_json.append(half_time_event)
+            elif minute == 90:
+                full_time_event = {
+                    "type": "event",
+                    "minute": 90,
+                    "event": {
+                        "team": "system",
+                        "type": "full-time",
+                        "event_description": "Full-time whistle!",
+                        "audio_url": "Commentary for full-time"
+                    },
+                    "score": current_score.copy()
+                }
+                events_json.append(full_time_event)
         
         return events_json
 

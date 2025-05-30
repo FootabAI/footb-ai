@@ -1,4 +1,4 @@
-import { Formation, Match, Team, TeamTactic } from "./types";
+import { Formation, Match, Team, TeamTactic, MatchStats} from "./types";
 import { MatchEventUpdate, MatchSimulationResponse } from './types/match-simulation';
 
 export const API_URL = "http://127.0.0.1:8000";
@@ -223,7 +223,13 @@ export const changeTeamTactics = async (
 };
 
 export const continueMatch = async (
-  matchId: string
+  matchId: string,
+  userTeam: Team,
+  opponentTeam: Team,
+  tactic?: TeamTactic,
+  formation?: Formation,
+  currentScore?: { home: number; away: number },
+  currentStats?: { home: MatchStats; away: MatchStats }
 ): Promise<MatchSimulationResponse> => {
   const response = await fetch(`${API_URL}/api/continue-match`, {
     method: "POST",
@@ -232,6 +238,13 @@ export const continueMatch = async (
     },
     body: JSON.stringify({
       match_id: matchId,
+      home_attrs: userTeam.attributes,
+      away_attrs: opponentTeam.attributes,
+      home_tactic: (tactic || userTeam.tactic).toLowerCase(),
+      away_tactic: opponentTeam.tactic.toLowerCase(),
+      formation: formation || userTeam.formation,
+      current_score: currentScore,
+      current_stats: currentStats
     }),
   });
   console.log(response);
