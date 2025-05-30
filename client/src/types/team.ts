@@ -46,6 +46,8 @@ export type Player = {
   position: string;
   rating: number;
   teamId: string;
+  image_base64: string | null;
+  imageUrl?: string;
 };
 
 /**

@@ -228,13 +228,25 @@ const TeamOverview = () => {
                                 className="bg-footbai-header p-3 rounded-lg flex justify-between items-center"
                               >
                                 <div className="flex items-center gap-2">
-                                  <img
-                                    className="w-10 h-10 rounded-full object-cover"
-                                    src={playerPlaceholder}
-                                    alt=""
-                                    width={50}
-                                    height={50}
-                                  />
+                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
+                                    {player.imageUrl || player.image_base64 ? (
+                                      <img
+                                        className="w-full h-full object-cover"
+                                        src={player.image_base64 ? `data:image/png;base64,${player.image_base64}` : player.imageUrl}
+                                        alt={player.name}
+                                        onError={(e) => {
+                                          console.error('Error loading image for player:', player.name);
+                                          e.currentTarget.src = playerPlaceholder;
+                                        }}
+                                      />
+                                    ) : (
+                                      <img
+                                        className="w-full h-full object-cover"
+                                        src={playerPlaceholder}
+                                        alt=""
+                                      />
+                                    )}
+                                  </div>
                                   <div>
                                     <div className="font-medium">
                                       {player.name}

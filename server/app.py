@@ -8,7 +8,12 @@ import base64
 from typing import Dict, Optional
 import json
 from pathlib import Path
+
+import io
+import random
+import torch
 import asyncio
+
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
@@ -16,6 +21,7 @@ from services.logo_service import LogoService
 from services.match_service import MatchService
 from services.player_name_service import PlayerNameService
 from services.tts_service import TTSService
+from services.player_image_service import PlayerImageService
 
 
 # Load environment variables
@@ -39,17 +45,23 @@ temp_audio_dir.mkdir(exist_ok=True)
 # Mount the temp_audio directory to serve audio files
 app.mount("/audio", StaticFiles(directory="temp_audio"), name="audio")
 
-# Initialize services
-logo_service = LogoService(reference_images_dir="images")
-tts_service = TTSService()
 
 # Global settings
 USE_LLM = False  # Central control for LLM commentary
 USE_TTS = False  # Central control for TTS
 
+# Initialize services
+logo_service = LogoService(reference_images_dir="images")
+player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
+tts_service = TTSService()
+player_name_service = PlayerNameService(llm=build_local_llm())
+
+
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
+
 player_name_service = PlayerNameService()
+
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
@@ -432,6 +444,82 @@ async def change_team_tactic(request: Request):
     except Exception as e:
         print(f"Error in change_team_tactic: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Add this single endpoint:
+@app.post("/api/generate_player_images")
+async def generate_player_images(request: Request):
+    """Generate profile images for 11 players"""
+    try:
+        data = await request.json()
+        team_data = data.get("team_data")
+        nationality = data.get("nationality")
+        if not team_data:
+            raise HTTPException(status_code=400, detail="Missing team_data")
+        
+        async def image_generator():
+            for player in team_data:
+                try:
+                    # Generate single player image
+                    attributes = player_image_service._generate_attributes()
+                    positive_prompt, negative_prompt = player_image_service._create_prompt(attributes, 1)
+                    
+                    # Generate image
+                    result = player_image_service.pipe(
+                        prompt=positive_prompt,
+                        negative_prompt=negative_prompt,
+                        image=player_image_service.pose_image,
+                        num_inference_steps=30,
+                        guidance_scale=6.5,
+                        controlnet_conditioning_scale=1.0,
+                        width=256,
+                        height=256,
+                        generator=torch.Generator("cuda" if player_image_service.use_gpu else "cpu").manual_seed(random.randint(1, 1000000))
+                    )
+                    
+                    image = result.images[0]
+                    
+                    # Remove background and convert to base64
+                    image_no_bg = player_image_service._remove_background_ai(image)
+                    
+                    buffer = io.BytesIO()
+                    image_no_bg.save(buffer, format="PNG")
+                    buffer.seek(0)
+                    image_b64 = base64.b64encode(buffer.getvalue()).decode()
+                    
+                    result = {
+                        "name": player["name"],
+                        "position": player["position"],
+                        "image_base64": image_b64,
+                        "attributes": attributes
+                    }
+                    
+                    # Ensure proper SSE format
+                    yield f"data: {json.dumps(result)}\n\n"
+                    
+                except Exception as e:
+                    print(f"Failed to generate player image: {e}")
+                    error_result = {
+                        "error": str(e),
+                        "name": player["name"],
+                        "position": player["position"]
+                    }
+                    yield f"data: {json.dumps(error_result)}\n\n"
+                    continue
+        
+        return StreamingResponse(
+            image_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

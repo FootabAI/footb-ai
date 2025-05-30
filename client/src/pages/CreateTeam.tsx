@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLogoGeneration } from "@/hooks/useLogoGeneration";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useBackgroundImageStore } from "@/stores/useBackgroundImageStore";
 
 // Steps
 import { LogoStep } from "@/components/team-creation/LogoStep";
@@ -46,6 +47,7 @@ const CreateTeam = () => {
     isLoading,
     setMainColor,
     mainColor,
+    teamId,
   } = useOnboardingStore();
   const {
     isGeneratingLogo,
@@ -54,6 +56,15 @@ const CreateTeam = () => {
     resetLogo,
     generatedLogo,
   } = useLogoGeneration();
+
+  // Cleanup background generation when component unmounts
+  useEffect(() => {
+    return () => {
+      if (teamId) {
+        useBackgroundImageStore.getState().stopGeneration();
+      }
+    };
+  }, [teamId]);
 
   const handleCreateTeam = async () => {
     try {
