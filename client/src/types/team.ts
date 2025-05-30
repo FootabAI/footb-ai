@@ -22,7 +22,7 @@ export type Formation = '4-3-3' | '4-2-3-1' | '3-5-2' | '4-4-2' | '5-3-2';
 /**
  * Available team tactics in the game
  */
-export type TeamTactic = 'Tiki-Taka' | 'Park-The-Bus' | 'Direct-Play' | 'Total-Football' | 'Catenaccio' | 'Gegenpressing';
+export type TeamTactic = 'tiki-taka' | 'park-the-bus' | 'direct-play' | 'total-football' | 'catenaccio' | 'gegenpressing';
 
 /**
  * Represents a team's logo configuration

@@ -20,7 +20,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   themeTags: [],
   colorTags: [],
   attributes: DEFAULT_ATTRIBUTES,
-  tactic: "Tiki-Taka",
+  tactic: "tiki-taka",
   pointsLeft: TOTAL_POINTS,
   isLoading: false,
   error: null,
@@ -92,6 +92,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         pointsLeft,
         mainColor,
         teamStats,
+        nationality,
       } = get();
 
       const user = auth.currentUser;
@@ -111,15 +112,33 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
       const finalName = logoType === "manual" ? teamName : customizedName;
 
-      // Generate players using the API
-      const playerResponse = await generatePlayerNames(finalName, true);
-      const newPlayers = playerResponse.squad.map((player, index) => ({
-        id: `player-${teamId}-${index}`,
-        name: player.name,
-        position: player.position,
-        rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
-        teamId,
-      }));
+      // Generate players one by one
+      const POSITIONS = [
+        "Goalkeeper",
+        "Right-Back",
+        "Centre-Back",
+        "Centre-Back",
+        "Left-Back",
+        "Central Midfielder",
+        "Central Midfielder",
+        "Attacking Midfielder",
+        "Right Winger",
+        "Left Winger",
+        "Striker"
+      ];
+
+      const newPlayers: Player[] = [];
+      for (let i = 0; i < POSITIONS.length; i++) {
+        const response = await generatePlayerNames(nationality, true);
+        const player = {
+          id: `player-${teamId}-${i}`,
+          name: response.player.name,
+          position: POSITIONS[i],
+          rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
+          teamId,
+        };
+        newPlayers.push(player);
+      }
 
       const newTeam: Team & { userId: string } = {
         id: teamId,
@@ -177,7 +196,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       themeTags: [],
       colorTags: [],
       attributes: DEFAULT_ATTRIBUTES,
-      tactic: "Tiki-Taka",
+      tactic: "tiki-taka",
       pointsLeft: TOTAL_POINTS,
       teamStats: DEFAULT_TEAM_STATS,
       nationality: "",

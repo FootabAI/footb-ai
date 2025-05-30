@@ -12,9 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MatchEvent, TeamTactic, Formation, MatchStats } from "@/types";
+import { MatchEvent as ClientMatchEvent, TeamTactic, Formation, MatchStats } from "@/types";
 import { MatchEventType } from "@/types/match";
-import { MatchUpdate, MatchEventUpdate, MinuteUpdate } from "@/types/match-simulation";
+import { MinuteUpdate } from "@/types/match-simulation";
 import TeamLogo from "@/components/TeamLogo";
 import {
   Play,
@@ -27,24 +27,17 @@ import {
   CreditCard,
   Ban,
   Crosshair,
+  Trophy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRef, useState, useEffect } from "react";
-import { startMatchSimulation, continueMatch, changeTeamTactics } from "@/api";
+import { startMatchSimulation, continueMatch, changeTeamTactics, startMatchSimulationNew } from "@/api";
 import Event from "@/components/Event";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { formations } from "@/config/formations";
 import { TacticSelect } from "@/components/TacticSelect";
-// import { v4 as uuidv4 } from "uuid";
 
-interface ServerEvent {
-  type: MatchEventType;
-  team: string;
-  description: string;
-  commentary: string;
-  audio_url?: string;
-}
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -63,12 +56,11 @@ const MatchSimulation = () => {
   const [isFullTime, setIsFullTime] = useState(false);
   const [changeTactic, setChangeTactic] = useState<TeamTactic | null>(null);
   const [changeFormation, setChangeFormation] = useState<Formation | null>(null);
-  const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
+  const [matchEvents, setMatchEvents] = useState<ClientMatchEvent[]>([]);
   const [matchId] = useState(
     () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
   const [warmingUpMessage, setWarmingUpMessage] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs for scrolling
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -130,8 +122,8 @@ const MatchSimulation = () => {
 
   const startMatch = async () => {
     try {
-      console.log("\n=== Starting match simulation ===");
-      const { events } = await startMatchSimulation(
+      console.log("\n=== Starting match simulation with new engine ===");
+      const { events } = await startMatchSimulationNew(
         matchId,
         team,
         currentMatch.awayTeam
@@ -143,63 +135,112 @@ const MatchSimulation = () => {
 
         // Handle minute updates
         if (event.type === "minute_update") {
-          setMinute(event.minute);
-          if (event.stats) {
-            updateMatchStats(event.stats.home, event.stats.away);
-          }
+          const minuteUpdate = event as MinuteUpdate;
+          setMinute(minuteUpdate.minute);
+          
+          // Update score and stats from minute update
+          updateMatchStats({
+            ...currentMatch.homeStats,
+            goalsScored: minuteUpdate.score.home,
+            goalsConceded: minuteUpdate.score.away,
+            shots: minuteUpdate.stats?.home.shots || 0,
+            shotsOnTarget: minuteUpdate.stats?.home.shotsOnTarget || 0,
+            yellowCards: minuteUpdate.stats?.home.yellowCards || 0,
+            redCards: minuteUpdate.stats?.home.redCards || 0
+          }, {
+            ...currentMatch.awayStats,
+            goalsScored: minuteUpdate.score.away,
+            goalsConceded: minuteUpdate.score.home,
+            shots: minuteUpdate.stats?.away.shots || 0,
+            shotsOnTarget: minuteUpdate.stats?.away.shotsOnTarget || 0,
+            yellowCards: minuteUpdate.stats?.away.yellowCards || 0,
+            redCards: minuteUpdate.stats?.away.redCards || 0
+          });
           continue;
         }
 
         // Handle match events
         if (event.type === "event") {
+          const matchEvent = event;
           // Handle half-time
-          if (event.event.type === "half-time") {
+          if (matchEvent.event.type === "half-time") {
             console.log("\n=== HALF TIME ===");
             setIsHalfTime(true);
           }
 
           // Handle full-time
-          if (event.event.type === "full-time") {
+          if (matchEvent.event.type === "full-time") {
             console.log("\n=== FULL TIME ===");
-            console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
+            console.log(`Final Score: ${matchEvent.score.home} - ${matchEvent.score.away}`);
 
             setIsFullTime(true);
             completeMatch(
-              event.score.home > event.score.away
+              matchEvent.score.home > matchEvent.score.away
                 ? team.id
                 : currentMatch.awayTeam.id
             );
           }
 
+          // Skip displaying 'shot' events but keep updating stats
+          if (matchEvent.event.type === "shot") {
+            // Update stats from event without displaying it
+            updateMatchStats({
+              ...currentMatch.homeStats,
+              goalsScored: matchEvent.score.home,
+              goalsConceded: matchEvent.score.away,
+              shots: matchEvent.stats?.home.shots || 0,
+              shotsOnTarget: matchEvent.stats?.home.shotsOnTarget || 0,
+              yellowCards: matchEvent.stats?.home.yellowCards || 0,
+              redCards: matchEvent.stats?.home.redCards || 0
+            }, {
+              ...currentMatch.awayStats,
+              goalsScored: matchEvent.score.away,
+              goalsConceded: matchEvent.score.home,
+              shots: matchEvent.stats?.away.shots || 0,
+              shotsOnTarget: matchEvent.stats?.away.shotsOnTarget || 0,
+              yellowCards: matchEvent.stats?.away.yellowCards || 0,
+              redCards: matchEvent.stats?.away.redCards || 0
+            });
+            continue;
+          }
+
           // Log event
-          console.log(`[${event.minute}'] ${event.event.description}`);
+          console.log(`[${matchEvent.minute}'] ${matchEvent.event.event_description}`);
 
           // Add event to state
-          const newEvent: MatchEvent = {
+          const newEvent: ClientMatchEvent = {
             id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: event.event.type,
-            team: event.event.team,
-            description: event.event.description,
-            commentary: event.event.commentary,
-            audio_url: event.event.audio_url,
-            minute: event.minute,
+            type: matchEvent.event.type as MatchEventType,
+            team: matchEvent.event.team,
+            description: matchEvent.event.event_description,
+            commentary: matchEvent.event.event_description,
+            minute: matchEvent.minute,
           };
 
           setMatchEvents((prev) => [...prev, newEvent]);
           addMatchEvent(newEvent);
 
-          // Update stats if available
-          if (event.stats) {
-            updateMatchStats(event.stats.home, event.stats.away);
-          }
+          // Update score and stats from event
+          updateMatchStats({
+            ...currentMatch.homeStats,
+            goalsScored: matchEvent.score.home,
+            goalsConceded: matchEvent.score.away,
+            shots: matchEvent.stats?.home.shots || 0,
+            shotsOnTarget: matchEvent.stats?.home.shotsOnTarget || 0,
+            yellowCards: matchEvent.stats?.home.yellowCards || 0,
+            redCards: matchEvent.stats?.home.redCards || 0
+          }, {
+            ...currentMatch.awayStats,
+            goalsScored: matchEvent.score.away,
+            goalsConceded: matchEvent.score.home,
+            shots: matchEvent.stats?.away.shots || 0,
+            shotsOnTarget: matchEvent.stats?.away.shotsOnTarget || 0,
+            yellowCards: matchEvent.stats?.away.yellowCards || 0,
+            redCards: matchEvent.stats?.away.redCards || 0
+          });
 
-          // Play audio commentary if available and wait for it to finish
-          if (event.event.audio_url) {
-            await playAudioCommentary(event.event.audio_url);
-          } else {
-            // If no audio, still add a small delay between events
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
+          // Add a small delay between events
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
     } catch (error) {
@@ -214,34 +255,55 @@ const MatchSimulation = () => {
 
   const handleContinue = async () => {
     try {
-      // If tactic or formation was changed, send it to the server
-      if (changeTactic || changeFormation) {
-        console.log("\n=== Changing tactics ===");
-        console.log(`Tactic: ${changeTactic || currentMatch.homeTeam.tactic}`);
-        console.log(`Formation: ${changeFormation || currentMatch.homeTeam.formation}`);
-        
-        // Send the changes to the server
-        await changeTeamTactics(
-          matchId,
-          changeTactic || currentMatch.homeTeam.tactic,
-          changeFormation || currentMatch.homeTeam.formation
-        );
+      console.log("\n=== Starting second half ===");
+      const newTactic = changeTactic || currentMatch.homeTeam.tactic;
+      const newFormation = changeFormation || currentMatch.homeTeam.formation;
+      console.log(`Home Tactic: ${newTactic}`);
+      console.log(`Away Tactic: ${currentMatch.awayTeam.tactic}`);
+      console.log(`Formation: ${newFormation}`);
+      
+      // Continue the match with any tactic/formation changes
+      const { events } = await continueMatch(
+        matchId,
+        team,
+        currentMatch.awayTeam,
+        newTactic,
+        newFormation,
+        {
+          home: currentMatch.homeStats.goalsScored,
+          away: currentMatch.awayStats.goalsScored
+        },
+        {
+          home: {
+            ...currentMatch.homeStats,
+            shots: currentMatch.homeStats.shots || 0,
+            shotsOnTarget: currentMatch.homeStats.shotsOnTarget || 0,
+            yellowCards: currentMatch.homeStats.yellowCards || 0,
+            redCards: currentMatch.homeStats.redCards || 0
+          },
+          away: {
+            ...currentMatch.awayStats,
+            shots: currentMatch.awayStats.shots || 0,
+            shotsOnTarget: currentMatch.awayStats.shotsOnTarget || 0,
+            yellowCards: currentMatch.awayStats.yellowCards || 0,
+            redCards: currentMatch.awayStats.redCards || 0
+          }
+        }
+      );
 
+      if (changeTactic || changeFormation) {
         toast({
           title: "Tactics Changed",
           description: `Your team is now using ${
-            changeFormation ? `the ${changeFormation} formation` : ""
-          }${changeFormation && changeTactic ? " with " : ""}${
-            changeTactic ? `the ${changeTactic} tactic` : ""
+            newFormation ? `the ${newFormation} formation` : ""
+          }${newFormation && newTactic ? " with " : ""}${
+            newTactic ? `the ${newTactic} tactic` : ""
           }.`,
         });
         setChangeTactic(null);
         setChangeFormation(null);
       }
 
-      console.log("\n=== Starting second half ===");
-      // Continue the match
-      const { events } = await continueMatch(matchId);
       setIsHalfTime(false);
 
       for await (const event of events) {
@@ -250,9 +312,24 @@ const MatchSimulation = () => {
         // Handle minute updates
         if (event.type === "minute_update") {
           setMinute(event.minute);
-          if (event.stats) {
-            updateMatchStats(event.stats.home, event.stats.away);
-          }
+          // Update stats from minute update
+          updateMatchStats({
+            ...currentMatch.homeStats,
+            goalsScored: event.score.home,
+            goalsConceded: event.score.away,
+            shots: event.stats?.home.shots || 0,
+            shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
+            yellowCards: event.stats?.home.yellowCards || 0,
+            redCards: event.stats?.home.redCards || 0
+          }, {
+            ...currentMatch.awayStats,
+            goalsScored: event.score.away,
+            goalsConceded: event.score.home,
+            shots: event.stats?.away.shots || 0,
+            shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
+            yellowCards: event.stats?.away.yellowCards || 0,
+            redCards: event.stats?.away.redCards || 0
+          });
           continue;
         }
 
@@ -271,37 +348,45 @@ const MatchSimulation = () => {
 
         // Log event
         if ('event' in event) {
-          console.log(`[${event.minute}'] ${event.event.description}`);
+          console.log(`[${event.minute}'] ${event.event.event_description}`);
 
           // Update minute
           setMinute(event.minute);
 
           // Add event to state
-          const newEvent: MatchEvent = {
+          const newEvent: ClientMatchEvent = {
             id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: event.event.type,
+            type: event.event.type as MatchEventType,
             team: event.event.team,
-            description: event.event.description,
-            commentary: event.event.commentary,
-            audio_url: event.event.audio_url || "",
+            description: event.event.event_description,
+            commentary: event.event.event_description,
             minute: event.minute,
           };
 
           setMatchEvents((prev) => [...prev, newEvent]);
           addMatchEvent(newEvent);
 
-          // Update stats if available
-          if (event.stats) {
-            updateMatchStats(event.stats.home, event.stats.away);
-          }
+          // Update stats from event
+          updateMatchStats({
+            ...currentMatch.homeStats,
+            goalsScored: event.score.home,
+            goalsConceded: event.score.away,
+            shots: event.stats?.home.shots || 0,
+            shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
+            yellowCards: event.stats?.home.yellowCards || 0,
+            redCards: event.stats?.home.redCards || 0
+          }, {
+            ...currentMatch.awayStats,
+            goalsScored: event.score.away,
+            goalsConceded: event.score.home,
+            shots: event.stats?.away.shots || 0,
+            shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
+            yellowCards: event.stats?.away.yellowCards || 0,
+            redCards: event.stats?.away.redCards || 0
+          });
 
-          // Play audio commentary if available and wait for it to finish
-          if (event.event.audio_url) {
-            await playAudioCommentary(event.event.audio_url);
-          } else {
-            // If no audio, still add a small delay between events
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
+          // Add a small delay between events
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
     } catch (error) {
@@ -315,7 +400,7 @@ const MatchSimulation = () => {
   };
 
   const handleForfeit = () => {
-    const forfeitEvent: MatchEvent = {
+    const forfeitEvent: ClientMatchEvent = {
       id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: "goal",
       team: "system",
@@ -333,60 +418,8 @@ const MatchSimulation = () => {
   const formatMatchTime = (minutes: number) => {
     if (minutes === 45) return "45' (HT)";
     if (minutes === 90) return "90' (FT)";
-    if (minutes > 45 && minutes < 50) return `45+${minutes - 45}'`;
-    if (minutes > 90) return `90+${minutes - 90}'`;
     return `${minutes}'`;
   };
-
-  // Function to play audio commentary
-  const playAudioCommentary = (audioUrl: string): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!audioUrl) {
-        resolve();
-        return;
-      }
-      
-      console.log("Playing audio from URL:", audioUrl);
-      
-      // Create a new audio element for each event
-      const audio = new Audio();
-      
-      // Add event listeners
-      audio.addEventListener('error', (e) => {
-        console.error("Error playing audio:", e);
-        console.error("Audio URL:", audioUrl);
-        console.error("Audio error code:", audio.error?.code);
-        console.error("Audio error message:", audio.error?.message);
-        resolve(); // Resolve on error to continue with next event
-      });
-
-      audio.addEventListener('ended', () => {
-        console.log("Audio finished playing");
-        resolve(); // Resolve when audio finishes playing
-      });
-
-      audio.addEventListener('canplaythrough', () => {
-        console.log("Audio can play through, starting playback");
-        audio.play().catch(error => {
-          console.error("Error playing audio:", error);
-          resolve(); // Resolve on error to continue with next event
-        });
-      });
-
-      // Set the source and start loading
-      audio.src = audioUrl;
-    });
-  };
-
-  // Clean up audio elements when component unmounts
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
-    };
-  }, []);
 
   return (
     <div className="animate-fade-in">
@@ -411,11 +444,11 @@ const MatchSimulation = () => {
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center justify-center gap-2">
                     <div className="text-2xl font-bold">
-                      {currentMatch.homeScore}
+                      {currentMatch.homeStats.goalsScored}
                     </div>
                     <div className="text-xl font-bold">-</div>
                     <div className="text-2xl font-bold">
-                      {currentMatch.awayScore}
+                      {currentMatch.awayStats.goalsScored}
                     </div>
                   </div>
                   <div className="text-sm text-gray-400 flex items-center border-footbai-header rounded px-2 py-1">
@@ -607,41 +640,36 @@ const MatchSimulation = () => {
                   {currentMatch.awayTeam.name}
                 </span>
               </div>
-              <div className="mb-6">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>{Math.round(currentMatch.homeStats.possession)}%</span>
-                  <span className="text-gray-400 flex items-center gap-1">
-                    <Timer size={16} />
-                    Possession
-                  </span>
-                  <span>{Math.round(currentMatch.awayStats.possession)}%</span>
-                </div>
-                <div className="flex h-2 rounded overflow-hidden">
-                  <div
-                    style={{
-                      width: `${currentMatch.homeStats.possession}%`,
-                      backgroundColor:
-                        currentMatch.homeTeam.logo.data.mainColor,
-                    }}
-                  ></div>
-                  <div
-                    style={{
-                      width: `${currentMatch.awayStats.possession}%`,
-                      backgroundColor:
-                        currentMatch.awayTeam.logo.data.mainColor,
-                    }}
-                  ></div>
+
+              {/* Goals */}
+              <div className="mb-4">
+                <div className="text-sm text-gray-400 mb-2">Goals</div>
+                <div className="flex justify-between items-center">
+                  <div className="text-xl font-semibold">
+                    {currentMatch.homeStats.goalsScored || 0}
+                  </div>
+                  <div className="text-sm text-gray-400 flex items-center gap-1">
+                    <Trophy size={16} />
+                    Goals
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {currentMatch.awayStats.goalsScored || 0}
+                  </div>
                 </div>
               </div>
 
+              <Separator className="my-4 bg-footbai-header" />
+
+              {/* Shots */}
               <div className="mb-4">
+                <div className="text-sm text-gray-400 mb-2">Shots</div>
                 <div className="flex justify-between items-center mb-2">
                   <div className="text-xl font-semibold">
                     {currentMatch.homeStats.shots || 0}
                   </div>
                   <div className="text-sm text-gray-400 flex items-center gap-1">
                     <Crosshair size={16} />
-                    Shots
+                    Total
                   </div>
                   <div className="text-xl font-semibold">
                     {currentMatch.awayStats.shots || 0}
@@ -663,58 +691,31 @@ const MatchSimulation = () => {
 
               <Separator className="my-4 bg-footbai-header" />
 
+              {/* Cards */}
               <div>
+                <div className="text-sm text-gray-400 mb-2">Cards</div>
                 <div className="flex justify-between items-center mb-2">
-                  <div className="text-sm">
-                    {currentMatch.homeStats.fouls || 0}
-                  </div>
-                  <div className="text-xs text-gray-400 flex items-center gap-1">
-                    <Ban size={16} />
-                    Fouls
-                  </div>
-                  <div className="text-sm">
-                    {currentMatch.awayStats.fouls || 0}
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
                   <div className="text-sm">
                     {currentMatch.homeStats.yellowCards || 0}
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-1">
                     <div className="w-3 h-4 bg-yellow-500 rounded-sm" />
-                    Yellow Cards
+                    Yellow
                   </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.yellowCards || 0}
                   </div>
                 </div>
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-center">
                   <div className="text-sm">
                     {currentMatch.homeStats.redCards || 0}
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-1">
                     <div className="w-3 h-4 bg-red-500 rounded-sm" />
-                    Red Cards
+                    Red
                   </div>
                   <div className="text-sm">
                     {currentMatch.awayStats.redCards || 0}
-                  </div>
-                </div>
-              </div>
-
-              <Separator className="my-4 bg-footbai-header" />
-
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-xl font-semibold">
-                    {currentMatch.homeStats.corners || 0}
-                  </div>
-                  <div className="text-sm text-gray-400 flex items-center gap-1">
-                    <Flag size={16} />
-                    Corners
-                  </div>
-                  <div className="text-xl font-semibold">
-                    {currentMatch.awayStats.corners || 0}
                   </div>
                 </div>
               </div>
