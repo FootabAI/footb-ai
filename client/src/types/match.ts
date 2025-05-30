@@ -2,23 +2,23 @@
  * Match-related type definitions
  */
 
-import { Team } from './team';
+import { Team } from "./team";
 
 /**
  * Types of events that can occur during a match
  */
-export type MatchEventType = 
-  | 'goal' 
-  | 'yellow_card' 
-  | 'red_card' 
-  | 'injury' 
-  | 'substitution' 
-  | 'own_goal' 
-  | 'half_time' 
-  | 'full_time'
-  | 'half-time'  // For backward compatibility
-  | 'full-time'  // For backward compatibility
-  | 'own-goal';  // For backward compatibility
+export type MatchEventType =
+  | "goal"
+  | "yellow_card"
+  | "red_card"
+  | "injury"
+  | "substitution"
+  | "own_goal"
+  | "half_time"
+  | "full_time"
+  | "half-time" // For backward compatibility
+  | "full-time" // For backward compatibility
+  | "own-goal"; // For backward compatibility
 
 /**
  * Represents an event that occurs during a match
@@ -30,7 +30,7 @@ export interface MatchEvent {
   description: string;
   minute: number;
   commentary: string;
-  audio_url?: string;  // Optional audio URL for TTS commentary
+  audio_url?: string; // Optional audio URL for TTS commentary
 }
 
 /**
@@ -45,11 +45,8 @@ export interface MatchStats {
   cleanSheets: number;
   totalMatches: number;
   form: string[];
-  possession?: number;
   shots?: number;
   shotsOnTarget?: number;
-  corners?: number;
-  fouls?: number;
   yellowCards?: number;
   redCards?: number;
 }
@@ -68,4 +65,4 @@ export type Match = {
   awayStats: MatchStats;
   isCompleted: boolean;
   winner?: string;
-}; 
+};

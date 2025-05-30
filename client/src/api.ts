@@ -1,5 +1,5 @@
 import { Formation, Match, Team, TeamTactic, MatchStats} from "./types";
-import { MatchEventUpdate, MatchSimulationResponse } from './types/match-simulation';
+import { MatchEventUpdate, MatchSimulationResponse, MatchUpdate } from './types/match-simulation';
 
 export const API_URL = "http://127.0.0.1:8000";
 
@@ -86,11 +86,11 @@ export const startMatchSimulation = async (
   }
 
   return {
-    match_id: matchId,
+    matchId: matchId,
     events: {
       [Symbol.asyncIterator]() {
-        return {
-          async next() {
+        const iterator: AsyncIterableIterator<MatchUpdate> = {
+          async next(): Promise<IteratorResult<MatchUpdate>> {
             const { done, value } = await reader.read();
             if (done) {
               return { done: true, value: undefined };
@@ -105,7 +105,6 @@ export const startMatchSimulation = async (
 
             try {
               const event = JSON.parse(events[0]);
-              // Ensure audio URL is absolute
               if (event.event?.audio_url) {
                 event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
               }
@@ -114,10 +113,14 @@ export const startMatchSimulation = async (
               console.error('Error parsing event:', e);
               return { done: false, value: null };
             }
+          },
+          [Symbol.asyncIterator]() {
+            return this;
           }
         };
+        return iterator;
       }
-    }
+    } as AsyncIterableIterator<MatchUpdate>
   };
 };
 
@@ -160,11 +163,11 @@ export const startMatchSimulationNew = async (
   }
 
   return {
-    match_id: matchId,
+    matchId: matchId,
     events: {
       [Symbol.asyncIterator]() {
-        return {
-          async next() {
+        const iterator: AsyncIterableIterator<MatchUpdate> = {
+          async next(): Promise<IteratorResult<MatchUpdate>> {
             const { done, value } = await reader.read();
             if (done) {
               return { done: true, value: undefined };
@@ -179,7 +182,6 @@ export const startMatchSimulationNew = async (
 
             try {
               const event = JSON.parse(events[0]);
-              // Ensure audio URL is absolute
               if (event.event?.audio_url) {
                 event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
               }
@@ -188,10 +190,14 @@ export const startMatchSimulationNew = async (
               console.error('Error parsing event:', e);
               return { done: false, value: null };
             }
+          },
+          [Symbol.asyncIterator]() {
+            return this;
           }
         };
+        return iterator;
       }
-    }
+    } as AsyncIterableIterator<MatchUpdate>
   };
 };
 
@@ -258,11 +264,11 @@ export const continueMatch = async (
   }
 
   return {
-    match_id: matchId,
+    matchId: matchId,
     events: {
       [Symbol.asyncIterator]() {
-        return {
-          async next() {
+        const iterator: AsyncIterableIterator<MatchUpdate> = {
+          async next(): Promise<IteratorResult<MatchUpdate>> {
             const { done, value } = await reader.read();
             if (done) {
               return { done: true, value: undefined };
@@ -277,7 +283,6 @@ export const continueMatch = async (
 
             try {
               const event = JSON.parse(events[0]);
-              // Ensure audio URL is absolute
               if (event.event?.audio_url) {
                 event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
               }
@@ -286,9 +291,13 @@ export const continueMatch = async (
               console.error('Error parsing event:', e);
               return { done: false, value: null };
             }
+          },
+          [Symbol.asyncIterator]() {
+            return this;
           }
         };
+        return iterator;
       }
-    }
+    } as AsyncIterableIterator<MatchUpdate>
   };
 };

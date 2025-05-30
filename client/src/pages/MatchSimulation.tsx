@@ -181,6 +181,29 @@ const MatchSimulation = () => {
             );
           }
 
+          // Skip displaying 'shot' events but keep updating stats
+          if (matchEvent.event.type === "shot") {
+            // Update stats from event without displaying it
+            updateMatchStats({
+              ...currentMatch.homeStats,
+              goalsScored: matchEvent.score.home,
+              goalsConceded: matchEvent.score.away,
+              shots: matchEvent.stats?.home.shots || 0,
+              shotsOnTarget: matchEvent.stats?.home.shotsOnTarget || 0,
+              yellowCards: matchEvent.stats?.home.yellowCards || 0,
+              redCards: matchEvent.stats?.home.redCards || 0
+            }, {
+              ...currentMatch.awayStats,
+              goalsScored: matchEvent.score.away,
+              goalsConceded: matchEvent.score.home,
+              shots: matchEvent.stats?.away.shots || 0,
+              shotsOnTarget: matchEvent.stats?.away.shotsOnTarget || 0,
+              yellowCards: matchEvent.stats?.away.yellowCards || 0,
+              redCards: matchEvent.stats?.away.redCards || 0
+            });
+            continue;
+          }
+
           // Log event
           console.log(`[${matchEvent.minute}'] ${matchEvent.event.event_description}`);
 
