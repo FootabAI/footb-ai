@@ -11,12 +11,71 @@ const ensureAbsoluteUrl = (url: string | undefined) => {
   return `${API_URL}${url}`;
 };
 
+// Types
 type PlayerGenerationResponse = {
   player: {
     name: string;
     position?: string;
   };
   success: boolean;
+};
+
+type PlayerImageResponse = {
+  player: {
+    name: string;
+    position: string;
+    image_base64: string;
+    attributes?: {
+      ethnicity: string;
+      hair_color: string;
+      hair_style: string;
+      age: string;
+    };
+    error?: string;
+  };
+  success: boolean;
+};
+
+type PlayerNameStream = AsyncIterableIterator<PlayerGenerationResponse>;
+type PlayerImageStream = AsyncIterableIterator<PlayerImageResponse>;
+
+// Helper function to create a streaming iterator
+const createStreamIterator = <T>(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  parseData: (line: string) => T | null
+): AsyncIterableIterator<T> => {
+  let buffer = '';
+  
+  return {
+    async next() {
+      const { done, value } = await reader.read();
+      if (done) {
+        return { done: true, value: undefined };
+      }
+
+      buffer += new TextDecoder().decode(value);
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // Keep the last incomplete chunk in the buffer
+
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            const data = parseData(line);
+            if (data) {
+              return { done: false, value: data };
+            }
+          } catch (e) {
+            console.error('Error parsing data:', e);
+            continue;
+          }
+        }
+      }
+      return { done: false, value: null };
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    }
+  };
 };
 
 export const create_club_logo = async (themes: string[], colors: string[]) => {
@@ -34,6 +93,7 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
   return response.json();
 };
 
+// Player Name Generation
 export const generatePlayerNames = async (nationality: string, withPositions: boolean): Promise<PlayerGenerationResponse> => {
   const response = await fetch(`${API_URL}/api/generate_player_names`, {
     method: "POST",
@@ -46,6 +106,104 @@ export const generatePlayerNames = async (nationality: string, withPositions: bo
     }),
   });
   return response.json();
+};
+
+export const streamPlayerNames = async (nationality: string, withPositions: boolean): Promise<PlayerNameStream> => {
+  const response = await fetch(`${API_URL}/api/generate_player_names`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      nationality,
+      withPositions,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to start player name generation');
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Failed to get response reader');
+  }
+
+  return createStreamIterator<PlayerGenerationResponse>(
+    reader,
+    (line) => JSON.parse(line) as PlayerGenerationResponse
+  );
+};
+
+// Player Image Generation
+export const generatePlayerImage = async (player: { name: string; position: string }): Promise<PlayerImageResponse> => {
+  const response = await fetch(`${API_URL}/api/generate_player_image`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ player }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to generate player image');
+  }
+
+  return response.json();
+};
+
+export const streamPlayerImage = async (player: { name: string; position: string }): Promise<PlayerImageStream> => {
+  const response = await fetch(`${API_URL}/api/generate_player_image`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ player }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to start player image generation');
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Failed to get response reader');
+  }
+
+  return createStreamIterator<PlayerImageResponse>(
+    reader,
+    (line) => JSON.parse(line) as PlayerImageResponse
+  );
+};
+
+// Batch Player Image Generation (for backward compatibility)
+export const generatePlayerImages = async (teamData: {name: string, position: string}[], nationality: string) => {
+  const response = await fetch(`${API_URL}/api/generate_player_images`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ team_data: teamData, nationality: nationality }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to generate player images');
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Failed to get response reader');
+  }
+
+  return {
+    players: createStreamIterator<PlayerImageResponse>(
+      reader,
+      (line) => {
+        if (line.startsWith('data: ')) {
+          return JSON.parse(line.slice(6)) as PlayerImageResponse;
+        }
+        return null;
+      }
+    )
+  };
 };
 
 export const startMatchSimulation = async (
@@ -300,67 +458,5 @@ export const continueMatch = async (
         return iterator;
       }
     } as AsyncIterableIterator<MatchUpdate>
-  };
-};
-
-type PlayerImageData = {
-  name: string;
-  position: string;
-  image_base64: string;
-  imageUrl?: string;
-  error?: string;
-};
-
-export const generatePlayerImages = async (teamData: {name: string, position: string}[], nationality: string) => {
-  const response = await fetch(`${API_URL}/api/generate_player_images`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ team_data: teamData, nationality: nationality }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to generate player images');
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('Failed to get response reader');
-  }
-
-  let buffer = '';
-  return {
-    players: {
-      [Symbol.asyncIterator]() {
-        return {
-          async next() {
-            const { done, value } = await reader.read();
-            if (done) {
-              return { done: true, value: undefined };
-            }
-
-            buffer += new TextDecoder().decode(value);
-            const lines = buffer.split('\n\n');
-            buffer = lines.pop() || ''; // Keep the last incomplete chunk in the buffer
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6)) as PlayerImageData;
-                  if (data.error) {
-                    console.error('Error from server:', data.error);
-                    continue;
-                  }
-                  return { done: false, value: data };
-                } catch (e) {
-                  console.error('Error parsing event:', e, 'Line:', line);
-                  continue;
-                }
-              }
-            }
-            return { done: false, value: null };
-          }
-        };
-      }
-    }
   };
 };

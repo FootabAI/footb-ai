@@ -4,16 +4,43 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
-import { useBackgroundImageStore } from "@/stores/useBackgroundImageStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { toast } from "sonner";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/firebaseConfig";
 
 interface PlayersStepProps {
   onNext: () => void;
   onPlayersChange: (players: Player[]) => void;
 }
+
+// Create initial placeholder players
+const createPlaceholderPlayers = (teamId: string): Player[] => {
+  const positions = [
+    "Goalkeeper",
+    "Right-Back",
+    "Centre-Back",
+    "Centre-Back",
+    "Left-Back",
+    "Central Midfielder",
+    "Central Midfielder",
+    "Attacking Midfielder",
+    "Right Winger",
+    "Left Winger",
+    "Striker"
+  ];
+
+  return positions.map((position, index) => ({
+    id: `player-${teamId}-${index}`,
+    name: "Loading...",
+    position,
+    rating: 0, // Set to 0 for placeholder
+    teamId,
+    image_base64: null,
+    imageUrl: null,
+    createdAt: new Date().toISOString(),
+  }));
+};
 
 export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
   const {
@@ -30,60 +57,19 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
     tactic,
     formation,
     teamStats,
+    isLoading,
+    isGeneratingImages,
+    imageGenerationProgress
   } = useOnboardingStore();
 
-  const { isGenerating, progress, startGeneration, stopGeneration, playerImages } = useBackgroundImageStore();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [realTimeUpdates, setRealTimeUpdates] = useState(false);
-
-  // Set up real-time listener for player updates
-  useEffect(() => {
-    if (!teamId || !isGenerating) return;
-
-    const teamRef = doc(db, "teams", teamId);
-    const unsubscribe = onSnapshot(teamRef, (doc) => {
-      if (doc.exists()) {
-        const teamData = doc.data();
-        if (teamData.players) {
-          setPlayers(teamData.players);
-          onPlayersChange(teamData.players);
-        }
-      }
-    }, (error) => {
-      console.error("Error listening to team updates:", error);
-    });
-
-    setRealTimeUpdates(true);
-
-    return () => {
-      unsubscribe();
-      setRealTimeUpdates(false);
-    };
-  }, [teamId, isGenerating, setPlayers, onPlayersChange]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopGeneration();
-    };
-  }, [stopGeneration]);
-
-
   const handleGeneratePlayers = useCallback(async () => {
-    if (isLoading || isGenerating) return;
+    if (isLoading || isGeneratingImages) return;
     
-    setIsLoading(true);
-    setPlayers([]);
-
     try {
       if (nationality === "") {
         toast.error("Please select a nationality");
         return;
       }
-
-      // Stop any existing generation
-      stopGeneration();
 
       // Generate a new teamId if one doesn't exist
       const newTeamId = teamId || `team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -91,85 +77,101 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
         setTeamId(newTeamId);
       }
 
-      // Step 1: Generate player names and basic data
-      const response = await generatePlayers(nationality, true);
-      const generatedPlayers = response.squad.map((player, index) => ({
-        id: `player-${newTeamId}-${index}`,
-        name: player.name,
-        position: player.position,
-        rating: Math.floor(Math.random() * 30) + 60,
-        teamId: newTeamId,
-        image_base64: null,
-        imageUrl: null,
-        createdAt: new Date().toISOString(),
-      }));
+      // Create placeholder players immediately
+      const placeholderPlayers = createPlaceholderPlayers(newTeamId);
+      setPlayers(placeholderPlayers);
+      onPlayersChange(placeholderPlayers);
 
-      // Set players immediately
-      setPlayers(generatedPlayers);
-
-      onPlayersChange(generatedPlayers);
-
-      // Step 2: Create/update team document in Firestore
-      const teamRef = doc(db, "teams", newTeamId);
-      await setDoc(teamRef, {
-        id: newTeamId,
-        name: teamName,
-        players: generatedPlayers,
-        attributes,
-        tactic,
-        formation,
-        teamStats,
-        createdAt: new Date().toISOString(),
-        mainColor,
-        nationality,
-        imageGenerationStatus: 'pending'
-      }, { merge: true });
-
-      // Step 3: Start background image generation
-      toast.success("Squad generated! Player images are being created in the background.");
+      // Generate players with images
+      const result = await generatePlayers(nationality, true);
       
-      // Start generation with a small delay to ensure UI updates
-      setTimeout(() => {
-        startGeneration(newTeamId, generatedPlayers, nationality);
-      }, 100);
+      if (!result.success) {
+        throw new Error("Failed to generate players");
+      }
+
+      // Create/update team document in Firestore
+      const teamRef = doc(db, "teams", newTeamId);
+      const teamData = {
+        id: newTeamId,
+        name: teamName || 'Unnamed Team',
+        players: result.players,
+        attributes: attributes || {
+          attack: 50,
+          defense: 50,
+          midfield: 50,
+          overall: 50
+        },
+        tactic: tactic || 'balanced',
+        formation: formation || '4-4-2',
+        teamStats: teamStats || {
+          goals: 0,
+          conceded: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0
+        },
+        createdAt: new Date().toISOString(),
+        mainColor: mainColor || '#000000',
+        nationality: nationality || 'English'
+      };
+
+      await setDoc(teamRef, teamData, { merge: true });
+      setPlayers(result.players);
+      onPlayersChange(result.players);
+      
+      toast.success("Squad generated successfully!");
 
     } catch (error) {
       console.error("Error generating players:", error);
-      toast.error("Failed to generate players. Please try again.");
-    } finally {
-      setIsLoading(false);
-      setGeneratingPlayerIndex(null);
+      toast.error(error instanceof Error ? error.message : "Failed to generate players. Please try again.");
     }
   }, [
-    isLoading, 
-    isGenerating, 
-    nationality, 
-    teamId, 
-    teamName, 
-    attributes, 
-    tactic, 
-    formation, 
-    teamStats, 
+    isLoading,
+    isGeneratingImages,
+    nationality,
+    teamId,
+    teamName,
+    attributes,
+    tactic,
+    formation,
+    teamStats,
     mainColor,
-    generatePlayers,
     setTeamId,
     setPlayers,
     onPlayersChange,
-    startGeneration,
-    stopGeneration
+    generatePlayers
   ]);
-
 
   const getPlayerImageSrc = (player: Player) => {
     if (player.imageUrl) {
       return player.imageUrl;
     }
-    if (playerImages[player.id]) {
-      return `data:image/png;base64,${playerImages[player.id]}`;
+    if (player.image_base64) {
+      return `data:image/png;base64,${player.image_base64}`;
     }
     return null;
   };
 
+  const formatPlayerName = (fullName: string) => {
+    if (fullName === "Generating...") return "Generating...";
+    const names = fullName.split(' ');
+    if (names.length === 1) return fullName;
+    return `${names[0][0]}. ${names[names.length - 1]}`;
+  };
+
+  const getInitials = (name: string) => {
+    if (name === "Generating...") return "?";
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const formatRating = (rating: number) => {
+    return rating === 0 ? "--" : rating.toString();
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -180,11 +182,6 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
             <p className="text-muted-foreground">
               Generate your starting lineup
             </p>
-            {realTimeUpdates && (
-              <p className="text-xs text-green-600 mt-1">
-                Real-time updates active
-              </p>
-            )}
           </div>
           <div className={players.length > 0 ? "hidden" : "block"}>
             <Select
@@ -215,12 +212,12 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
           <Button
             variant="outline"
             onClick={handleGeneratePlayers}
-            disabled={isLoading || isGenerating}
+            disabled={isLoading || isGeneratingImages}
             className="gap-2"
           >
             <RefreshCw className="h-4 w-4" />
             Regenerate
-            {(isLoading || isGenerating) && <Loader2 className="h-4 w-4 animate-spin" />}
+            {(isLoading || isGeneratingImages) && <Loader2 className="h-4 w-4 animate-spin" />}
           </Button>
         )}
       </div>
@@ -233,10 +230,10 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
             </p>
             <Button
               onClick={handleGeneratePlayers}
-              disabled={isLoading}
+              disabled={isLoading || isGeneratingImages}
               className="gap-2"
             >
-              {isLoading ? (
+              {isLoading || isGeneratingImages ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Generating...
@@ -250,10 +247,10 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
             {players.map((player) => {
               const imageSrc = getPlayerImageSrc(player);
               const hasImage = Boolean(imageSrc);
+              const isNameLoading = player.name === "Generating...";
               
               return (
                 <Card
@@ -273,68 +270,57 @@ export const PlayersStep = ({ onNext, onPlayersChange }: PlayersStepProps) => {
                               e.currentTarget.style.display = 'none';
                             }}
                           />
+                          
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-muted">
-                            {isGenerating ? (
+                            {isGeneratingImages ? (
                               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                             ) : (
-                              <span className="text-2xl font-bold text-muted-foreground">
-                                {player.name.charAt(0)}
+                              <span className="text-lg font-semibold text-muted-foreground">
+                                {getInitials(player.name)}
                               </span>
                             )}
                           </div>
                         )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium">{player.name}</h4>
+                        <h4 className="font-medium text-muted-foreground">
+                          {formatPlayerName(player.name)}
+                        </h4>
                         <p className="text-sm text-muted-foreground">
                           {player.position}
-
                         </p>
                       </div>
                       <div
                         className="text-xl font-bold"
-                        style={{ color: mainColor }}
+                        style={{ color: isNameLoading ? 'var(--muted-foreground)' : mainColor }}
                       >
-                        {player.rating}
-
+                        {formatRating(player.rating)}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
-
           </div>
           
-          {isGenerating && (
+          {isGeneratingImages && (
             <div className="text-center text-muted-foreground">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Generating player images... {Math.round(progress)}% complete</span>
+                <span>Generating player images... {Math.round(imageGenerationProgress)}% complete</span>
               </div>
               <div className="w-full bg-muted rounded-full h-2 mb-2">
                 <div 
                   className="h-2 rounded-full transition-all duration-300 ease-out" 
                   style={{ 
-                    width: `${progress}%`,
+                    width: `${imageGenerationProgress}%`,
                     backgroundColor: mainColor 
                   }}
                 />
               </div>
-              <p className="text-sm">You can continue to the next step while images generate</p>
             </div>
           )}
-          
-          <div className="flex justify-center">
-            <Button 
-              onClick={onNext}
-              className="gap-2"
-            >
-              Continue
-            </Button>
-
-          </div>
         </div>
       )}
     </div>

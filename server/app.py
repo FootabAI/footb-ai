@@ -22,6 +22,7 @@ from services.match_service import MatchService
 from services.player_name_service import PlayerNameService
 from services.tts_service import TTSService
 from services.player_image_service import PlayerImageService
+# from services.player_names.llm_utils import build_local_llm
 
 
 # Load environment variables
@@ -54,12 +55,12 @@ USE_TTS = False  # Central control for TTS
 logo_service = LogoService(reference_images_dir="images")
 player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
 tts_service = TTSService()
-player_name_service = PlayerNameService()
 
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
 
+player_name_service = PlayerNameService()
 
 
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
@@ -86,108 +87,121 @@ async def create_club_logo(request: LogoGenerationRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/generate_player_names", response_model=PlayerGenerationResponse)
+@app.post("/api/generate_player_names")
 async def generate_player_names(request: PlayerGenerationRequest):
     """
-    Produce realistic-sounding footballer names.
+    Produce realistic-sounding footballer names with streaming response.
     """
     try:
-        player = player_name_service.generate_player(
-            nationality   = request.nationality,
-            with_position= request.with_positions,
-        )
-        return PlayerGenerationResponse(
-            player   = player,
-            success = True,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        async def player_generator():
+            # Generate 11 players
+            for _ in range(11):
+                player = player_name_service.generate_player(
+                    nationality=request.nationality
+                )
+                response = PlayerGenerationResponse(
+                    player=player,
+                    success=True,
+                )
+                yield f"{response.model_dump_json()}\n"
 
-@app.post("/api/simulate-match")
-async def simulate_match(request: Request):
-    """Stream a simulated match with events until half-time."""
-    try:
-        data = await request.json()
-        user_team_data = data.get("user_team")
-        opponent_team_data = data.get("opponent_team")
-        match_id = data.get("match_id")
-
-        if not user_team_data or not opponent_team_data or not match_id:
-            raise HTTPException(status_code=400, detail="Missing team data or match ID")
-
-        print(f"\n=== Starting match: {user_team_data['name']} vs {opponent_team_data['name']} ===")
-        print(f"LLM Commentary: {'ON' if USE_LLM else 'OFF'}")
-        print(f"TTS: {'ON' if USE_TTS else 'OFF'}")
-
-
-        # ! NEW FUNCTION 
-        # TODO: ARGS: 
-            # * home_team_attributes=user_team_data["attributes"],
-            # * away_team_attributes=opponent_team_data["attributes"],
-            # * home_team_tactic=user_team_data["tactic"],
-            # * away_team_tactic=opponent_team_data["tactic"],
-        # ! Load JSON file
-          # ! Use team attributes to calculate match stats 
-          # ! Pass into match service
-
-
-        # Initialize MatchService with the teams and their attributes
-        match_service = MatchService(
-            home_team=user_team_data["name"],
-            away_team=opponent_team_data["name"],
-            use_llm=USE_LLM,  # Use central control
-            debug_mode=not USE_LLM,  # Use debug mode when LLM is off
-            home_team_attributes=user_team_data["attributes"],
-            away_team_attributes=opponent_team_data["attributes"],
-            home_team_tactic=user_team_data["tactic"],
-            away_team_tactic=opponent_team_data["tactic"],
-            home_team_formation=user_team_data["formation"],
-            away_team_formation=opponent_team_data["formation"],
-            home_team_stats=user_team_data["teamStats"],
-            away_team_stats=opponent_team_data["teamStats"]
-            # TODO: Add NEW FUNCTION here...
-        )
-        
-        # Store the match service instance
-        active_matches[match_id] = match_service
-        
-        async def event_generator():
-            try:
-                async for event in match_service.stream_first_half():
-                    if event:  # Only yield non-empty events
-                        # Add TTS audio URL if TTS is enabled
-                        if USE_TTS:
-                            event_data = json.loads(event)
-                            if ("event" in event_data and 
-                                "commentary" in event_data["event"] and 
-                                event_data["event"]["commentary"] is not None):
-                                audio_url = await tts_service.generate_audio(
-                                    event_data["event"]["commentary"],
-                                    event_data["event"]["type"]
-                                )
-                                if audio_url:
-                                    event_data["event"]["audio_url"] = audio_url
-                            event = json.dumps(event_data) + "\n"
-                        yield event
-            except Exception as e:
-                print(f"Error in event generator: {e}")
-                yield json.dumps({"error": str(e)}) + "\n"
-        
         return StreamingResponse(
-            event_generator(),
+            player_generator(),
             media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
-                "Content-Type": "application/x-ndjson",
-                "Transfer-Encoding": "chunked"
             }
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.post("/api/simulate-match")
+# async def simulate_match(request: Request):
+#     """Stream a simulated match with events until half-time."""
+#     try:
+#         data = await request.json()
+#         user_team_data = data.get("user_team")
+#         opponent_team_data = data.get("opponent_team")
+#         match_id = data.get("match_id")
+
+#         if not user_team_data or not opponent_team_data or not match_id:
+#             raise HTTPException(status_code=400, detail="Missing team data or match ID")
+
+#         print(f"\n=== Starting match: {user_team_data['name']} vs {opponent_team_data['name']} ===")
+#         print(f"LLM Commentary: {'ON' if USE_LLM else 'OFF'}")
+#         print(f"TTS: {'ON' if USE_TTS else 'OFF'}")
+
+
+#         # ! NEW FUNCTION 
+#         # TODO: ARGS: 
+#             # * home_team_attributes=user_team_data["attributes"],
+#             # * away_team_attributes=opponent_team_data["attributes"],
+#             # * home_team_tactic=user_team_data["tactic"],
+#             # * away_team_tactic=opponent_team_data["tactic"],
+#         # ! Load JSON file
+#           # ! Use team attributes to calculate match stats 
+#           # ! Pass into match service
+
+
+#         # Initialize MatchService with the teams and their attributes
+#         match_service = MatchService(
+#             home_team=user_team_data["name"],
+#             away_team=opponent_team_data["name"],
+#             use_llm=USE_LLM,  # Use central control
+#             debug_mode=not USE_LLM,  # Use debug mode when LLM is off
+#             home_team_attributes=user_team_data["attributes"],
+#             away_team_attributes=opponent_team_data["attributes"],
+#             home_team_tactic=user_team_data["tactic"],
+#             away_team_tactic=opponent_team_data["tactic"],
+#             home_team_formation=user_team_data["formation"],
+#             away_team_formation=opponent_team_data["formation"],
+#             home_team_stats=user_team_data["teamStats"],
+#             away_team_stats=opponent_team_data["teamStats"]
+#             # TODO: Add NEW FUNCTION here...
+#         )
+        
+#         # Store the match service instance
+#         active_matches[match_id] = match_service
+        
+#         async def event_generator():
+#             try:
+#                 async for event in match_service.stream_first_half():
+#                     if event:  # Only yield non-empty events
+#                         # Add TTS audio URL if TTS is enabled
+#                         if USE_TTS:
+#                             event_data = json.loads(event)
+#                             if ("event" in event_data and 
+#                                 "commentary" in event_data["event"] and 
+#                                 event_data["event"]["commentary"] is not None):
+#                                 audio_url = await tts_service.generate_audio(
+#                                     event_data["event"]["commentary"],
+#                                     event_data["event"]["type"]
+#                                 )
+#                                 if audio_url:
+#                                     event_data["event"]["audio_url"] = audio_url
+#                             event = json.dumps(event_data) + "\n"
+#                         yield event
+#             except Exception as e:
+#                 print(f"Error in event generator: {e}")
+#                 yield json.dumps({"error": str(e)}) + "\n"
+        
+#         return StreamingResponse(
+#             event_generator(),
+#             media_type="application/x-ndjson",
+#             headers={
+#                 "Cache-Control": "no-cache",
+#                 "Connection": "keep-alive",
+#                 "X-Accel-Buffering": "no",
+#                 "Content-Type": "application/x-ndjson",
+#                 "Transfer-Encoding": "chunked"
+#             }
+#         )
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/simulate-match-new")
 async def simulate_match_new(request: Request):
@@ -456,59 +470,55 @@ async def generate_player_images(request: Request):
         if not team_data:
             raise HTTPException(status_code=400, detail="Missing team_data")
         
+        # Process all players at once using the service
+        print("🎨 Starting image generation for all players...")
+        results = player_image_service.generate_team_images(team_data)
+        print(f"✅ Generated {len(results)} player images")
+        
+        # Instead of streaming, return all results at once
+        return {
+            "success": True,
+            "players": results
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in generate_player_images: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/generate_player_image")
+async def generate_player_image(request: Request):
+    """Generate a single player image with streaming response"""
+    try:
+        data = await request.json()
+        player_data = data.get("player")
+        if not player_data:
+            raise HTTPException(status_code=400, detail="Missing player data")
+        
         async def image_generator():
-            for player in team_data:
-                try:
-                    # Generate single player image
-                    attributes = player_image_service._generate_attributes()
-                    positive_prompt, negative_prompt = player_image_service._create_prompt(attributes, 1)
-                    
-                    # Generate image
-                    result = player_image_service.pipe(
-                        prompt=positive_prompt,
-                        negative_prompt=negative_prompt,
-                        image=player_image_service.pose_image,
-                        num_inference_steps=30,
-                        guidance_scale=6.5,
-                        controlnet_conditioning_scale=1.0,
-                        width=256,
-                        height=256,
-                        generator=torch.Generator("cuda" if player_image_service.use_gpu else "cpu").manual_seed(random.randint(1, 1000000))
-                    )
-                    
-                    image = result.images[0]
-                    
-                    # Remove background and convert to base64
-                    image_no_bg = player_image_service._remove_background_ai(image)
-                    
-                    buffer = io.BytesIO()
-                    image_no_bg.save(buffer, format="PNG")
-                    buffer.seek(0)
-                    image_b64 = base64.b64encode(buffer.getvalue()).decode()
-                    
-                    result = {
-                        "name": player["name"],
-                        "position": player["position"],
-                        "image_base64": image_b64,
-                        "attributes": attributes
-                    }
-                    
-                    # Ensure proper SSE format
-                    yield f"data: {json.dumps(result)}\n\n"
-                    
-                except Exception as e:
-                    print(f"Failed to generate player image: {e}")
-                    error_result = {
-                        "error": str(e),
-                        "name": player["name"],
-                        "position": player["position"]
-                    }
-                    yield f"data: {json.dumps(error_result)}\n\n"
-                    continue
+            try:
+                # Generate single player image
+                print(f"🎨 Generating image for player: {player_data['name']}")
+                result = player_image_service.generate_player_image(player_data)
+                print(f"✅ Generated image for {player_data['name']}")
+                
+                # Stream the result
+                response = {
+                    "success": True,
+                    "player": result
+                }
+                yield f"{json.dumps(response)}\n"
+                
+            except Exception as e:
+                print(f"❌ Error generating image: {e}")
+                error_response = {
+                    "success": False,
+                    "error": str(e)
+                }
+                yield f"{json.dumps(error_response)}\n"
         
         return StreamingResponse(
             image_generator(),
-            media_type="text/event-stream",
+            media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
@@ -517,8 +527,8 @@ async def generate_player_images(request: Request):
         )
         
     except Exception as e:
+        print(f"❌ Error in generate_player_image endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

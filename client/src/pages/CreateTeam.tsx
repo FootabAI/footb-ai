@@ -5,7 +5,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLogoGeneration } from "@/hooks/useLogoGeneration";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
-import { useBackgroundImageStore } from "@/stores/useBackgroundImageStore";
+// import { useBackgroundImageStore } from "@/stores/useBackgroundImageStore";
 
 // Steps
 import { LogoStep } from "@/components/team-creation/LogoStep";
@@ -58,13 +58,13 @@ const CreateTeam = () => {
   } = useLogoGeneration();
 
   // Cleanup background generation when component unmounts
-  useEffect(() => {
-    return () => {
-      if (teamId) {
-        useBackgroundImageStore.getState().stopGeneration();
-      }
-    };
-  }, [teamId]);
+  // useEffect(() => {
+  //   return () => {
+  //     if (teamId) {
+  //       useBackgroundImageStore.getState().stopGeneration();
+  //     }
+  //   };
+  // }, [teamId]);
 
   const handleCreateTeam = async () => {
     try {

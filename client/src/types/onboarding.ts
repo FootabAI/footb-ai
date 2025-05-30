@@ -1,12 +1,10 @@
 import { TeamAttributes, TeamTactic, Formation, Player , TeamStats} from "@/types";
 import {  } from "./team";
 
-type PlayerGenerationResponse = {
-  player: {
-    name: string;
-    position?: string;
-  };
+export type PlayerGenerationResponse = {
   success: boolean;
+  players: Player[];
+  error?: string;
 };
 
 export type OnboardingState = {
@@ -30,6 +28,9 @@ export type OnboardingState = {
   teamStats: TeamStats | null;
   nationality: string;
   players: Player[];
+  imageGenerationProgress: number;
+  isGeneratingImages: boolean;
+  currentStep: number;
 
   // Actions
   setTeamName: (name: string) => void;
@@ -45,16 +46,11 @@ export type OnboardingState = {
   setMainColor: (color: string) => void;
   setNationality: (nationality: string) => void;
   setPlayers: (players: Player[]) => void;
+  setCurrentStep: (step: number) => void;
+  setAttributes: (attributes: TeamAttributes) => void;
+  setTeamStats: (stats: TeamStats) => void;
   handleAttributeChange: (attr: keyof TeamAttributes, newValue: number) => void;
   createTeam: (logoData: { image?: string; initials?: string; backgroundColor: string; theme?: string }, teamStats: TeamStats, attributes: TeamAttributes, tactic: TeamTactic, formation: Formation) => Promise<void>;
   resetTeamCreation: () => void;
-  generateRandomPlayers: (teamId: string, teamName: string) => Player[];
-  generatePlayers: (nationality: string, withPositions: boolean) => Promise<PlayerGenerationResponse>;
-  generatePlayerImages: (teamData: {name: string, position: string}[], nationality: string) => Promise<{
-    players: {
-      [Symbol.asyncIterator](): {
-        next(): Promise<{ done: boolean; value: { name: string; position: string; image_base64: string; } | null; }>;
-      };
-    };
-  }>;
+  generatePlayers: (nationality: string, generateImages: boolean) => Promise<PlayerGenerationResponse>;
 };

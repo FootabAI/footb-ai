@@ -40,15 +40,16 @@ export type TeamLogo = {
 /**
  * Represents a player in the game
  */
-export type Player = {
+export interface Player {
   id: string;
   name: string;
   position: string;
   rating: number;
   teamId: string;
   image_base64: string | null;
-  imageUrl?: string;
-};
+  imageUrl: string | null;
+  createdAt: string;
+}
 
 /**
  * Represents a complete team in the game

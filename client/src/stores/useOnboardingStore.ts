@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { db, auth, storage } from "@/firebaseConfig";
-import { addDoc, collection, doc, updateDoc, getDoc } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Team, Player} from "@/types";
 import { useTeamStore } from "./useTeamStore";
 import { DEFAULT_ATTRIBUTES, TOTAL_POINTS, DEFAULT_TEAM_STATS } from "@/config/default_attributes";
 import { OnboardingState } from "@/types/onboarding";
-import { generatePlayerNames, generatePlayerImages } from "@/api";
+import { streamPlayerNames, streamPlayerImage } from "@/api";
 
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
@@ -30,6 +30,9 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   teamStats: DEFAULT_TEAM_STATS,
   nationality: "",
   players: [],
+  imageGenerationProgress: 0,
+  isGeneratingImages: false,
+  currentStep: 1,
   // Actions
   setTeamName: (name) => set({ teamName: name }),
   setLogoType: (type) => set({ logoType: type }),
@@ -54,12 +57,129 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   },
   setNationality: (nationality) => set({ nationality }),
   setPlayers: (players) => set({ players }),
-  generateRandomPlayers: (teamId: string, teamName: string) =>
-    generateRandomPlayers(teamId, teamName),
-  generatePlayers: async (nationality: string, withPositions: boolean) => {
-    const response = await generatePlayerNames(nationality, withPositions);
-    console.log("Players from store: ", response);
-    return response;
+  setCurrentStep: (step) => set({ currentStep: step }),
+  setAttributes: (attributes) => set({ attributes }),
+  setTeamStats: (stats) => set({ teamStats: stats }),
+  generatePlayers: async (nationality: string, generateImages: boolean) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      // Generate a new teamId if one doesn't exist
+      const teamId = get().teamId || `team-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      if (!get().teamId) {
+        set({ teamId });
+      }
+
+      // Create 11 placeholder players immediately
+      const placeholderPlayers = Array.from({ length: 11 }, (_, index) => ({
+        id: `player-${teamId}-${index}`,
+        name: "Generating...",
+        position: getDefaultPosition(index),
+        rating: 0,
+        teamId,
+        image_base64: null,
+        imageUrl: null,
+        createdAt: new Date().toISOString(),
+      }));
+
+      // Set placeholders immediately
+      set({ players: placeholderPlayers, isLoading: false });
+
+      // Generate player names with streaming
+      const nameStream = await streamPlayerNames(nationality, true);
+      let playerIndex = 0;
+
+      // Update names and ratings as they come in
+      for await (const data of nameStream) {
+        if (data?.success && data?.player) {
+          set(state => {
+            const updatedPlayers = [...state.players];
+            if (updatedPlayers[playerIndex]) {
+              updatedPlayers[playerIndex] = {
+                ...updatedPlayers[playerIndex],
+                name: data.player.name,
+                position: data.player.position || getDefaultPosition(playerIndex),
+                rating: Math.floor(Math.random() * 30) + 60,
+              };
+            }
+            playerIndex++;
+            return { players: updatedPlayers };
+          });
+        }
+      }
+
+      // If images were requested, generate them
+      if (generateImages) {
+        set({ isGeneratingImages: true });
+        let completedPlayers = 0;
+
+        // Process players sequentially with streaming
+        for (const player of get().players) {
+          try {
+            const imageStream = await streamPlayerImage({
+              name: player.name,
+              position: player.position
+            });
+
+            for await (const imageData of imageStream) {
+              if (imageData?.success && imageData?.player) {
+                const result = imageData.player;
+                if (result.error || !result.image_base64) {
+                  console.error('Invalid image data for player:', player.name);
+                  continue;
+                }
+
+                try {
+                  // Convert base64 to blob and upload to Firebase Storage
+                  const base64Data = result.image_base64.replace(/^data:image\/\w+;base64,/, '');
+                  const binaryString = atob(base64Data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  const blob = new Blob([bytes], { type: 'image/png' });
+                  
+                  // Upload to Firebase Storage
+                  const imageRef = ref(storage, `players/${teamId}/${player.id}.png`);
+                  await uploadBytes(imageRef, blob);
+                  const imageUrl = await getDownloadURL(imageRef);
+
+                  // Update player with image URL
+                  set(state => {
+                    const updatedPlayers = state.players.map(p => 
+                      p.id === player.id 
+                        ? { ...p, imageUrl, image_base64: null }
+                        : p
+                    );
+                    completedPlayers++;
+                    return { 
+                      players: updatedPlayers,
+                      imageGenerationProgress: (completedPlayers / state.players.length) * 100
+                    };
+                  });
+                } catch (uploadError) {
+                  console.error(`Error uploading image for player ${player.name}:`, uploadError);
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing player ${player.name}:`, error);
+          }
+        }
+      }
+
+      set({ isGeneratingImages: false });
+      return { success: true, players: get().players };
+
+    } catch (error) {
+      console.error('Error generating players:', error);
+      set({ isLoading: false, isGeneratingImages: false });
+      return { 
+        success: false, 
+        players: [], 
+        error: error instanceof Error ? error.message : 'Failed to generate players' 
+      };
+    }
   },
   handleAttributeChange: (attr, newValue) => {
     const { attributes, pointsLeft } = get();
@@ -92,9 +212,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         mainColor,
         players,
         teamId,
-        teamStats,
         nationality,
-
       } = get();
 
       const user = auth.currentUser;
@@ -114,24 +232,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
       const finalName = logoType === "manual" ? teamName : customizedName;
 
-
-      // Get existing team data to preserve player images
-      const teamRef = doc(db, "teams", teamId);
-      const existingTeam = await getDoc(teamRef);
-      const existingPlayers = existingTeam.exists() ? existingTeam.data().players : [];
-
-      // Merge existing player data with new player data
-      const playersWithUrls = players.map(player => {
-        const existingPlayer = existingPlayers.find(p => p.id === player.id);
-        return {
-          ...player,
-          imageUrl: existingPlayer?.imageUrl || player.imageUrl,
-          image_base64: existingPlayer?.image_base64 || player.image_base64,
-        };
-      });
-
       const updatedTeam: Team & { userId: string } = {
-
         id: teamId,
         name: finalName,
         logo: {
@@ -154,15 +255,12 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         formation,
         teamStats: teamStats || DEFAULT_TEAM_STATS,
         points: pointsLeft,
-        players: playersWithUrls,
+        players,
         userId: user.uid,
         isBot: false,
       };
 
-      // Update existing team in Firestore
-      await updateDoc(teamRef, updatedTeam);
-
-      // Update TeamStore with the updated team
+      await updateDoc(doc(db, "teams", teamId), updatedTeam);
       teamStore.setTeam(updatedTeam);
       set({ success: "Team created successfully!" });
     } catch (err) {
@@ -189,62 +287,55 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       pointsLeft: TOTAL_POINTS,
       teamStats: DEFAULT_TEAM_STATS,
       nationality: "",
+      players: [],
+      imageGenerationProgress: 0,
+      isGeneratingImages: false,
     });
-  },
-
-  generatePlayerImages: async (teamData, nationality) => {
-    return await generatePlayerImages(teamData, nationality);
   },
 }));
 
-// Helper function to generate random players
-const generateRandomPlayers = (teamId: string, teamName: string): Player[] => {
+// Helper function to create placeholder players
+const createPlaceholderPlayers = (teamId: string): Player[] => {
   const positions = [
-    "GK",
-    "DEF",
-    "DEF",
-    "DEF",
-    "DEF",
-    "MID",
-    "MID",
-    "MID",
-    "ATT",
-    "ATT",
-    "ATT",
-  ];
-  const firstNames = [
-    "Alex",
-    "Sam",
-    "Jordan",
-    "Taylor",
-    "Casey",
-    "Morgan",
-    "Riley",
-    "Jamie",
-    "Avery",
-    "Cameron",
-    "Quinn",
-  ];
-  const lastNames = [
-    "Smith",
-    "Johnson",
-    "Williams",
-    "Brown",
-    "Jones",
-    "Garcia",
-    "Miller",
-    "Davis",
-    "Rodriguez",
-    "Martinez",
-    "Wilson",
+    "Goalkeeper",
+    "Right-Back",
+    "Centre-Back",
+    "Centre-Back",
+    "Left-Back",
+    "Central Midfielder",
+    "Central Midfielder",
+    "Attacking Midfielder",
+    "Right Winger",
+    "Left Winger",
+    "Striker"
   ];
 
-  return positions.map((pos, i) => ({
-    id: `player-${teamId}-${i}`,
-    name: `${firstNames[i]} ${lastNames[i]}`,
-    position: pos,
-    rating: Math.floor(Math.random() * 30) + 60, // Random rating between 60-90
+  return positions.map((position, index) => ({
+    id: `player-${teamId}-${index}`,
+    name: "Loading...",
+    position,
+    rating: 0,
     teamId,
     image_base64: null,
+    imageUrl: null,
+    createdAt: new Date().toISOString(),
   }));
 };
+
+// Helper function to get default positions based on player index
+function getDefaultPosition(index: number): string {
+  const positions = [
+    "Goalkeeper",
+    "Right-Back",
+    "Centre-Back",
+    "Centre-Back",
+    "Left-Back",
+    "Central Midfielder",
+    "Central Midfielder",
+    "Attacking Midfielder",
+    "Right Winger",
+    "Left Winger",
+    "Striker"
+  ];
+  return positions[index] || "Substitute";
+}
