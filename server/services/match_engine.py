@@ -18,7 +18,7 @@ class MatchEngineService:
         
         with open(json_path, "r") as f:
             self.raw_stats = json.load(f)
-        
+            
         with open(tactics_path, "r") as f:
             self.tactics_data = json.load(f)
             

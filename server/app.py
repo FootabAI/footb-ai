@@ -17,7 +17,7 @@ import asyncio
 
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
-from services.logo_service import LogoService
+from services.club_logo_service.logo_service import LogoService
 from services.match_service import MatchService
 from services.player_name_service import PlayerNameService
 from services.player_image_service import PlayerImageService
@@ -62,7 +62,8 @@ USE_LLM = True  # Central control for LLM commentary
 USE_TTS = True   # Central control for TTS audio generation
 
 # Initialize services
-logo_service = LogoService(reference_images_dir="images")
+logo_service = LogoService(reference_images_dir="./services/club_logo_service/images")
+
 player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
 
 # Store active matches
@@ -74,16 +75,25 @@ player_name_service = PlayerNameService()
 @app.post("/create_club_logo", response_model=LogoGenerationResponse)
 async def create_club_logo(request: LogoGenerationRequest):
     try:
+        # Validate input
+        if not request.themes:
+            raise HTTPException(status_code=400, detail="At least one theme is required")
+        if len(request.themes) > 2:
+            raise HTTPException(status_code=400, detail="Maximum of 2 themes allowed")
+        if len(request.colors) > 3:
+            raise HTTPException(status_code=400, detail="Maximum of 3 colors allowed")
+        
         # Generate club name and logo
         club_name, logo_description, logo_url, main_color = logo_service.generate_club(
-            theme=request.themes,
+            themes=request.themes,
             colors=request.colors
         )
         
         # Get similar logos for reference
         similar_logos = logo_service.get_similar_logos(logo_description)
         
-        return LogoGenerationResponse(
+        # Create the response
+        response = LogoGenerationResponse(
             club_name=club_name,
             logo_description=logo_description,
             logo_url=logo_url,
@@ -92,7 +102,13 @@ async def create_club_logo(request: LogoGenerationRequest):
             success=True
         )
         
+        print(f"Response: {response}")
+        
+        
+        return response
+        
     except Exception as e:
+        print(f"Error in create_club_logo: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/generate_player_names")
