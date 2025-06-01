@@ -204,18 +204,33 @@ class PlayerImageService:
         return pose_image
       
 if __name__ == "__main__":
-    service = PlayerImageService(pose_image_path="../assets/reference-1.png")
-    results = service.generate_team_images([
-        {"name": "Player 1", "position": "GK"},
-        {"name": "Player 2", "position": "GK"},
-        {"name": "Player 3", "position": "GK"},
-        {"name": "Player 4", "position": "GK"},
-        {"name": "Player 5", "position": "GK"},
-        {"name": "Player 6", "position": "GK"},
-        {"name": "Player 7", "position": "GK"},
-        {"name": "Player 8", "position": "GK"},
-        {"name": "Player 9", "position": "GK"},
-        {"name": "Player 10", "position": "GK"},
-        {"name": "Player 11", "position": "GK"}
-    ])
-    # print(results)x
+    print("Starting player image generation...")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Looking for reference image at: {os.path.abspath('./reference-1.png')}")
+    
+    service = PlayerImageService(pose_image_path="./reference-1.png")
+    print("Service initialized, generating player image...")
+    
+    results = service.generate_player_image({"name": "Player 1", "position": "GK"})
+    print("Generation complete!")
+    
+    # Save the image to temp_images folder
+    if "image_base64" in results:
+        # Convert base64 back to image
+        image_data = base64.b64decode(results["image_base64"])
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Save to temp_images folder
+        output_path = Path("temp_images") / f"{results['name']}_{results['position']}.png"
+        image.save(output_path)
+        print(f"Image saved to: {output_path}")
+    else:
+        print("No image was generated!")
+    
+    # Check if temp_images directory exists and list its contents
+    temp_dir = Path("temp_images")
+    if temp_dir.exists():
+        print(f"Contents of temp_images directory: {list(temp_dir.glob('*'))}")
+    else:
+        print("temp_images directory not found!")
+    

@@ -1,7 +1,6 @@
 import { Formation, Match, Team, TeamTactic, MatchStats} from "./types";
 import { MatchEventUpdate, MatchSimulationResponse, MatchUpdate } from './types/match-simulation';
 
-
 export const API_URL = "http://127.0.0.1:8000";
 
 // Helper function to ensure audio URLs are absolute
@@ -82,6 +81,7 @@ const createStreamIterator = <T>(
   };
 };
 
+// Club Logo Generation
 export const create_club_logo = async (themes: string[], colors: string[]) => {
   const response = await fetch(`${API_URL}/create_club_logo`, {
     method: "POST",
@@ -98,20 +98,6 @@ export const create_club_logo = async (themes: string[], colors: string[]) => {
 };
 
 // Player Name Generation
-export const generatePlayerNames = async (nationality: string, withPositions: boolean): Promise<PlayerGenerationResponse> => {
-  const response = await fetch(`${API_URL}/api/generate_player_names`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      nationality,
-      withPositions,
-    }),
-  });
-  return response.json();
-};
-
 export const streamPlayerNames = async (nationality: string, withPositions: boolean): Promise<PlayerNameStream> => {
   const response = await fetch(`${API_URL}/api/generate_player_names`, {
     method: "POST",
@@ -140,22 +126,6 @@ export const streamPlayerNames = async (nationality: string, withPositions: bool
 };
 
 // Player Image Generation
-export const generatePlayerImage = async (player: { name: string; position: string }): Promise<PlayerImageResponse> => {
-  const response = await fetch(`${API_URL}/api/generate_player_image`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ player }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to generate player image');
-  }
-
-  return response.json();
-};
-
 export const streamPlayerImage = async (player: { name: string; position: string }): Promise<PlayerImageStream> => {
   const response = await fetch(`${API_URL}/api/generate_player_image`, {
     method: "POST",
@@ -180,117 +150,11 @@ export const streamPlayerImage = async (player: { name: string; position: string
   );
 };
 
-// Batch Player Image Generation (for backward compatibility)
-export const generatePlayerImages = async (teamData: {name: string, position: string}[], nationality: string) => {
-  const response = await fetch(`${API_URL}/api/generate_player_images`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ team_data: teamData, nationality: nationality }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to generate player images');
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('Failed to get response reader');
-  }
-
-  return {
-    players: createStreamIterator<PlayerImageResponse>(
-      reader,
-      (line) => {
-        if (line.startsWith('data: ')) {
-          return JSON.parse(line.slice(6)) as PlayerImageResponse;
-        }
-        return null;
-      }
-    )
-  };
-};
-
 interface MatchEventIterator extends AsyncIterableIterator<MatchUpdate> {
   remainingEvents: MatchUpdate[];
 }
 
-export const startMatchSimulation = async (
-  matchId: string,
-  userTeam: Team,
-  opponentTeam: Team
-): Promise<MatchSimulationResponse> => {
-  const response = await fetch(`${API_URL}/api/simulate-match`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      match_id: matchId,
-      user_team: {
-        name: userTeam.name,
-        attributes: userTeam.attributes,
-        tactic: userTeam.tactic,
-        formation: userTeam.formation,
-        teamStats: userTeam.teamStats
-      },
-      opponent_team: {
-        name: opponentTeam.name,
-        attributes: opponentTeam.attributes,
-        tactic: opponentTeam.tactic,
-        formation: opponentTeam.formation,
-        teamStats: opponentTeam.teamStats
-      }
-    }),
-  });
-  console.log(response);
-  if (!response.ok) {
-    throw new Error('Failed to start match');
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error('Failed to get response reader');
-  }
-
-  return {
-    matchId: matchId,
-    events: {
-      [Symbol.asyncIterator]() {
-        const iterator: AsyncIterableIterator<MatchUpdate> = {
-          async next(): Promise<IteratorResult<MatchUpdate>> {
-            const { done, value } = await reader.read();
-            if (done) {
-              return { done: true, value: undefined };
-            }
-
-            const text = new TextDecoder().decode(value);
-            const events = text.split('\n').filter(Boolean);
-            
-            if (events.length === 0) {
-              return { done: false, value: null };
-            }
-
-            try {
-              const event = JSON.parse(events[0]);
-              if (event.event?.audio_url) {
-                event.event.audio_url = ensureAbsoluteUrl(event.event.audio_url);
-              }
-              return { done: false, value: event };
-            } catch (e) {
-              console.error('Error parsing event:', e);
-              return { done: false, value: null };
-            }
-          },
-          [Symbol.asyncIterator]() {
-            return this;
-          }
-        };
-        return iterator;
-      }
-    } as AsyncIterableIterator<MatchUpdate>
-  };
-};
-
+// Match Simulation
 export const startMatchSimulationNew = async (
   matchId: string,
   userTeam: Team,
@@ -375,33 +239,6 @@ export const startMatchSimulationNew = async (
     matchId: matchId,
     events: iterator
   };
-};
-
-export const changeTeamTactics = async (
-  matchId: string,
-  tactic: TeamTactic,
-  formation: Formation
-): Promise<void> => {
-  console.log("Changing tactics:", { matchId, tactic, formation });
-  
-  const response = await fetch(`${API_URL}/api/change-team-tactic`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      match_id: matchId,
-      tactic,
-      formation,
-    }),
-  });
-  
-  const data = await response.json();
-  console.log("Tactics change response:", data);
-
-  if (!response.ok) {
-    throw new Error('Failed to change team tactics');
-  }
 };
 
 export const continueMatch = async (

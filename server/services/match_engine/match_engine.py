@@ -5,7 +5,13 @@ from pathlib import Path
 import random
 from collections import defaultdict
 import asyncio
-from .commentary_service import CommentaryService, MatchContext
+import sys
+import os
+
+# Add the server directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.commentary_service.commentary_service import CommentaryService, MatchContext
 from typing import Dict, Any
 
 class MatchEngineService:
@@ -430,12 +436,18 @@ def test_simulation():
                       "defending": 100, "pace": 100, "physicality": 100}
     
     # Initialize match engine with test settings
-    test_engine = MatchEngineService(use_llm=True, use_tts=True)
+    test_engine = MatchEngineService(use_llm=False, use_tts=False)
     
     # Generate events
     event_dict = test_engine.simulate_half(
         PLAYER_ATTRS, "tiki-taka", 
         OPPONENT_ATTRS, "gegenpressing"
+    )
+    test_engine.set_match_context(
+        home_team="AI United",
+        away_team="Chelsea FC",
+        home_tactic="tiki-taka",
+        away_tactic="gegenpressing"
     )
     
     print("\n=== EVENT DICTIONARY ===")

@@ -20,8 +20,7 @@ from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from services.club_logo_service.logo_service import LogoService
 from services.match_service import MatchService
 from services.player_name_service import PlayerNameService
-from services.player_image_service import PlayerImageService
-# from services.player_names.llm_utils import build_local_llm
+from server.services.player_image_service.player_image_service import PlayerImageService
 
 
 # Load environment variables
@@ -153,7 +152,7 @@ async def simulate_match_new(request: Request):
             raise HTTPException(status_code=400, detail="Missing required data")
         
         # Initialize match engine with global settings
-        from services.match_engine import MatchEngineService
+        from server.services.match_engine.match_engine import MatchEngineService
         match_engine = MatchEngineService(use_llm=USE_LLM, use_tts=USE_TTS)
         
         # Set match context for commentary
@@ -270,7 +269,7 @@ async def continue_match(request: Request):
         print(f"Formation: {formation}")
 
         # Initialize match engine with global settings
-        from services.match_engine import MatchEngineService
+        from server.services.match_engine.match_engine import MatchEngineService
         match_engine = MatchEngineService(use_llm=USE_LLM, use_tts=USE_TTS)
 
         # Set match context for commentary
@@ -421,8 +420,6 @@ async def change_team_tactic(request: Request):
         print(f"Error in change_team_tactic: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# Add this single endpoint:
 @app.post("/api/generate_player_images")
 async def generate_player_images(request: Request):
     """Generate profile images for 11 players"""

@@ -15,14 +15,14 @@ from pathlib import Path
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Initialize ElevenLabs client
+# Init OpenAI client and ElevenLabs client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
+
 # Create temp_audio directory if it doesn't exist
-temp_audio_dir = Path("temp_audio")
+temp_audio_dir = Path("./temp_audio")
 temp_audio_dir.mkdir(exist_ok=True)
 
 @dataclass
@@ -48,13 +48,8 @@ class EventContext:
 
 class CommentaryService:
     def __init__(self, window_size: int = 5, use_llm: bool = True, use_tts: bool = True):
-        """Initialize the commentary service with a sliding window.
+        """Initialize the commentary service with a sliding context window."""
         
-        Args:
-            window_size: Number of recent events to keep in context window
-            use_llm: Whether to use LLM for commentary generation
-            use_tts: Whether to use TTS for audio generation
-        """
         print("\n=== Initializing CommentaryService ===")
         print(f"Window size: {window_size}")
         print(f"Use LLM: {use_llm}")
@@ -261,7 +256,7 @@ class CommentaryService:
                         - Must NOT mention the score or minute
                         - Must use the actual team names (not "home team" or "away team")
                         - Used for UI display
-                        Example: "zx takes a shot" or "AI United hits the target"
+                        Example: "AI United takes a shot, but the goalkeeper saves it" or "Red card shown to AI United player, AI United are down to 10 men"
 
                       2. Narrative description (audio_url):
                         - Must be engaging and exciting
@@ -270,7 +265,7 @@ class CommentaryService:
                         - Should acknowledge patterns (e.g., multiple shots in succession)
                         - Should reference the match context (tactics, stats, etc.)
                         - Used for future text-to-speech
-                        Example: "zx is relentless! Another shot on target! The score remains 1-0 in their favor!"
+                        Example: "Chelsea FC is relentless! Another shot on target! The score remains 1-0 in their favor!"
 
                       You will receive a list of events. For each event, respond with a JSON object containing 'event_description' and 'audio_url'.
                       Return an array of these JSON objects, one for each event.
@@ -280,7 +275,7 @@ class CommentaryService:
                       - Always include the current score in narrative descriptions
                       - Never mention the score in formal descriptions
                       - Keep formal descriptions under 10 words
-                      - Make narrative descriptions engaging but under 50 words"""
+                      - Make narrative descriptions engaging but under 40 words"""
                                           },
                     {
                         "role": "user",
@@ -364,3 +359,32 @@ class CommentaryService:
         self.context_window.clear()
         self.match_context = None
         self.clear_cache() 
+        
+if __name__ == "__main__":
+    commentary_service = CommentaryService()
+    commentary_service.set_match_context(MatchContext(
+        home_team="AI United",
+        away_team="Chelsea FC",
+        home_tactic="3-5-2",
+        away_tactic="4-3-3",
+        current_score={"home": 0, "away": 0},
+        current_stats={
+            "home": {"shots": 0, "shotsOnTarget": 0, "yellowCards": 0, "redCards": 0},
+            "away": {"shots": 0, "shotsOnTarget": 0, "yellowCards": 0, "redCards": 0}
+        },
+        minute=0,
+        half=1
+    ))
+    
+    events = [
+        {
+            "type": "goal",
+            "team": "home",
+            "minute": 10,
+            "score": {"home": 1, "away": 0},
+            "stats": {"home": {"shots": 1, "shotsOnTarget": 1, "yellowCards": 0, "redCards": 0}, "away": {"shots": 0, "shotsOnTarget": 0, "yellowCards": 0, "redCards": 0}}
+        }
+    ]
+    commentary_service.add_events(events)
+    commentary_service._generate_audio("AI United takes a shot, but the goalkeeper saves it")
+    

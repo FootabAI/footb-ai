@@ -6,19 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { API_URL } from "@/api";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  MatchEvent as ClientMatchEvent,
-  TeamTactic,
-  Formation,
-  MatchStats,
-} from "@/types";
+
+import { MatchEvent as ClientMatchEvent, TeamTactic, Formation } from "@/types";
 import { MatchEventType } from "@/types/match";
 import { MinuteUpdate } from "@/types/match-simulation";
 import TeamLogo from "@/components/TeamLogo";
@@ -26,12 +15,7 @@ import {
   Play,
   Flag,
   AlertCircle,
-  Timer,
   Target,
-  Cone,
-  Bell,
-  CreditCard,
-  Ban,
   Crosshair,
   Trophy,
   Volume2,
@@ -39,12 +23,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRef, useState, useEffect } from "react";
-import {
-  startMatchSimulation,
-  continueMatch,
-  changeTeamTactics,
-  startMatchSimulationNew,
-} from "@/api";
+import { continueMatch, startMatchSimulationNew } from "@/api";
 import Event from "@/components/Event";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
@@ -106,17 +85,17 @@ const MatchSimulation = () => {
         resolve();
         return;
       }
-  
+
       // Ensure the URL is absolute
       const absoluteUrl = audioUrl.startsWith("http")
         ? audioUrl
         : `${API_URL}${audioUrl}`;
       console.log("Absolute URL:", absoluteUrl);
-  
+
       // Create new audio element
       const audio = new Audio();
       audioRef.current = audio; // Store reference for cleanup
-  
+
       audio.addEventListener("error", (e) => {
         console.error("\n=== Audio Error ===");
         console.error("Error event:", e);
@@ -126,7 +105,7 @@ const MatchSimulation = () => {
         console.error("Audio readyState:", audio.readyState);
         resolve();
       });
-  
+
       audio.addEventListener("ended", () => {
         console.log("\n=== Audio Ended ===");
         console.log("Audio finished playing successfully");
@@ -135,11 +114,12 @@ const MatchSimulation = () => {
         }
         resolve();
       });
-  
+
       audio.addEventListener("canplaythrough", () => {
         console.log("\n=== Audio Can Play Through ===");
         console.log("Audio loaded and ready to play");
-        audio.play()
+        audio
+          .play()
           .then(() => {
             console.log("Audio playback started successfully");
           })
@@ -183,10 +163,10 @@ const MatchSimulation = () => {
     console.log("\n=== New Event Debug ===");
     console.log("Event:", event);
     console.log("Event audio URL:", event.audio_url);
-    
+
     setMatchEvents((prev) => [...prev, event]);
     addMatchEvent(event);
-  
+
     // Play audio if available and enabled
     if (event.audio_url && isAudioEnabled) {
       console.log("Attempting to play audio for event");
@@ -342,7 +322,7 @@ const MatchSimulation = () => {
             description: matchEvent.event.event_description,
             commentary: matchEvent.event.event_description,
             minute: matchEvent.minute,
-            audio_url: matchEvent.event.audio_url || null
+            audio_url: matchEvent.event.audio_url || null,
           };
           handleNewEvent(newEvent);
 
@@ -495,7 +475,7 @@ const MatchSimulation = () => {
             description: event.event.event_description,
             commentary: event.event.event_description,
             minute: event.minute,
-            audio_url: event.event.audio_url || null
+            audio_url: event.event.audio_url || null,
           };
 
           handleNewEvent(newEvent);
