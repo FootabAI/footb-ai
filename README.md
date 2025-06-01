@@ -14,7 +14,7 @@ A modern football management game where you can create and manage your own team,
   - Realistic match engine
   - Dynamic match events
   - Live match statistics
-  - AI-powered opponent teams
+  - Live match commentating
 
 - 🏆 **Progression System**
   - Earn points from matches
@@ -45,12 +45,13 @@ A modern football management game where you can create and manage your own team,
 - npm or yarn
 - Firebase account and project setup
 - OpenAI API key
+- ElevenLab API key
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/footb-ai.git
+   git clone https://github.com/FootabAI/footb-ai.git
    cd footb-ai
    ```
 
@@ -77,6 +78,7 @@ A modern football management game where you can create and manage your own team,
 5. Set up environment variables:
    - Create a `.env` file in the server directory
    - Add your OpenAI API key: `OPENAI_API_KEY=your_api_key`
+   - Add your ElevenLabs API key: `ELEVENLABS_API_KEY=your_api_key`
 
 6. Start the development servers:
    ```bash
@@ -104,7 +106,6 @@ footb-ai/
 ├── server/                 # Backend FastAPI application
 │   ├── models/            # Data models and schemas
 │   ├── services/          # Business logic and services
-│   ├── images/            # Generated and reference images
 │   ├── app.py            # Main application file
 │   └── requirements.txt   # Python dependencies
 └── README.md
