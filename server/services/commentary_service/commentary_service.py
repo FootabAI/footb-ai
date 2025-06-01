@@ -58,7 +58,7 @@ class CommentaryService:
         self.context_window = deque(maxlen=window_size)
         self.match_context: Optional[MatchContext] = None
         self._commentary_cache = {}  # Cache for generated commentary
-        self._voice_id = "U7dUxWHOyXQdhm6SPVhy"  # Custom commentator voice ID
+        self._voice_id = "0bwIoaew7QUHIFQiY1lJ"  # Custom commentator voice ID
         self.use_llm = use_llm
         self.use_tts = use_tts
         

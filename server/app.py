@@ -20,7 +20,7 @@ from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from services.club_logo_service.logo_service import LogoService
 from services.match_service import MatchService
 from services.player_name_service import PlayerNameService
-from server.services.player_image_service.player_image_service import PlayerImageService
+from services.player_image_service.player_image_service import PlayerImageService
 
 
 # Load environment variables
@@ -63,7 +63,7 @@ USE_TTS = True   # Central control for TTS audio generation
 # Initialize services
 logo_service = LogoService(reference_images_dir="./services/club_logo_service/images")
 
-player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
+player_image_service = PlayerImageService(pose_image_path="./services/player_image_service/reference-1.png")
 
 # Store active matches
 active_matches: Dict[str, MatchService] = {}
@@ -152,7 +152,7 @@ async def simulate_match_new(request: Request):
             raise HTTPException(status_code=400, detail="Missing required data")
         
         # Initialize match engine with global settings
-        from server.services.match_engine.match_engine import MatchEngineService
+        from services.match_engine.match_engine import MatchEngineService
         match_engine = MatchEngineService(use_llm=USE_LLM, use_tts=USE_TTS)
         
         # Set match context for commentary
@@ -269,7 +269,7 @@ async def continue_match(request: Request):
         print(f"Formation: {formation}")
 
         # Initialize match engine with global settings
-        from server.services.match_engine.match_engine import MatchEngineService
+        from services.match_engine.match_engine import MatchEngineService
         match_engine = MatchEngineService(use_llm=USE_LLM, use_tts=USE_TTS)
 
         # Set match context for commentary
