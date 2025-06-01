@@ -8,6 +8,7 @@ class LogoGenerationRequest(BaseModel):
 class SimilarLogo(BaseModel):
     path: str
     similarity: float
+    description: str
 
 class LogoGenerationResponse(BaseModel):
     club_name: str

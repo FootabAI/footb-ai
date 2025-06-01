@@ -87,6 +87,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         currentMatch: {
           ...state.currentMatch,
+          homeScore: homeStats.goalsScored ?? state.currentMatch.homeScore,
+          awayScore: awayStats.goalsScored ?? state.currentMatch.awayScore,
           homeStats: {
             ...state.currentMatch.homeStats,
             ...homeStats,
