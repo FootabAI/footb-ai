@@ -18,7 +18,7 @@ import asyncio
 from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from models.team_name import TeamGenerationRequest, TeamGenerationResponse
-from services.club_name_service.club_name_service import ClubNameService
+# from services.club_name_service.club_name_service import ClubNameService
 from services.logo_service import LogoService
 from services.match_service import MatchService
 from services.player_name_service import PlayerNameService
@@ -57,7 +57,7 @@ logo_service = LogoService(reference_images_dir="images")
 player_image_service = PlayerImageService(pose_image_path="./assets/reference-1.png")
 tts_service = TTSService()
 player_name_service = PlayerNameService()
-club_name_service = ClubNameService()
+# club_name_service = ClubNameService()
 
 
 # Store active matches
@@ -106,19 +106,19 @@ async def generate_player_names(request: PlayerGenerationRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/generate_club_name", response_model=TeamGenerationResponse)
-async def generate_club_name(request: TeamGenerationRequest):
-    """
-    Generate a fictional football club name.
-    """
-    try:
-        name = club_name_service.generate_club(
+# @app.post("/api/generate_club_name", response_model=TeamGenerationResponse)
+# async def generate_club_name(request: TeamGenerationRequest):
+#     """
+#     Generate a fictional football club name.
+#     """
+#     try:
+#         name = club_name_service.generate_club(
 
-            nationality=request.country,
-        )
-        return TeamGenerationResponse(team={"name": name}, success=True)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#             nationality=request.country,
+#         )
+#         return TeamGenerationResponse(team={"name": name}, success=True)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/simulate-match")
 async def simulate_match(request: Request):
