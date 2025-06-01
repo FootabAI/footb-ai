@@ -334,8 +334,8 @@ class LogoService:
 
 if __name__ == "__main__":
     # ---- USER INPUT ----
-    themes = ["Sun", "Fire"] 
-    colors = ["Yellow", "Black"]       
+    themes = ["Wolf"] 
+    colors = ["Orange", "Black"]       
 
     # ---- SETUP ----
     print("Initializing LogoService...")
@@ -360,8 +360,8 @@ if __name__ == "__main__":
         with open(result_path, 'w') as f:
             json.dump(result, f, indent=2)
         # Copy the similar image
-        source_path = os.path.join(images_dir, result['filename'])
-        dest_path = os.path.join(output_dir, f"similar_logo{os.path.splitext(result['filename'])[1]}")
+        source_path = result['path']
+        dest_path = os.path.join(output_dir, f"similar_logo{os.path.splitext(os.path.basename(source_path))[1]}")
         shutil.copy2(source_path, dest_path)
         print(f"Similar logo and result saved to {output_dir}/")
     else:
