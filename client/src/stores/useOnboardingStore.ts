@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { db, auth, storage } from "@/firebaseConfig";
-import { addDoc, collection, doc, updateDoc, getDoc, runTransaction } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Team, Player} from "@/types";
 import { useTeamStore } from "./useTeamStore";

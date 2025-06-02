@@ -5,9 +5,17 @@ from pathlib import Path
 import random
 from collections import defaultdict
 import asyncio
+import sys
+import os
+
+# Add the server directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.commentary_service.commentary_service import CommentaryService, MatchContext
+from typing import Dict, Any
 
 class MatchEngineService:
-    def __init__(self):
+    def __init__(self, use_llm: bool = True, use_tts: bool = True):
         self.base_path = Path(__file__).parent
         
         # Load existing data files
@@ -16,9 +24,33 @@ class MatchEngineService:
         
         with open(json_path, "r") as f:
             self.raw_stats = json.load(f)
-        
+            
         with open(tactics_path, "r") as f:
             self.tactics_data = json.load(f)
+            
+        # Initialize commentary service with LLM and TTS options
+        self.commentary_service = CommentaryService(
+            window_size=5,
+            use_llm=use_llm,
+            use_tts=use_tts
+        )
+    
+    def set_match_context(self, home_team: str, away_team: str, 
+                         home_tactic: str, away_tactic: str):
+        """Set the match context for commentary generation."""
+        context = MatchContext(
+            home_team=home_team,
+            away_team=away_team,
+            home_tactic=home_tactic,
+            away_tactic=away_tactic,
+            current_score={"home": 0, "away": 0},
+            current_stats={
+                "home": {"shots": 0, "shotsOnTarget": 0, "yellowCards": 0, "redCards": 0},
+                "away": {"shots": 0, "shotsOnTarget": 0, "yellowCards": 0, "redCards": 0}
+            },
+            minute=0
+        )
+        self.commentary_service.set_match_context(context)
     
     def tactical_fit(self, attributes, requirements):
         """Calculate how well team attributes fit tactical requirements"""
@@ -192,19 +224,29 @@ class MatchEngineService:
         
         # Event type mapping
         event_mapping = {
-            "Shots_Home": {"type": "shot", "team": "home", "desc": "Powerful shot from home side!"},
-            "Shots_Away": {"type": "shot", "team": "away", "desc": "Away team with a shot!"},
-            "Target_Home": {"type": "target", "team": "home", "desc": "Shot on target by home!"},
-            "Target_Away": {"type": "target", "team": "away", "desc": "On target by away team!"},
-            "Goals_Home": {"type": "goal", "team": "home", "desc": "Goal for home team!"},
-            "Goals_Away": {"type": "goal", "team": "away", "desc": "Goal for away team!"},
-            "Yellow_Home": {"type": "yellow_card", "team": "home", "desc": "Yellow card for home!"},
-            "Yellow_Away": {"type": "yellow_card", "team": "away", "desc": "Yellow card for away!"}
+            "Shots_Home": {"type": "shot", "team": "home", "desc": "Shot taken by home team"},
+            "Shots_Away": {"type": "shot", "team": "away", "desc": "Shot taken by away team"},
+            "Target_Home": {"type": "target", "team": "home", "desc": "Shot on target by home team"},
+            "Target_Away": {"type": "target", "team": "away", "desc": "Shot on target by away team"},
+            "Goals_Home": {"type": "goal", "team": "home", "desc": "Goal scored by home team"},
+            "Goals_Away": {"type": "goal", "team": "away", "desc": "Goal scored by away team"},
+            "Yellow_Home": {"type": "yellow_card", "team": "home", "desc": "Yellow card shown to home team player"},
+            "Yellow_Away": {"type": "yellow_card", "team": "away", "desc": "Yellow card shown to away team player"}
         }
+        
+        # Process events in batches of 5 minutes
+        batch_size = 5
+        current_batch = []
         
         # Process each minute
         for minute in sorted(event_dict.keys()):
             minute_events = event_dict.get(minute, [])
+            
+            # Update match context with current minute
+            if self.commentary_service.match_context:
+                self.commentary_service.match_context.minute = minute
+                self.commentary_service.match_context.current_score = current_score.copy()
+                self.commentary_service.match_context.current_stats = stats.copy()
             
             # Generate events for this minute
             for event_str in minute_events:
@@ -233,8 +275,7 @@ class MatchEngineService:
                         "event": {
                             "team": team,
                             "type": event_info["type"],
-                            "event_description": event_info["desc"],
-                            "audio_url": f"Commentary for {event_info['desc']}"
+                            "event_description": event_info["desc"]
                         },
                         "score": current_score.copy(),
                         "stats": {
@@ -242,7 +283,7 @@ class MatchEngineService:
                             "away": stats["away"].copy()
                         }
                     }
-                    events_json.append(event_obj)
+                    current_batch.append(event_obj)
             
             # Always add minute update with current stats
             minute_update = {
@@ -254,7 +295,7 @@ class MatchEngineService:
                     "away": stats["away"].copy()
                 }
             }
-            events_json.append(minute_update)
+            current_batch.append(minute_update)
             
             # Add half-time or full-time event
             if minute == 45:
@@ -264,8 +305,7 @@ class MatchEngineService:
                     "event": {
                         "team": "system",
                         "type": "half-time",
-                        "event_description": "Half-time whistle!",
-                        "audio_url": "Commentary for half-time"
+                        "event_description": "Half-time"
                     },
                     "score": current_score.copy(),
                     "stats": {
@@ -273,7 +313,7 @@ class MatchEngineService:
                         "away": stats["away"].copy()
                     }
                 }
-                events_json.append(half_time_event)
+                current_batch.append(half_time_event)
             elif minute == 90:
                 full_time_event = {
                     "type": "event",
@@ -281,8 +321,7 @@ class MatchEngineService:
                     "event": {
                         "team": "system",
                         "type": "full-time",
-                        "event_description": "Full-time whistle!",
-                        "audio_url": "Commentary for full-time"
+                        "event_description": "Full-time"
                     },
                     "score": current_score.copy(),
                     "stats": {
@@ -290,12 +329,103 @@ class MatchEngineService:
                         "away": stats["away"].copy()
                     }
                 }
-                events_json.append(full_time_event)
+                current_batch.append(full_time_event)
+            
+            # If we've reached the batch size or this is the last minute, process the batch
+            if len(current_batch) >= batch_size or minute == max(event_dict.keys()):
+                # Generate commentary for the batch
+                current_batch = self.commentary_service.add_events(current_batch)
+                events_json.extend(current_batch)
+                current_batch = []
         
         return events_json
 
+    def create_event_object(self, event_str: str, minute: int, current_score: Dict[str, int], current_stats: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
+        """Create an event object from an event string.
+        
+        Args:
+            event_str: Event string (e.g., "Shots_Home")
+            minute: Current minute
+            current_score: Current score dictionary
+            current_stats: Current stats dictionary
+            
+        Returns:
+            Event object dictionary
+        """
+        event_mapping = {
+            "Shots_Home": {"type": "shot", "team": "home", "desc": "Shot taken by home team"},
+            "Shots_Away": {"type": "shot", "team": "away", "desc": "Shot taken by away team"},
+            "Target_Home": {"type": "target", "team": "home", "desc": "Shot on target by home team"},
+            "Target_Away": {"type": "target", "team": "away", "desc": "Shot on target by away team"},
+            "Goals_Home": {"type": "goal", "team": "home", "desc": "Goal scored by home team"},
+            "Goals_Away": {"type": "goal", "team": "away", "desc": "Goal scored by away team"},
+            "Yellow_Home": {"type": "yellow_card", "team": "home", "desc": "Yellow card shown to home team player"},
+            "Yellow_Away": {"type": "yellow_card", "team": "away", "desc": "Yellow card shown to away team player"}
+        }
+        
+        if event_str in event_mapping:
+            event_info = event_mapping[event_str]
+            team = event_info["team"]
+            
+            # Update stats based on event type
+            if event_info["type"] == "shot":
+                current_stats[team]["shots"] += 1
+            elif event_info["type"] == "target":
+                current_stats[team]["shotsOnTarget"] += 1
+            elif event_info["type"] == "yellow_card":
+                current_stats[team]["yellowCards"] += 1
+            elif event_info["type"] == "red_card":
+                current_stats[team]["redCards"] += 1
+            
+            # Update score for goals
+            if event_info["type"] == "goal":
+                current_score[team] += 1
+            
+            return {
+                "type": "event",
+                "minute": minute,
+                "event": {
+                    "team": team,
+                    "type": event_info["type"],
+                    "event_description": event_info["desc"]
+                },
+                "score": current_score.copy(),
+                "stats": {
+                    "home": current_stats["home"].copy(),
+                    "away": current_stats["away"].copy()
+                }
+            }
+        return None
+        
+    def create_system_event(self, event_type: str, minute: int, current_score: Dict[str, int], current_stats: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
+        """Create a system event (half-time, full-time).
+        
+        Args:
+            event_type: Type of system event ("half-time" or "full-time")
+            minute: Current minute
+            current_score: Current score dictionary
+            current_stats: Current stats dictionary
+            
+        Returns:
+            System event object dictionary
+        """
+        return {
+            "type": "event",
+            "minute": minute,
+            "event": {
+                "team": "system",
+                "type": event_type,
+                "event_description": event_type.replace("-", " ").title()
+            },
+            "score": current_score.copy(),
+            "stats": {
+                "home": current_stats["home"].copy(),
+                "away": current_stats["away"].copy()
+            }
+        }
+
 # Global instance for backward compatibility
-match_engine = MatchEngineService()
+match_engine = MatchEngineService(use_llm=True, use_tts=True)
 
 # Test function (for standalone testing)
 def test_simulation():
@@ -305,18 +435,26 @@ def test_simulation():
     OPPONENT_ATTRS = {"passing": 100, "dribbling": 100, "shooting": 100,
                       "defending": 100, "pace": 100, "physicality": 100}
     
+    # Initialize match engine with test settings
+    test_engine = MatchEngineService(use_llm=False, use_tts=False)
+    
     # Generate events
-    event_dict = match_engine.simulate_half(
+    event_dict = test_engine.simulate_half(
         PLAYER_ATTRS, "tiki-taka", 
         OPPONENT_ATTRS, "gegenpressing"
+    )
+    test_engine.set_match_context(
+        home_team="AI United",
+        away_team="Chelsea FC",
+        home_tactic="tiki-taka",
+        away_tactic="gegenpressing"
     )
     
     print("\n=== EVENT DICTIONARY ===")
     print(event_dict)
     
     # Test loading JSON file
-    import asyncio
-    events_json = asyncio.run(match_engine.call_llm_for_commentary(event_dict))
+    events_json = asyncio.run(test_engine.call_llm_for_commentary(event_dict))
     print(f"\n=== LOADED {len(events_json)} EVENTS ===")
     print(f"First event: {events_json[0] if events_json else 'None'}")
 

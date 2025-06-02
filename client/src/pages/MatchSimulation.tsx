@@ -5,13 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { API_URL } from "@/api";
+
 import { MatchEvent as ClientMatchEvent, TeamTactic, Formation, MatchStats } from "@/types";
 import { MatchEventType } from "@/types/match";
 import { MinuteUpdate } from "@/types/match-simulation";
@@ -20,24 +15,20 @@ import {
   Play,
   Flag,
   AlertCircle,
-  Timer,
   Target,
-  Cone,
-  Bell,
-  CreditCard,
-  Ban,
   Crosshair,
   Trophy,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRef, useState, useEffect } from "react";
-import { startMatchSimulation, continueMatch, changeTeamTactics, startMatchSimulationNew } from "@/api";
+import { continueMatch, startMatchSimulationNew } from "@/api";
 import Event from "@/components/Event";
 import { FormationDisplay } from "@/components/team-creation/FormationSelector";
 import { Tabs, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { formations } from "@/config/formations";
 import { TacticSelect } from "@/components/TacticSelect";
-
 
 const MatchSimulation = () => {
   const navigate = useNavigate();
@@ -55,12 +46,27 @@ const MatchSimulation = () => {
   const [isHalfTime, setIsHalfTime] = useState(false);
   const [isFullTime, setIsFullTime] = useState(false);
   const [changeTactic, setChangeTactic] = useState<TeamTactic | null>(null);
-  const [changeFormation, setChangeFormation] = useState<Formation | null>(null);
+  const [changeFormation, setChangeFormation] = useState<Formation | null>(
+    null
+  );
   const [matchEvents, setMatchEvents] = useState<ClientMatchEvent[]>([]);
   const [matchId] = useState(
     () => `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
   const [warmingUpMessage, setWarmingUpMessage] = useState(0);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isPlayingRef = useRef(false);
+  const eventQueueRef = useRef<ClientMatchEvent[]>([]);
+  const simulationPausedRef = useRef(false);
+  const pendingUpdatesRef = useRef<{
+    minute?: number;
+    score?: { home: number; away: number };
+    stats?: {
+      home: { shots: number; shotsOnTarget: number; yellowCards: number; redCards: number };
+      away: { shots: number; shotsOnTarget: number; yellowCards: number; redCards: number };
+    };
+  }>({});
 
   // Refs for scrolling
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -78,6 +84,184 @@ const MatchSimulation = () => {
     "Substitutes warming up on the sidelines...",
     "VAR system being checked...",
   ];
+
+  const playAudioAndWait = async (audioUrl: string): Promise<void> => {
+    if (!audioUrl || !isAudioEnabled) {
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      console.log("\n=== Playing Audio ===");
+      console.log("Audio URL:", audioUrl);
+
+      // Ensure the URL is absolute
+      const absoluteUrl = audioUrl.startsWith("http")
+        ? audioUrl
+        : `${API_URL}${audioUrl}`;
+      console.log("Absolute URL:", absoluteUrl);
+
+      // Create new audio element
+      const audio = new Audio();
+      audioRef.current = audio;
+
+      audio.addEventListener("error", (e) => {
+        console.error("\n=== Audio Error ===");
+        console.error("Error event:", e);
+        console.error("Audio URL:", absoluteUrl);
+        console.error("Audio error code:", audio.error?.code);
+        console.error("Audio error message:", audio.error?.message);
+        console.error("Audio readyState:", audio.readyState);
+        reject(e);
+      });
+
+      audio.addEventListener("ended", () => {
+        console.log("\n=== Audio Ended ===");
+        console.log("Audio finished playing successfully");
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+        resolve();
+      });
+
+      audio.addEventListener("canplaythrough", () => {
+        console.log("\n=== Audio Can Play Through ===");
+        console.log("Audio loaded and ready to play");
+        audio
+          .play()
+          .then(() => {
+            console.log("Audio playback started successfully");
+          })
+          .catch((error) => {
+            console.error("\n=== Audio Play Error ===");
+            console.error("Error starting playback:", error);
+            console.error("Audio readyState:", audio.readyState);
+            reject(error);
+          });
+      });
+
+      audio.src = absoluteUrl;
+    });
+  };
+
+  const processNextEvent = async () => {
+    if (isPlayingRef.current || eventQueueRef.current.length === 0) {
+      return;
+    }
+
+    isPlayingRef.current = true;
+    const event = eventQueueRef.current[0];
+
+    try {
+      // Pause the simulation
+      simulationPausedRef.current = true;
+
+      // Apply any pending updates before showing the event
+      if (pendingUpdatesRef.current.minute !== undefined) {
+        setMinute(pendingUpdatesRef.current.minute);
+      }
+      if (pendingUpdatesRef.current.score || pendingUpdatesRef.current.stats) {
+        updateMatchStats(
+          {
+            ...currentMatch.homeStats,
+            goalsScored: pendingUpdatesRef.current.score?.home ?? currentMatch.homeStats.goalsScored,
+            goalsConceded: pendingUpdatesRef.current.score?.away ?? currentMatch.homeStats.goalsConceded,
+            shots: pendingUpdatesRef.current.stats?.home.shots ?? currentMatch.homeStats.shots,
+            shotsOnTarget: pendingUpdatesRef.current.stats?.home.shotsOnTarget ?? currentMatch.homeStats.shotsOnTarget,
+            yellowCards: pendingUpdatesRef.current.stats?.home.yellowCards ?? currentMatch.homeStats.yellowCards,
+            redCards: pendingUpdatesRef.current.stats?.home.redCards ?? currentMatch.homeStats.redCards,
+          },
+          {
+            ...currentMatch.awayStats,
+            goalsScored: pendingUpdatesRef.current.score?.away ?? currentMatch.awayStats.goalsScored,
+            goalsConceded: pendingUpdatesRef.current.score?.home ?? currentMatch.awayStats.goalsConceded,
+            shots: pendingUpdatesRef.current.stats?.away.shots ?? currentMatch.awayStats.shots,
+            shotsOnTarget: pendingUpdatesRef.current.stats?.away.shotsOnTarget ?? currentMatch.awayStats.shotsOnTarget,
+            yellowCards: pendingUpdatesRef.current.stats?.away.yellowCards ?? currentMatch.awayStats.yellowCards,
+            redCards: pendingUpdatesRef.current.stats?.away.redCards ?? currentMatch.awayStats.redCards,
+          }
+        );
+        // Clear pending updates
+        pendingUpdatesRef.current = {};
+      }
+
+      // Add event to state
+      setMatchEvents((prev) => [...prev, event]);
+      addMatchEvent(event);
+
+      // Handle full-time event
+      if (event.type === "full-time") {
+        console.log("\n=== FULL TIME ===");
+        console.log(`Final Score: ${pendingUpdatesRef.current.score?.home ?? currentMatch.homeStats.goalsScored} - ${pendingUpdatesRef.current.score?.away ?? currentMatch.awayStats.goalsScored}`);
+        setIsFullTime(true);
+        completeMatch(
+          (pendingUpdatesRef.current.score?.home ?? currentMatch.homeStats.goalsScored) > 
+          (pendingUpdatesRef.current.score?.away ?? currentMatch.awayStats.goalsScored)
+            ? team.id
+            : currentMatch.awayTeam.id
+        );
+      }
+
+      // Play audio if available and enabled
+      if (event.audio_url && isAudioEnabled) {
+        console.log("Playing audio for event");
+        await playAudioAndWait(event.audio_url);
+      } else {
+        // Add a small delay for events without audio to maintain a natural pace
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Remove the processed event from queue
+      eventQueueRef.current.shift();
+      isPlayingRef.current = false;
+
+      // Resume the simulation
+      simulationPausedRef.current = false;
+
+      // Process next event if any
+      if (eventQueueRef.current.length > 0) {
+        processNextEvent();
+      }
+    } catch (error) {
+      console.error("Error processing event:", error);
+      // Remove the failed event from queue and continue with next
+      eventQueueRef.current.shift();
+      isPlayingRef.current = false;
+      simulationPausedRef.current = false;
+      if (eventQueueRef.current.length > 0) {
+        processNextEvent();
+      }
+    }
+  };
+
+  const handleNewEvent = (event: ClientMatchEvent) => {
+    console.log("\n=== New Event Debug ===");
+    console.log("Event:", event);
+    console.log("Event audio URL:", event.audio_url);
+
+    // Add event to queue
+    eventQueueRef.current.push(event);
+    console.log("Added to queue. Queue length:", eventQueueRef.current.length);
+
+    // Start processing if not already processing
+    if (!isPlayingRef.current) {
+      processNextEvent();
+    }
+  };
+
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      // Clear the queue and pending updates
+      eventQueueRef.current = [];
+      isPlayingRef.current = false;
+      simulationPausedRef.current = false;
+      pendingUpdatesRef.current = {};
+    };
+  }, []);
 
   useEffect(() => {
     // If there's no currentMatch or userTeam, redirect to the play page
@@ -136,26 +320,10 @@ const MatchSimulation = () => {
         // Handle minute updates
         if (event.type === "minute_update") {
           const minuteUpdate = event as MinuteUpdate;
-          setMinute(minuteUpdate.minute);
-          
-          // Update score and stats from minute update
-          updateMatchStats({
-            ...currentMatch.homeStats,
-            goalsScored: minuteUpdate.score.home,
-            goalsConceded: minuteUpdate.score.away,
-            shots: minuteUpdate.stats?.home.shots || 0,
-            shotsOnTarget: minuteUpdate.stats?.home.shotsOnTarget || 0,
-            yellowCards: minuteUpdate.stats?.home.yellowCards || 0,
-            redCards: minuteUpdate.stats?.home.redCards || 0
-          }, {
-            ...currentMatch.awayStats,
-            goalsScored: minuteUpdate.score.away,
-            goalsConceded: minuteUpdate.score.home,
-            shots: minuteUpdate.stats?.away.shots || 0,
-            shotsOnTarget: minuteUpdate.stats?.away.shotsOnTarget || 0,
-            yellowCards: minuteUpdate.stats?.away.yellowCards || 0,
-            redCards: minuteUpdate.stats?.away.redCards || 0
-          });
+          // Store minute update in pending updates
+          pendingUpdatesRef.current.minute = minuteUpdate.minute;
+          pendingUpdatesRef.current.score = minuteUpdate.score;
+          pendingUpdatesRef.current.stats = minuteUpdate.stats;
           continue;
         }
 
@@ -168,79 +336,41 @@ const MatchSimulation = () => {
             setIsHalfTime(true);
           }
 
-          // Handle full-time
-          if (matchEvent.event.type === "full-time") {
-            console.log("\n=== FULL TIME ===");
-            console.log(`Final Score: ${matchEvent.score.home} - ${matchEvent.score.away}`);
-
-            setIsFullTime(true);
-            completeMatch(
-              matchEvent.score.home > matchEvent.score.away
-                ? team.id
-                : currentMatch.awayTeam.id
-            );
-          }
-
           // Skip displaying 'shot' events but keep updating stats
           if (matchEvent.event.type === "shot") {
-            // Update stats from event without displaying it
-            updateMatchStats({
-              ...currentMatch.homeStats,
-              goalsScored: matchEvent.score.home,
-              goalsConceded: matchEvent.score.away,
-              shots: matchEvent.stats?.home.shots || 0,
-              shotsOnTarget: matchEvent.stats?.home.shotsOnTarget || 0,
-              yellowCards: matchEvent.stats?.home.yellowCards || 0,
-              redCards: matchEvent.stats?.home.redCards || 0
-            }, {
-              ...currentMatch.awayStats,
-              goalsScored: matchEvent.score.away,
-              goalsConceded: matchEvent.score.home,
-              shots: matchEvent.stats?.away.shots || 0,
-              shotsOnTarget: matchEvent.stats?.away.shotsOnTarget || 0,
-              yellowCards: matchEvent.stats?.away.yellowCards || 0,
-              redCards: matchEvent.stats?.away.redCards || 0
-            });
+            // Store stats update in pending updates
+            pendingUpdatesRef.current.score = matchEvent.score;
+            pendingUpdatesRef.current.stats = matchEvent.stats;
             continue;
           }
 
           // Log event
-          console.log(`[${matchEvent.minute}'] ${matchEvent.event.event_description}`);
+          console.log(
+            `[${matchEvent.minute}'], event_description: ${matchEvent.event.event_description}, audio_url: ${matchEvent.event.audio_url}`
+          );
 
-          // Add event to state
           const newEvent: ClientMatchEvent = {
-            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `event-${Date.now()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
             type: matchEvent.event.type as MatchEventType,
             team: matchEvent.event.team,
             description: matchEvent.event.event_description,
             commentary: matchEvent.event.event_description,
             minute: matchEvent.minute,
+            audio_url: matchEvent.event.audio_url || null,
           };
 
-          setMatchEvents((prev) => [...prev, newEvent]);
-          addMatchEvent(newEvent);
+          // Store any score/stats updates in pending updates
+          pendingUpdatesRef.current.score = matchEvent.score;
+          pendingUpdatesRef.current.stats = matchEvent.stats;
 
-          // Update score and stats from event
-          updateMatchStats({
-            ...currentMatch.homeStats,
-            goalsScored: matchEvent.score.home,
-            goalsConceded: matchEvent.score.away,
-            shots: matchEvent.stats?.home.shots || 0,
-            shotsOnTarget: matchEvent.stats?.home.shotsOnTarget || 0,
-            yellowCards: matchEvent.stats?.home.yellowCards || 0,
-            redCards: matchEvent.stats?.home.redCards || 0
-          }, {
-            ...currentMatch.awayStats,
-            goalsScored: matchEvent.score.away,
-            goalsConceded: matchEvent.score.home,
-            shots: matchEvent.stats?.away.shots || 0,
-            shotsOnTarget: matchEvent.stats?.away.shotsOnTarget || 0,
-            yellowCards: matchEvent.stats?.away.yellowCards || 0,
-            redCards: matchEvent.stats?.away.redCards || 0
-          });
+          // Wait if simulation is paused
+          while (simulationPausedRef.current) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
 
-          // Add a small delay between events
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          handleNewEvent(newEvent);
         }
       }
     } catch (error) {
@@ -261,7 +391,7 @@ const MatchSimulation = () => {
       console.log(`Home Tactic: ${newTactic}`);
       console.log(`Away Tactic: ${currentMatch.awayTeam.tactic}`);
       console.log(`Formation: ${newFormation}`);
-      
+
       // Continue the match with any tactic/formation changes
       const { events } = await continueMatch(
         matchId,
@@ -271,7 +401,7 @@ const MatchSimulation = () => {
         newFormation,
         {
           home: currentMatch.homeStats.goalsScored,
-          away: currentMatch.awayStats.goalsScored
+          away: currentMatch.awayStats.goalsScored,
         },
         {
           home: {
@@ -279,15 +409,15 @@ const MatchSimulation = () => {
             shots: currentMatch.homeStats.shots || 0,
             shotsOnTarget: currentMatch.homeStats.shotsOnTarget || 0,
             yellowCards: currentMatch.homeStats.yellowCards || 0,
-            redCards: currentMatch.homeStats.redCards || 0
+            redCards: currentMatch.homeStats.redCards || 0,
           },
           away: {
             ...currentMatch.awayStats,
             shots: currentMatch.awayStats.shots || 0,
             shotsOnTarget: currentMatch.awayStats.shotsOnTarget || 0,
             yellowCards: currentMatch.awayStats.yellowCards || 0,
-            redCards: currentMatch.awayStats.redCards || 0
-          }
+            redCards: currentMatch.awayStats.redCards || 0,
+          },
         }
       );
 
@@ -313,28 +443,31 @@ const MatchSimulation = () => {
         if (event.type === "minute_update") {
           setMinute(event.minute);
           // Update stats from minute update
-          updateMatchStats({
-            ...currentMatch.homeStats,
-            goalsScored: event.score.home,
-            goalsConceded: event.score.away,
-            shots: event.stats?.home.shots || 0,
-            shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
-            yellowCards: event.stats?.home.yellowCards || 0,
-            redCards: event.stats?.home.redCards || 0
-          }, {
-            ...currentMatch.awayStats,
-            goalsScored: event.score.away,
-            goalsConceded: event.score.home,
-            shots: event.stats?.away.shots || 0,
-            shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
-            yellowCards: event.stats?.away.yellowCards || 0,
-            redCards: event.stats?.away.redCards || 0
-          });
+          updateMatchStats(
+            {
+              ...currentMatch.homeStats,
+              goalsScored: event.score.home,
+              goalsConceded: event.score.away,
+              shots: event.stats?.home.shots || 0,
+              shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
+              yellowCards: event.stats?.home.yellowCards || 0,
+              redCards: event.stats?.home.redCards || 0,
+            },
+            {
+              ...currentMatch.awayStats,
+              goalsScored: event.score.away,
+              goalsConceded: event.score.home,
+              shots: event.stats?.away.shots || 0,
+              shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
+              yellowCards: event.stats?.away.yellowCards || 0,
+              redCards: event.stats?.away.redCards || 0,
+            }
+          );
           continue;
         }
 
         // Handle full-time
-        if ('event' in event && event.event.type === "full-time") {
+        if ("event" in event && event.event.type === "full-time") {
           console.log("\n=== FULL TIME ===");
           console.log(`Final Score: ${event.score.home} - ${event.score.away}`);
 
@@ -347,7 +480,7 @@ const MatchSimulation = () => {
         }
 
         // Log event
-        if ('event' in event) {
+        if ("event" in event) {
           console.log(`[${event.minute}'] ${event.event.event_description}`);
 
           // Update minute
@@ -355,38 +488,43 @@ const MatchSimulation = () => {
 
           // Add event to state
           const newEvent: ClientMatchEvent = {
-            id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `event-${Date.now()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
             type: event.event.type as MatchEventType,
             team: event.event.team,
             description: event.event.event_description,
             commentary: event.event.event_description,
             minute: event.minute,
+            audio_url: event.event.audio_url || null,
           };
 
-          setMatchEvents((prev) => [...prev, newEvent]);
-          addMatchEvent(newEvent);
+          handleNewEvent(newEvent);
 
           // Update stats from event
-          updateMatchStats({
-            ...currentMatch.homeStats,
-            goalsScored: event.score.home,
-            goalsConceded: event.score.away,
-            shots: event.stats?.home.shots || 0,
-            shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
-            yellowCards: event.stats?.home.yellowCards || 0,
-            redCards: event.stats?.home.redCards || 0
-          }, {
-            ...currentMatch.awayStats,
-            goalsScored: event.score.away,
-            goalsConceded: event.score.home,
-            shots: event.stats?.away.shots || 0,
-            shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
-            yellowCards: event.stats?.away.yellowCards || 0,
-            redCards: event.stats?.away.redCards || 0
-          });
+          updateMatchStats(
+            {
+              ...currentMatch.homeStats,
+              goalsScored: event.score.home,
+              goalsConceded: event.score.away,
+              shots: event.stats?.home.shots || 0,
+              shotsOnTarget: event.stats?.home.shotsOnTarget || 0,
+              yellowCards: event.stats?.home.yellowCards || 0,
+              redCards: event.stats?.home.redCards || 0,
+            },
+            {
+              ...currentMatch.awayStats,
+              goalsScored: event.score.away,
+              goalsConceded: event.score.home,
+              shots: event.stats?.away.shots || 0,
+              shotsOnTarget: event.stats?.away.shotsOnTarget || 0,
+              yellowCards: event.stats?.away.yellowCards || 0,
+              redCards: event.stats?.away.redCards || 0,
+            }
+          );
 
           // Add a small delay between events
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
     } catch (error) {
@@ -409,8 +547,7 @@ const MatchSimulation = () => {
       minute: null,
     };
 
-    setMatchEvents((prev) => [...prev, forfeitEvent]);
-    addMatchEvent(forfeitEvent);
+    handleNewEvent(forfeitEvent);
     completeMatch(currentMatch.awayTeam.id);
     setTimeout(() => navigate("/summary"), 2000);
   };
@@ -526,7 +663,9 @@ const MatchSimulation = () => {
                       </label>
                       <div>
                         <Tabs
-                          value={changeFormation || currentMatch.homeTeam.formation}
+                          value={
+                            changeFormation || currentMatch.homeTeam.formation
+                          }
                           onValueChange={(value) => {
                             console.log("Formation changed to:", value);
                             setChangeFormation(value as Formation);
@@ -542,7 +681,9 @@ const MatchSimulation = () => {
                           </TabsList>
                         </Tabs>
                         <FormationDisplay
-                          formation={changeFormation || currentMatch.homeTeam.formation}
+                          formation={
+                            changeFormation || currentMatch.homeTeam.formation
+                          }
                           size="small"
                           isOnboarding={false}
                         />
@@ -575,7 +716,23 @@ const MatchSimulation = () => {
           {!isHalfTime && (
             <Card className="bg-footbai-container border-footbai-header h-[calc(100vh-12rem)] flex flex-col">
               <CardHeader className="bg-footbai-container pb-5">
-                <CardTitle>Match Events</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  Match Events
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsAudioEnabled(!isAudioEnabled)}
+                      className="bg-footbai-container hover:bg-footbai-header"
+                    >
+                      {isAudioEnabled ? (
+                        <Volume2 className="h-5 w-5" />
+                      ) : (
+                        <VolumeX className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
+                </CardTitle>
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-hidden">
                 <ScrollArea
@@ -606,7 +763,6 @@ const MatchSimulation = () => {
                         {isFullTime && (
                           <div className="sticky bottom-0 left-0 right-0 bg-footbai-container/30 backdrop-blur-md border-t border-footbai-header py-6">
                             <div className="text-center space-y-4">
-                             
                               <Button
                                 className="bg-footbai-accent hover:bg-footbai-accent/80 text-black"
                                 onClick={() => navigate("/summary")}

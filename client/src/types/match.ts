@@ -28,9 +28,9 @@ export interface MatchEvent {
   type: MatchEventType;
   team: string;
   description: string;
-  minute: number;
   commentary: string;
-  audio_url?: string; // Optional audio URL for TTS commentary
+  minute: number;
+  audio_url?: string;
 }
 
 /**
