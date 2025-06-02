@@ -19,7 +19,7 @@ from models.logo import LogoGenerationRequest, LogoGenerationResponse
 from models.players import PlayerGenerationRequest, PlayerGenerationResponse
 from services.club_logo_service.logo_service import LogoService
 from services.match_service import MatchService
-from services.player_name_service import PlayerNameService
+from services.player_names.player_name_service import PlayerNameService
 from services.player_image_service.player_image_service import PlayerImageService
 
 

@@ -16,24 +16,22 @@ with out_path.open("w", encoding="utf-8") as out:
 
         reps = 200 if len(names) > 120 else 400
         for _ in range(reps):
-            # Sample 10 real examples for few-shot context
             k = min(10, len(names))
             few_shot = random.sample(names, k)
 
-            # Build few-shot string like: "Rhys Downing"\n"Finley Braithwaite"
             few_shot_block = "\n".join(f'"{n}"' for n in few_shot)
 
             # Generate a synthetic target name
             firsts = [n.split()[0] for n in few_shot]
             lasts = [n.split()[-1] for n in few_shot]
 
-            for _ in range(5):  # up to 5 retries to get a unique name
+            for _ in range(5):  
                 candidate = f"{random.choice(firsts)} {random.choice(lasts)}"
                 if candidate not in few_shot and candidate not in seen_names:
                     seen_names.add(candidate)
                     break
             else:
-                continue  # skip if we couldn't generate a unique one
+                continue 
 
             prompt = f"""You are a creative football name assistant.
 
@@ -48,7 +46,6 @@ Examples:
 Your turn:
 \""""
 
-            # Final record
             record = {
                 "instruction": prompt,
                 "response": candidate

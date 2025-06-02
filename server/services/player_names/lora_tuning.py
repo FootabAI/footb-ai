@@ -35,11 +35,11 @@ ds = ds.map(merge_instruction_response)
 tok = AutoTokenizer.from_pretrained(
     BASE,
     use_fast=True,
-    trust_remote_code=True,  # required for chat-formatted models like TinyLlama
+    trust_remote_code=True,  
 )
 
 if tok.pad_token_id is None:
-    tok.pad_token = tok.eos_token  # reuse EOS for padding
+    tok.pad_token = tok.eos_token 
 
 # Tokenization function
 def tok_func(example):
@@ -76,8 +76,8 @@ lora_cfg = LoraConfig(
     bias="none",
     task_type="CAUSAL_LM",
     target_modules=[
-        "q_proj", "k_proj", "v_proj", "o_proj",  # attention
-        "gate_proj", "up_proj", "down_proj",    # FFN
+        "q_proj", "k_proj", "v_proj", "o_proj",  
+        "gate_proj", "up_proj", "down_proj",    
     ],
 )
 
@@ -93,7 +93,7 @@ args = TrainingArguments(
     learning_rate=1e-4,
     logging_steps=25,
     save_strategy="epoch",
-    bf16=True,  # use bfloat16 if supported (A100 = ✅)
+    bf16=True,  
 )
 
 trainer = Trainer(
@@ -107,5 +107,5 @@ trainer = Trainer(
 # ── 7. train & save ─────────────────────────────────────────────────────
 if __name__ == "__main__":
     trainer.train()
-    model.save_pretrained(OUT_DIR)  # saves LoRA adapter
+    model.save_pretrained(OUT_DIR)  
     tok.save_pretrained(OUT_DIR)
