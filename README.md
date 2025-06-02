@@ -103,6 +103,7 @@ footb-ai/
 │   │   ├── types/          # TypeScript type definitions
 │   │   └── utils/          # Utility functions
 │   └── public/             # Static assets
+├── Screen REC/             # Screen recording of the App 
 ├── server/                 # Backend FastAPI application
 │   ├── models/            # Data models and schemas
 │   ├── services/          # Business logic and services
